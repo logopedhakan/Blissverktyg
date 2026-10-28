@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#28558C">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Bliss — hänga gubbe</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="css/wb-base.css">
+<style>
+body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;
+  background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:baseline;gap:14px;padding:12px 18px;flex-wrap:wrap}
+header h1{font-size:20px}
+header .sub{color:var(--dim);font-size:13px}
+header .score{margin-left:auto;font-size:14px;color:var(--dim)}
+header .score b{color:var(--ink)}
+main{flex:1;display:grid;grid-template-columns:auto 1fr 300px;gap:14px;padding:0 18px 14px;min-height:0}
+/* teacher's word list: text only — no symbols, nothing given away */
+#picker{display:none;width:220px;flex-direction:column;gap:8px;min-height:0;
+  max-height:calc(100vh - 110px);position:sticky;top:10px;
+  background:var(--panel-2);border-radius:14px;padding:10px;grid-column:1}
+/* pin every panel to its own track — with the picker hidden the remaining
+   children otherwise auto-flow into the WRONG columns, leaving the 300px
+   track standing empty at the far right (PeO's mystery gap, 2026-08-26) */
+#left{grid-column:2}
+#right{grid-column:3}
+body.picker #picker{display:flex}
+#pickSearch{font:inherit;padding:6px 9px;border:1px solid var(--rule);border-radius:8px;
+  background:var(--panel);color:var(--ink)}
+#pickRows{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:2px}
+#pickRows button{text-align:left;border-color:transparent;background:transparent;padding:4px 8px;font-size:13.5px}
+#pickRows button:hover{background:var(--panel);border-color:var(--accent)}
+#pickCount{font-size:11.5px;color:var(--dim)}
+#left{display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0}
+#wordRow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#word{font-size:34px;font-weight:700}
+#msg{font-size:15px;color:var(--dim);min-height:22px}
+#msg.good{color:var(--ok)} #msg.bad{color:var(--sel)}
+/* the board keeps a SANE scale: height-capped, aspect from its viewBox —
+   a wide window must not inflate the symbol (PeO, 2026-08-25) */
+#board.good{border-color:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb, var(--ok) 35%, transparent)}
+#board.bad{border-color:var(--sel);box-shadow:0 0 0 3px color-mix(in srgb, var(--sel) 35%, transparent)}
+#board{transition:border-color .15s, box-shadow .15s;
+  background:var(--stage);border:1px solid var(--rule);border-radius:14px;
+  display:block;flex:1 1 0;min-height:140px;max-height:400px;width:100%;
+  touch-action:manipulation}
+#wrongRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#wrongRow .lbl{font-size:13px;color:var(--dim)}
+.wrongG{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:30px;
+  padding:3px 7px;border:1.5px dashed var(--sel);border-radius:8px;opacity:.55;position:relative}
+.wrongG svg{max-height:22px;max-width:26px;width:auto;height:auto}
+.wrongG::after{content:"";position:absolute;left:4px;right:4px;top:50%;height:2px;
+  background:var(--sel);transform:rotate(-12deg)}
+#famModeRow{display:flex;gap:7px;align-items:center;font-size:13.5px}
+#tray{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:44px}
+#tray .lbl{font-size:13px;color:var(--dim)}
+/* board + tray centred in the free space — shortens the travel between
+   picking an element and placing it (PeO, 2026-08-25) */
+#mid{flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;min-height:0}
+#palette{background:var(--panel-2);border-radius:14px;padding:8px 12px 12px}
+#famRow{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px}
+button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--rule);
+  border-radius:10px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+#famRow button{border-color:transparent;background:transparent;min-width:38px;height:34px;
+  display:inline-flex;align-items:center;justify-content:center;line-height:0}
+#famRow button.on{background:var(--panel);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+#varRow{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;min-height:64px}
+.varBtn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 9px 4px}
+.varBtn.wrong{opacity:.35;text-decoration:line-through;pointer-events:none}
+.varBtn.found{border-color:var(--ok)}
+.tok{display:flex;align-items:center;padding:6px 9px;border-style:dashed;border-color:var(--sel)}
+.tok.on{background:var(--accent-soft)}
+#right{display:flex;flex-direction:column;gap:10px;min-height:0}
+/* the man COMPLAINS (John's ask 2026-09-09): a speech bubble ABOVE the
+   gallows, in flow — never covering it (PeO's detail pass) */
+#quip{background:var(--panel-2);border:1.5px solid var(--ink);border-radius:12px;
+  padding:8px 12px;font-size:14.5px;line-height:1.3;display:none;position:relative;
+  margin-bottom:4px;flex:none}
+#quip::after{content:"";position:absolute;bottom:-9px;right:34px;width:14px;height:14px;
+  background:var(--panel-2);border-right:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);
+  transform:rotate(45deg)}
+#quip.on{display:block;animation:quipShake .35s ease}
+@keyframes quipShake{0%,100%{transform:rotate(0)}30%{transform:rotate(-1.6deg)}60%{transform:rotate(1.4deg)}}
+@media (prefers-reduced-motion: reduce){#quip.on{animation:none}}
+/* tall stage: the gallows fills the column's full height */
+#gallows{background:var(--panel);border:1px solid var(--rule);border-radius:14px;width:100%;
+  flex:1;min-height:150px}
+#controls{display:flex;flex-direction:column;gap:8px}
+select{font:inherit;padding:6px;border-radius:8px;border:1px solid var(--rule);
+  background:var(--panel);color:var(--ink)}
+.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
+#board .ph{opacity:.9}
+@keyframes pulseIn{0%{opacity:.2}100%{opacity:1}}
+/* win celebration: Bliss-element confetti over the board */
+#confetti{position:fixed;pointer-events:none;z-index:50}
+#confetti span{position:absolute;top:-40px;animation:confFall var(--dur) ease-in var(--delay) forwards}
+#confetti svg{width:26px;height:auto}
+@keyframes confFall{
+  0%{transform:translateY(0) rotate(0deg);opacity:1}
+  85%{opacity:1}
+  100%{transform:translateY(var(--fall)) rotate(var(--spin));opacity:0}}
+@media (prefers-reduced-motion: reduce){#confetti{display:none}}
+#board g.new{animation:pulseIn .5s ease}
+@media (prefers-reduced-motion: reduce){#board g.new{animation:none}}
+@media (max-width:760px){main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <a class="homeLink" href="start.html" title="Till startsidan">⌂ Start</a>
+  <h1>Hänga gubbe <span style="color:var(--sel)">·</span> Bliss</h1>
+  <span class="sub">gissa vilka element som bygger symbolen — och sätt dem på rätt plats</span>
+  <span class="score">klarade <b id="nWon">0</b> · svit <b id="nStreak">0</b></span>
+</header>
+<main>
+  <aside id="picker" aria-label="Välj ord">
+    <input id="pickSearch" type="search" placeholder="Sök ord…" autocomplete="off">
+    <div id="pickRows" tabindex="-1"></div>
+    <div id="pickCount" class="lbl"></div>
+  </aside>
+  <section id="left" aria-label="Spelplan">
+    <div id="wordRow">
+      <span id="word">…</span>
+      <button id="btnHide" title="Dölj eller visa ordet — dolt ord avslöjas när rundan är slut">👁 Dölj ordet</button>
+      <span id="msg" aria-live="polite"></span>
+    </div>
+    <div id="wrongRow" hidden><span class="lbl">Fel gissningar:</span><span id="wrongList"></span></div>
+    <div id="mid">
+      <svg id="board" tabindex="0" aria-label="Symbolens rutnät"></svg>
+      <div id="tray"><span class="lbl">Hittade element — klicka och placera:</span></div>
+    </div>
+    <div id="palette">
+      <div id="famRow" role="tablist" aria-label="Formfamiljer"></div>
+      <div id="varRow"></div>
+    </div>
+  </section>
+  <aside id="right">
+    <div id="quip" role="status"></div>
+    <svg id="gallows" viewBox="0 0 220 420" aria-label="Hänga gubbe-figuren"></svg>
+    <div id="controls">
+      <label>Tema
+        <select id="theme">
+          <option value="auto">Auto (följ systemet)</option>
+          <option value="light">Ljust</option>
+          <option value="dark">Mörkt</option>
+        </select>
+      </label>
+      <label>Svårighetsgrad
+        <select id="diff">
+          <option value="latt" selected>Lätt · vardagsord (substantiv)</option>
+          <option value="gula">Medel · alla gula ord</option>
+          <option value="alla">Svår · hela blisslistan</option>
+        </select>
+      </label>
+      <label id="famModeRow"><input type="checkbox" id="famMode" checked> Rätt familj räcker — formen sätts på plats</label>
+      <div class="lbl" style="font-size:11.5px;color:var(--dim)">Kortkommando: <b>#</b> + bokstav väljer familj (t.ex. #B för hjärtat)</div>
+      <button id="btnHint">Ledtråd — visa en form (kostar en miss)</button>
+      <button id="btnList">Öppna egen ordlista (.wbs)…</button>
+      <button id="btnPick">Välj ord ur listan…</button>
+      <button id="btnSound" title="Gubbens röst och ljudeffekter">🔊 Ljud på</button>
+      <button id="btnNext" class="primary">Nytt ord</button>
+      <button id="btnReveal">Ge upp — visa symbolen</button>
+    </div>
+  </aside>
+</main>
+<footer>WinBliss² · en övning på Håkan Larssons idé · 2026 AnyCom AB · CC BY 4.0 · <span title="Blissymbolics © C.K. Bliss 1949, 1965 · symbols © Blissymbolics Communication International (BCI), distributed under CC BY-SA 4.0 — conforming to the BCI Authorized Vocabulary, blissymbolics.org">Blissymbolics © BCI, CC BY-SA 4.0</span></footer>
+
+<script src="js/shared/lang.js"></script>
+<script src="js/shared/pwa.js"></script>
+<script src="js/shared/wbs.js"></script>
+<script src="js/shared/shortcuts.js"></script>
+<script src="js/engine/bliss-shapes.js"></script>
+<script src="js/engine/bliss-engine.js"></script>
+<script src="js/data/bliss-data.js"></script>
+<script src="js/data/glosses.js"></script>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const G = 100;
+
+/* Language (PeO, 2026-09-25): follows the suite's wb-lang, set on the start
+   page or in WinBliss settings. Swedish stays the source text in the markup;
+   English is applied here. */
+const LNG = wbLang();
+const tr = (en, sv) => LNG === 'sv' ? sv : en;
+document.documentElement.lang = LNG;
+if (LNG === 'en') {
+  document.title = 'Bliss — hangman';
+  document.querySelector('.homeLink').title = 'To the start page';
+  document.querySelector('header h1').innerHTML = 'Hangman <span style="color:var(--sel)">·</span> Bliss';
+  document.querySelector('header .sub').textContent = 'guess which elements build the symbol — and put them in place';
+  document.querySelector('header .score').innerHTML = 'solved <b id="nWon">0</b> · streak <b id="nStreak">0</b>';
+  $('picker').setAttribute('aria-label', 'Choose a word');
+  $('pickSearch').placeholder = 'Search words…';
+  $('left').setAttribute('aria-label', 'Game board');
+  $('board').setAttribute('aria-label', "The symbol's grid");
+  $('gallows').setAttribute('aria-label', 'The hangman figure');
+  $('famRow').setAttribute('aria-label', 'Form families');
+  document.querySelector('#wrongRow .lbl').textContent = 'Wrong guesses:';
+  $('theme').parentElement.firstChild.nodeValue = 'Theme';
+  $('diff').parentElement.firstChild.nodeValue = 'Difficulty';
+  const opts = { theme: ['Auto (follow the system)', 'Light', 'Dark'],
+                 diff: ['Easy · everyday words (nouns)', 'Medium · all yellow words', 'Hard · the whole Bliss list'] };
+  for (const id in opts) [...$(id).options].forEach((o, i) => { o.textContent = opts[id][i]; });
+  $('famModeRow').lastChild.nodeValue = ' Family is enough — the shape is placed for you';
+  $('famModeRow').nextElementSibling.innerHTML = 'Shortcut: <b>#</b> + a letter picks a family (e.g. #B for the heart)';
+  $('btnHint').textContent = 'Hint — reveal a shape (costs a miss)';
+  $('btnList').textContent = 'Open your own word list (.wbs)…';
+  $('btnPick').textContent = 'Choose a word from the list…';
+  $('btnSound').title = "The man's voice and sound effects";
+  $('btnHide').title = 'Hide or show the word — a hidden word is revealed when the round ends';
+  $('btnNext').textContent = 'New word';
+  $('btnReveal').textContent = 'Give up — show the symbol';
+  document.querySelector('footer').firstChild.nodeValue = "WinBliss² · an exercise on Håkan Larsson's idea · 2026 AnyCom AB · CC BY 4.0 · ";
+}
+
+/* ---- palette families (same derivation as the workbench) ---- */
+const families = {};
+for (const k of Object.keys(BLISS_SHAPES)) {
+  const m = k.match(/^Element([A-Z])(\d+)$/);
+  if (!m || m[1] === 'X' || m[1] === 'Z') continue;
+  (families[m[1]] = families[m[1]] || []).push(+m[2]);
+}
+for (const f in families) families[f].sort((a, b) => a - b);
+function glyph(fam, sub, unit, clock = 1) {
+  const el = [fam, sub, clock, 0, 2, 8, 0, 0, '', 0, 4];
+  try { return blissSVG({ e: [el] }, { unit, color: 'currentColor' }); } catch (_) { return '?'; }
+}
+/* Klock-kanonisering (Håkans bugg, 2026-09-24): många former ritas identiskt i
+   flera rotationer — cirkeln H2 är samma cirkel oavsett klocka, men orden i
+   BCI-datat lagrar den ibland med klocka 2. Paletten visar bara en variant, så
+   exakta klockjämförelser gjorde 304 ord ogissbara. Allt som jämför former går
+   därför via den kanoniska klockan: den första klockan (1–4) som ritar samma bana. */
+const canonCache = new Map();
+function canonMap(fam, sub) {
+  const ck = fam + '/' + sub;
+  let m = canonCache.get(ck);
+  if (!m) {
+    m = {}; const seen = new Map();
+    for (let c = 1; c <= 4; c++) {
+      const s = glyph(fam, sub, 4.6, c);
+      if (!seen.has(s)) seen.set(s, c);
+      m[c] = seen.get(s);
+    }
+    canonCache.set(ck, m);
+  }
+  return m;
+}
+function canonClock(fam, sub, clock) {
+  return canonMap(fam, sub)[clock] ?? clock;
+}
+function distinctClocks(fam, sub) {
+  return [...new Set(Object.values(canonMap(fam, sub)))];
+}
+
+/* ---- word pool ---- */
+const SV = (BLISS_GLOSSES && BLISS_GLOSSES.sv) || {};
+/* Lätt-nivåns ordförråd: Håkan Larssons lista med vardagssubstantiv
+   (2026-08-26, från hans gissa ordet-övning) — matchas mot svenska glosser */
+const HAKAN = new Set(('mat efterrätt bulle bröd kaka kex dryck mjölk juice saft läsk smörgås kött paj ' +
+ 'korv ägg marmelad sås pizza hamburgare sallad soppa kaffe ost yoghurt fil pasta skaldjur ' +
+ 'grönsak frukt glass socker salt krydda godis kropp huvud hår öra öga näsa mun mage nacke rygg ' +
+ 'arm ben hals hand fot tänder stjärt smink medicin kläder ytterkläder underkläder skjorta blus ' +
+ 'klänning kjol byxor strumpor skor hatt mössa hjälm kudde täcke filt servett haklapp väska ' +
+ 'pengar glasögon borste smycke nyckel verktyg maskin hus lägenhet hem rum toalett kök fönster ' +
+ 'trappa dörr bord skåp stol byrå hylla säng lampa flaska nål sax snöre elektricitet ugn spis ' +
+ 'batteri spegel träd blomma skog sjö berg himmel sol stjärna regn luft snö vind rullstol ' +
+ 'elrullstol fordon vagn cykel bil buss taxi tåg flygplan båt skola post bank arbetsplats ' +
+ 'dagcenter teater biograf sjukhus museum hotell stad bondgård trädgård gata').split(' '));
+function svWords(id) {
+  return (SV[id] || '').split(',').map(w => w.replace(/\s*\([^)]*\)/g, '').trim().toLowerCase());
+}
+let customList = null;   // loaded .wbs symbols, when Håkan opens his own word list
+function buildable(s) {
+  return !/^indicator_/.test(s.n || '') && SV[s.id] &&
+    s.e.every(e => e[0] !== 'Z' && e[0] !== 'X' && e[3] === 0 &&
+                   families[e[0]] && families[e[0]].includes(e[1]));
+}
+function pool() {
+  // the level filter applies to a loaded list too (caught by PeO 2026-08-26:
+  // "gula ord" produced the verb "exportera" — the list had bypassed the level)
+  const lvl = $('diff').value;
+  const src = customList || BLISS_DATA;
+  return src.filter(s => {
+    if (!buildable(s)) return false;
+    const n = s.e.length;
+    if (lvl === 'latt') return s.c === 'YELLOW' && n >= 2 && n <= 6 &&
+                               (customList ? true : svWords(s.id).some(w => HAKAN.has(w)));
+    if (lvl === 'gula') return s.c === 'YELLOW' && n >= 2 && n <= 6;
+    return n >= 2 && n <= 8;
+  });
+}
+/* .wbs-parsern: js/shared/wbs.js (samma som editorn) */
+/* ---- game state ---- */
+let target = null;        // the symbol
+let T = [];               // [{fam,sub,clock,x,y,placed}]
+let wrong = new Set();    // wrong-guessed keys "F/s/c"
+let wrongFams = new Set();// wrong-guessed families (family mode)
+let foundQueue = [];      // tray tokens: keys waiting to be placed
+let activeTok = null;     // key being placed
+let ghost = null;         // {x,y} in half-units
+let misses = 0, over = false, wonRound = false;
+let nWon = 0, nStreak = 0;
+let curFam = 'B';
+const key = (f, s, c) => f + '/' + s + '/' + canonClock(f, s, +c);
+
+function newWord() {
+  const p = pool();
+  if (!p.length) { say(tr('No words at this level / in this list.', 'Inga ord i den här nivån/listan.'), 'bad'); return; }
+  startWord(p[Math.floor(Math.random() * p.length)]);
+}
+/* teacher's pick (PeO, 2026-08-26): choose the exact word the class trains on */
+function startWord(sym) {
+  target = sym;
+  T = target.e.map(e => ({ fam: e[0], sub: e[1], clock: e[2], x: e[4], y: e[5], placed: false }));
+  wrong = new Set(); wrongFams = new Set(); foundQueue = []; activeTok = null; ghost = null; misses = 0; over = false; wonRound = false;
+  setQuip('');
+  renderWord();
+  say('');
+  renderAll();
+}
+/* Hidden-word mode (Håkan + John, 2026-09-09): the word can be masked so the
+   player guesses BOTH the elements and the word — revealed when the round ends. */
+let hideWord = localStorage.getItem('gissa-hideword') === '1';
+function wordText() { return (LNG === 'sv' ? (SV[target.id] || target.n) : (target.n || SV[target.id])).split(',')[0].replace(/_/g, ' '); }
+function renderWord() {
+  if (!target) return;
+  const masked = hideWord && !over;
+  $('word').textContent = masked
+    ? wordText().replace(/[^ ]/g, '_').split('').join('\u2009')
+    : wordText();
+  $('word').setAttribute('aria-label', masked ? tr('Hidden word', 'Dolt ord') : wordText());
+  $('btnHide').textContent = hideWord ? tr('🙈 Show the word', '🙈 Visa ordet') : tr('👁 Hide the word', '👁 Dölj ordet');
+}
+$('btnHide').onclick = () => {
+  hideWord = !hideWord;
+  localStorage.setItem('gissa-hideword', hideWord ? '1' : '0');
+  if (hideWord && $('msg').textContent.startsWith(tr('Chosen word:', 'Valt ord:'))) say(tr('The word is chosen — hidden.', 'Ordet är valt — dolt.'), '');
+  renderWord();
+};
+function say(t, cls) { const m = $('msg'); m.textContent = t; m.className = cls || ''; }
+
+/* ---- board ---- */
+function boardFrame() {
+  // the grid fills the board's box (editor behaviour): height is fixed at 25
+  // units, width follows the box's aspect, and the symbol sits centred
+  const b = $('board');
+  const boxW = b.clientWidth || 900, boxH = b.clientHeight || 400;
+  const xs = T.flatMap(t => [t.x, t.x + 6]);
+  const lo = Math.min(0, ...xs), hi = Math.max(10, ...xs);
+  const H = 25;
+  const W = Math.max(H * boxW / boxH, hi - lo + 6);
+  const x0 = lo - (W - (hi - lo)) / 2;
+  return { x: x0 * G, y: -2 * G, w: W * G, h: H * G };
+}
+function elBody(t) {
+  try { return renderBliss({ e: [[t.fam, t.sub, t.clock, 0, t.x, t.y, 0, 0, '', 0, 4]] }).body; }
+  catch (_) { return ''; }
+}
+function renderBoard() {
+  const f = boardFrame();
+  // the BUILD ZONE (PeO, 2026-08-26): its ground colour goes UNDER the grid,
+  // its dashed edges over — the grid must run unbroken through the zone
+  let zone = null;
+  if (T.length && activeTok) {   // margins show only while an element is in hand
+    const xs = T.flatMap(t => [t.x, t.x + 6]);
+    zone = { lo: Math.min(...xs) - 1, hi: Math.max(...xs) + 1 };
+  }
+  // no fill — the tinted band read as a rendering fault (PeO, 2026-08-26);
+  // the zone is just its two dashed margin lines, like ruled-paper margins
+  let out = '<g stroke="var(--rule)" stroke-width="1" opacity=".5">';
+  for (let gx = Math.ceil(f.x / (2 * G)) * 2; gx * G <= f.x + f.w; gx += 2)
+    out += `<line vector-effect="non-scaling-stroke" x1="${gx * G}" y1="${f.y}" x2="${gx * G}" y2="${f.y + f.h}"/>`;
+  for (let gy = -2; gy <= 22; gy += 2)
+    out += `<line vector-effect="non-scaling-stroke" x1="${f.x}" y1="${gy * G}" x2="${f.x + f.w}" y2="${gy * G}"/>`;
+  out += '</g>';
+  if (zone) {
+    for (const zx of [zone.lo, zone.hi])
+      out += `<line vector-effect="non-scaling-stroke" x1="${zx * G}" y1="${f.y}" x2="${zx * G}" y2="${f.y + f.h}"
+        stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="7 6" opacity=".5"/>`;
+  }
+  for (const [y, dash, lbl] of [[4, '14 10', ''], [8, '', 'himmel'], [16, '', 'jord']]) {
+    out += `<line vector-effect="non-scaling-stroke" x1="${f.x}" y1="${y * G}" x2="${f.x + f.w}" y2="${y * G}" stroke="var(--dim)"
+      stroke-width="1.5" opacity=".75" ${dash ? `stroke-dasharray="6 5"` : ''}/>` +
+      (lbl ? `<text x="${f.x + 20}" y="${y * G - 25}" font-size="70" fill="var(--dim)">${lbl}</text>` : '');
+  }
+  T.forEach((t, i) => {
+    if (!t.placed) return;
+    const col = wonRound ? 'var(--ok)' : 'var(--ink)';   // reveal stays plain ink (PeO 2026-09-09)
+    out += `<g class="${t.justPlaced ? 'new' : ''}" stroke="${col}"
+      stroke-width="35" stroke-linecap="round" stroke-linejoin="round"
+      style="color:${col}"><style>.bfill{fill:currentColor}</style>${elBody(t)}</g>`;
+    t.justPlaced = false;
+  });
+  if (activeTok && ghost) {
+    const [fam, sub, clock] = activeTok.split('/');
+    const body = elBody({ fam, sub: +sub, clock: +clock, x: ghost.x, y: ghost.y });
+    out += `<g class="ph" stroke="var(--sel)" stroke-width="35" stroke-linecap="round"
+      stroke-linejoin="round" opacity=".65" style="color:var(--sel)"><style>.bfill{fill:var(--sel)}</style>${body}</g>`;
+  }
+  const b = $('board');
+  b.setAttribute('viewBox', `${f.x} ${f.y} ${f.w} ${f.h}`);
+  b.innerHTML = out;
+}
+
+/* ---- gallows: the classic, drawn stroke by stroke (8 steps) ---- */
+const GALLOWS = [
+  '<path d="M13 402 Q63 372 113 402" />',                 // kullen — toppen rakt under stolpen
+  '<line x1="63" y1="386" x2="63" y2="40"/>',             // stolpen — foten slutar inne i kullens streck
+  '<line x1="63" y1="40" x2="168" y2="40"/><line x1="63" y1="84" x2="105" y2="40"/>', // tvärslå + stag
+  '<line x1="168" y1="40" x2="168" y2="80"/>',            // repet
+  '<circle cx="168" cy="108" r="27" fill="none"/>',       // huvudet
+  '<line x1="168" y1="135" x2="168" y2="238"/>',          // kroppen
+  '<line x1="168" y1="158" x2="128" y2="200"/><line x1="168" y1="158" x2="207" y2="200"/>', // armarna
+  '<line x1="168" y1="238" x2="136" y2="300"/><line x1="168" y1="238" x2="199" y2="300"/>', // benen
+];
+const RESCUED =
+  '<circle cx="150" cy="250" r="26" fill="none"/>' +          // huvudet
+  '<line x1="150" y1="276" x2="150" y2="352"/>' +             // kroppen
+  '<line x1="150" y1="295" x2="113" y2="255"/>' +             // armarna — upp i luften!
+  '<line x1="150" y1="295" x2="187" y2="255"/>' +
+  '<line x1="150" y1="352" x2="122" y2="400"/>' +             // benen, stadigt på marken
+  '<line x1="150" y1="352" x2="178" y2="400"/>' +
+  '<path d="M92 402 Q150 380 208 402"/>';                     // egen kulle att stå på
+function renderGallows() {
+  if (wonRound) {
+    // the mirror of losing: the gallows stands EMPTY and faint — the man is
+    // rescued, on his own hill, arms raised (Håkan's ask for real feedback)
+    $('gallows').innerHTML =
+      `<g stroke="var(--rule)" stroke-width="8" stroke-linecap="round" fill="none">${GALLOWS.slice(0, 4).join('')}</g>` +
+      `<g stroke="var(--ok)" stroke-width="9" stroke-linecap="round" fill="none">${RESCUED}</g>`;
+    return;
+  }
+  // the whole gallows structure stands faint from the start (hill, post,
+  // beam, rope) — misses ink it in, and then the man arrives
+  $('gallows').innerHTML =
+    `<g stroke="var(--rule)" stroke-width="8" stroke-linecap="round" fill="none">${GALLOWS.slice(0, 4).join('')}</g>` +
+    `<g stroke="var(--ink)" stroke-width="8" stroke-linecap="round" fill="none">` +
+    GALLOWS.slice(0, misses).join('') + `</g>`;
+}
+
+/* ---- palette ---- */
+function renderFams() {
+  const row = $('famRow'); row.innerHTML = '';
+  for (const f of Object.keys(families).sort()) {
+    const b = document.createElement('button');
+    b.innerHTML = glyph(f, families[f][0], 3.0)
+      .replace(/stroke-width="([\d.]+)"/, (m, w) => `stroke-width="${Math.round(w * 1.7)}"`);
+    b.className = f === curFam ? 'on' : '';
+    b.title = f;
+    // choosing a family lands focus IN the element row (the workbench
+    // pattern): next stop is picking an element, never the groups again
+    b.onclick = () => { curFam = f; renderFams(); renderVars(true); };
+    row.appendChild(b);
+  }
+}
+function renderVars(focusFirst = false) {
+  const row = $('varRow'); row.innerHTML = '';
+  for (const sub of families[curFam]) {
+    for (const clock of distinctClocks(curFam, sub)) {
+      const k = key(curFam, sub, clock);
+      const b = document.createElement('button');
+      b.className = 'varBtn' + (wrong.has(k) || wrongFams.has(curFam) ? ' wrong' : '') +
+        (T.some(t => t.placed && key(t.fam, t.sub, t.clock) === k) ? ' found' : '');
+      b.innerHTML = `${glyph(curFam, sub, 4.6, clock)}<span style="font-size:10px;color:var(--dim)">${curFam}${sub}</span>`;
+      b.title = 'Gissa: ingår denna form?';
+      b.onclick = () => guess(k);
+      row.appendChild(b);
+    }
+  }
+  if (focusFirst && row.firstChild) row.firstChild.focus();
+}
+function renderTray() {
+  const tray = $('tray');
+  tray.innerHTML = '<span class="lbl">' + tr('Found elements — click and place:', 'Hittade element — klicka och placera:') + '</span>';
+  foundQueue.forEach((k, i) => {
+    const [fam, sub, clock] = k.split('/');
+    const b = document.createElement('button');
+    b.className = 'tok' + (activeTok === k && ghost ? ' on' : '');
+    b.innerHTML = glyph(fam, +sub, 3.4, +clock);
+    b.title = 'Placera på rutnätet: klicka här, sedan på rätt plats (eller pilar + Enter)';
+    b.onclick = () => { pickUp(k); };
+    tray.appendChild(b);
+  });
+}
+function renderWrong() {
+  const has = wrong.size || wrongFams.size;
+  $('wrongRow').hidden = !has;
+  if (!has) return;
+  let h = '';
+  const bold = (s) => s.replace(/stroke-width="([\d.]+)"/, (m, w) => `stroke-width="${Math.round(w * 1.7)}"`);
+  for (const fam of wrongFams) h += `<span class="wrongG">${bold(glyph(fam, families[fam][0], 3.0))}</span>`;
+  for (const k of wrong) {
+    const [fam, sub, clock] = k.split('/');
+    h += `<span class="wrongG">${bold(glyph(fam, +sub, 3.0, +clock))}</span>`;
+  }
+  $('wrongList').innerHTML = h;
+}
+function renderAll() { renderBoard(); renderGallows(); renderFams(); renderVars(); renderTray(); renderWrong();
+  $('nWon').textContent = nWon; $('nStreak').textContent = nStreak; }
+
+/* ---- game logic ---- */
+function autoPlaceFamily(fam) {
+  const hits = T.filter(t => !t.placed && t.fam === fam);
+  for (const h of hits) { h.placed = true; h.justPlaced = true; }
+  return hits.length;
+}
+function guess(k) {
+  if (over || wrong.has(k)) return;
+  // Tillval (Håkan, 2026-08-26): rätt FAMILJ räcker — formen sätts på rätt plats
+  if ($('famMode').checked) {
+    const fam = k.split('/')[0];
+    if (wrongFams.has(fam)) return;
+    const n = autoPlaceFamily(fam);
+    if (n) {
+      say(n > 1 ? tr(`Right family! ${n} shapes placed.`, `Rätt familj! ${n} former på plats.`) : tr('Right family! Shape placed.', 'Rätt familj! Formen på plats.'), 'good');
+      if (T.every(t => t.placed)) win();
+    } else { wrongFams.add(fam); miss(tr('No — no shape from that family is in it.', 'Nej — ingen form ur den familjen ingår.')); }
+    renderAll(); return;
+  }
+  const hits = T.filter(t => !t.placed && key(t.fam, t.sub, t.clock) === k &&
+                             !foundQueue.includes(k) || false);
+  const instances = T.filter(t => !t.placed && key(t.fam, t.sub, t.clock) === k).length;
+  const inTray = foundQueue.filter(q => q === k).length;
+  if (instances - inTray > 0) {
+    for (let i = 0; i < instances - inTray; i++) foundQueue.push(k);
+    say(instances > 1 ? tr(`Right! ${instances} of them — place them.`, `Rätt! ${instances} stycken — placera dem.`) : tr('Right shape! Place it.', 'Rätt form! Placera den.'), 'good');
+    pickUp(k);
+  } else if (instances > 0) {
+    say(tr('Already found — place it.', 'Den är redan hittad — placera den.'), '');
+  } else {
+    wrong.add(k); miss(tr('No — that shape is not in it.', 'Nej — den formen ingår inte.'));
+  }
+  renderAll();
+}
+function pickUp(k) {
+  activeTok = k;
+  const f = boardFrame();
+  ghost = ghost || { x: Math.round((f.x + f.w / 2) / G), y: 8 };
+  say(tr('Place it: click the grid, or arrows + Enter.', 'Placera: klicka på rutnätet, eller pilar + Enter.'), '');
+  renderAll();
+  $('board').focus({ preventScroll: true });
+}
+let flashT = null;
+function flashBoard(ok) {
+  const b = $('board');
+  b.classList.remove('good', 'bad');
+  void b.offsetWidth;
+  b.classList.add(ok ? 'good' : 'bad');
+  clearTimeout(flashT);
+  flashT = setTimeout(() => b.classList.remove('good', 'bad'), 700);
+}
+function tryDrop() {
+  if (!activeTok || !ghost || over) return;
+  const cand = T.filter(t => !t.placed && key(t.fam, t.sub, t.clock) === activeTok);
+  const hit = cand.find(t => Math.max(Math.abs(t.x - ghost.x), Math.abs(t.y - ghost.y)) <= 2.5);
+  if (hit) {
+    flashBoard(true);
+    sfx('place');
+    hit.placed = true; hit.justPlaced = true;
+    foundQueue.splice(foundQueue.indexOf(activeTok), 1);
+    activeTok = foundQueue[0] || null;
+    if (!activeTok) ghost = null;
+    if (T.every(t => t.placed)) win(); else say(tr('Right spot!', 'Rätt plats!'), 'good');
+  } else {
+    flashBoard(false);
+    miss(tr('Wrong spot — try again.', 'Fel plats — försök igen.'));
+  }
+  renderAll();
+}
+/* the man's complaints, escalating with each stroke of the gallows */
+const QUIPS_EN = [
+  ['Oi. Careful now.', 'Hm. Sure about that one?', 'I saw that…'],
+  ["You're building a gallows, you know.", 'Second miss… okay, okay.', 'Think of me over here.'],
+  ["A crossbeam?! Now I'm worried.", 'That is starting to look unpleasant.', 'Could we slow down a little?'],
+  ['A ROPE?! Seriously?', 'No no no. Not the rope.', "I don't like where this is going."],
+  ["Hey! That's ME hanging there!", 'And there I am. Unfortunately.', 'I had plans this weekend!'],
+  ['Please. Think before you guess.', 'The whole body?! This is going fast.', 'Focus! For my sake!'],
+  ["The ARMS?! One more miss and it's over!", 'LAST chance. No pressure. Yes. PRESSURE.', "I'm too young to become a memory!"],
+];
+const QUIPS = LNG === 'sv' ? [
+  ['Öj. Försiktigt nu.', 'Hm. Är du säker på den där?', 'Jag såg det där…'],
+  ['Du bygger en galge, vet du om det?', 'Andra missen… okej, okej.', 'Tänk på mig här borta.'],
+  ['En tvärslå?! Nu blir jag orolig.', 'Det där börjar likna något otrevligt.', 'Kan vi ta det lite lugnare?'],
+  ['Ett REP?! Allvarligt?', 'Nej nej nej. Inte repet.', 'Jag gillar inte vart det här är på väg.'],
+  ['Hallå! Det är JAG som hänger här!', 'Och där kom jag in i bilden. Tyvärr.', 'Jag hade planer i helgen!'],
+  ['Snälla. Tänk efter före nu.', 'Hela kroppen?! Det här går fort.', 'Fokusera! För min skull!'],
+  ['ARMARNA?! En miss till så är det kört!', 'SISTA chansen. Ingen press. Jo. PRESS.', 'Jag är för ung för att bli ett minne!'],
+] : QUIPS_EN;
+/* audio (John's ask 2026-09-09): the man SPEAKS his complaints via the
+   browser's Swedish speech synthesis, plus small synth effects. Togglable. */
+let sound = localStorage.getItem('gissa-sound') !== '0';
+function renderSoundBtn() { $('btnSound').textContent = sound ? tr('🔊 Sound on', '🔊 Ljud på') : tr('🔇 Sound off', '🔇 Ljud av'); }
+$('btnSound').onclick = () => {
+  sound = !sound;
+  localStorage.setItem('gissa-sound', sound ? '1' : '0');
+  if (!sound && 'speechSynthesis' in window) speechSynthesis.cancel();
+  renderSoundBtn();
+};
+renderSoundBtn();
+let svVoice;
+if ('speechSynthesis' in window)
+  speechSynthesis.onvoiceschanged = () => {
+    svVoice = speechSynthesis.getVoices().find(v => v.lang && v.lang.startsWith(LNG));
+  };
+function speak(txt) {
+  if (!sound || !('speechSynthesis' in window) || !txt) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(txt);
+  u.lang = tr('en-US', 'sv-SE');
+  svVoice = svVoice || speechSynthesis.getVoices().find(v => v.lang && v.lang.startsWith(LNG));
+  if (svVoice) u.voice = svVoice;
+  u.pitch = 1.2; u.rate = 1.05;   // a touch squeaky — he IS in distress
+  speechSynthesis.speak(u);
+}
+let actx;
+function tone(freq, at, dur, type, vol) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, actx.currentTime + at);
+  g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + at + dur);
+  o.connect(g); g.connect(actx.destination);
+  o.start(actx.currentTime + at); o.stop(actx.currentTime + at + dur);
+}
+function sfx(kind) {
+  if (!sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    if (kind === 'miss') { tone(220, 0, .18, 'sawtooth', .12); tone(165, .16, .3, 'sawtooth', .12); }
+    if (kind === 'win')  { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .11, .22, 'triangle', .15)); }
+    if (kind === 'place'){ tone(660, 0, .09, 'sine', .1); tone(880, .07, .12, 'sine', .1); }
+  } catch (_) {}
+}
+function setQuip(txt) {
+  const q = $('quip');
+  if (!txt) { q.className = ''; q.textContent = ''; return; }
+  q.textContent = txt;
+  q.className = ''; void q.offsetWidth;   // restart the little shake
+  q.className = 'on';
+  speak(txt);
+}
+function miss(txt) {
+  misses++;
+  sfx('miss');
+  if (misses >= GALLOWS.length) { lose(); return; }
+  const pool = QUIPS[Math.min(misses, QUIPS.length) - 1];
+  setQuip(pool[Math.floor(Math.random() * pool.length)]);
+  say(`${txt} (${GALLOWS.length - misses} ${tr('left', 'kvar')})`, 'bad');
+  renderGallows();
+}
+const CONF_SHAPES = [['B',1],['A',1],['P',1],['K',2],['U',1],['H',1],['D',1],['T',2]];
+function blissConfetti() {
+  const rect = $('board').getBoundingClientRect();
+  const box = document.createElement('div');
+  box.id = 'confetti';
+  box.style.left = rect.left + 'px'; box.style.top = rect.top + 'px';
+  box.style.width = rect.width + 'px'; box.style.height = rect.height + 'px';
+  const cols = ['var(--sel)', 'var(--accent)', 'var(--ok)'];
+  for (let i = 0; i < 26; i++) {
+    const [fam, sub] = CONF_SHAPES[Math.floor(Math.random() * CONF_SHAPES.length)];
+    const s = document.createElement('span');
+    s.style.left = (3 + Math.random() * 94) + '%';
+    s.style.color = cols[i % cols.length];
+    s.style.setProperty('--dur', (1.1 + Math.random() * 0.9) + 's');
+    s.style.setProperty('--delay', (Math.random() * 0.5) + 's');
+    s.style.setProperty('--fall', (rect.height + 60) + 'px');
+    s.style.setProperty('--spin', (Math.random() < .5 ? -1 : 1) * (120 + Math.random() * 300) + 'deg');
+    s.innerHTML = glyph(fam, sub, 3.2, 1 + Math.floor(Math.random() * 4));
+    box.appendChild(s);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 2800);
+}
+function win() {
+  over = true; nWon++; nStreak++; wonRound = true;
+  sfx('win');
+  setQuip(tr('THANK YOU!!! I knew you could!', 'TACK!!! Jag visste att du kunde!'));
+  blissConfetti();
+  renderWord();
+  say(hideWord ? tr(`🎉 Right! The whole symbol placed — the word was ${wordText()}.`,
+                    `🎉 Rätt! Hela symbolen på plats — ordet var ${wordText()}.`)
+               : tr('🎉 Right! The whole symbol is in place.', '🎉 Rätt! Hela symbolen på plats.'), 'good');
+}
+function lose() {
+  over = true; nStreak = 0;
+  setQuip(tr('…I did try to tell you.', '…jag försökte ju säga det.'));
+  for (const t of T) if (!t.placed) { t.placed = true; t.revealed = true; }
+  activeTok = null; ghost = null;
+  renderWord();
+  say(tr(`The man was hanged. This is what ${wordText()} looks like.`, `Gubben hängdes. Så här ser ${wordText()} ut.`), 'bad');
+  renderAll();
+}
+
+/* board interaction */
+const board = $('board');
+function boardPoint(ev) {
+  const r = board.getBoundingClientRect(), f = boardFrame();
+  return { x: Math.round((f.x + (ev.clientX - r.left) / r.width * f.w) / G),
+           y: Math.round((f.y + (ev.clientY - r.top) / r.height * f.h) / G) };
+}
+board.addEventListener('pointermove', (ev) => {
+  if (!activeTok || over) return;
+  const p = boardPoint(ev);
+  if (!ghost || p.x !== ghost.x || p.y !== ghost.y) { ghost = p; renderBoard(); }
+});
+board.addEventListener('pointerdown', (ev) => {
+  if (!activeTok || over) return;
+  ghost = boardPoint(ev); tryDrop();
+});
+board.addEventListener('keydown', (ev) => {
+  if (!activeTok || over) return;
+  const mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
+  if (mv) { ev.preventDefault();
+            if (!ghost) { const f = boardFrame(); ghost = { x: Math.round((f.x + f.w / 2) / G), y: 8 }; }
+            ghost.x += mv[0]; ghost.y += mv[1]; renderBoard(); }
+  if (ev.key === 'Enter') { ev.preventDefault(); tryDrop(); }
+});
+
+$('btnHint').onclick = () => {
+  if (over) return;
+  if (misses >= GALLOWS.length - 1) { say(tr('Too late for hints — the man is hanging by a thread.', 'För sent för ledtrådar — gubben hänger på en tråd.'), 'bad'); return; }
+  const left = T.filter(t => !t.placed);
+  if (!left.length) return;
+  const h = left[Math.floor(Math.random() * left.length)];
+  misses++; renderGallows();
+  if ($('famMode').checked) {
+    const n = autoPlaceFamily(h.fam);
+    say(tr(`Hint: the family was there — ${n} shape${n > 1 ? 's' : ''} placed. (${GALLOWS.length - misses} left)`, `Ledtråd: familjen fanns — ${n} form${n > 1 ? 'er' : ''} på plats. (${GALLOWS.length - misses} kvar)`), 'good');
+    if (T.every(t => t.placed)) win();
+    renderAll();
+  } else {
+    const k = key(h.fam, h.sub, h.clock);
+    const instances = T.filter(t => !t.placed && key(t.fam, t.sub, t.clock) === k).length;
+    const inTray = foundQueue.filter(q => q === k).length;
+    for (let i = 0; i < instances - inTray; i++) foundQueue.push(k);
+    say(tr(`Hint: one of the shapes is shown below — place it. (${GALLOWS.length - misses} left)`, `Ledtråd: en av formerna visas nedan — placera den. (${GALLOWS.length - misses} kvar)`), 'good');
+    pickUp(k);
+  }
+};
+$('btnList').onclick = () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.wbs,.txt';
+  inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return;
+    f.arrayBuffer().then(buf => {
+      const syms = parseWbsText(decodeWbsBuffer(buf));
+      const usable = syms.filter(s => buildable(s) && s.e.length >= 2 && s.e.length <= 8);
+      if (!usable.length) { say(tr('The list held no playable words (2–8 drawable elements + a Swedish gloss).', 'Listan innehöll inga spelbara ord (2–8 ritbara element + svensk gloss).'), 'bad'); return; }
+      customList = syms;
+      $('btnList').textContent = `${tr('List', 'Lista')}: ${f.name.replace(/\.wbs$/i, '')} (${usable.length} ${tr('words', 'ord')}) ✕`;
+      $('btnList').onclick = clearList;
+      renderSoundBtn();
+newWord();
+    });
+  };
+  inp.click();
+};
+function clearList() {
+  customList = null;
+  $('btnList').textContent = tr('Open your own word list (.wbs)…', 'Öppna egen ordlista (.wbs)…');
+  $('btnList').onclick = document.createElement('button').onclick; // reset below
+  location.reload();
+}
+$('btnPick').onclick = () => {
+  document.body.classList.toggle('picker');
+  if (document.body.classList.contains('picker')) { renderPicker(); $('pickSearch').focus(); }
+  renderBoard();   // the board's box width changed
+};
+function pickerPool() {
+  return (customList || BLISS_DATA).filter(s => buildable(s) && s.e.length >= 2 && s.e.length <= 8);
+}
+function renderPicker() {
+  const q = $('pickSearch').value.trim().toLowerCase();
+  const rows = $('pickRows'); rows.innerHTML = '';
+  const all = pickerPool()
+    .map(s => ({ s, w: LNG === 'sv' ? (svWords(s.id)[0] || s.n.split(',')[0]) : ((s.n || '').split(',')[0].replace(/_/g, ' ') || svWords(s.id)[0]) }))
+    .filter(x => !q || x.w.toLowerCase().includes(q) || svWords(x.s.id).some(w => w.includes(q)))
+    .sort((a, b) => a.w.localeCompare(b.w, LNG));
+  for (const x of all.slice(0, 300)) {
+    const b = document.createElement('button');
+    b.textContent = x.w;
+    b.title = SV[x.s.id] || x.s.n;
+    // never name the word in the message while hidden mode is on (leak caught
+    // by PeO + Håkan + John 2026-09-09)
+    b.onclick = () => { startWord(x.s); say(hideWord ? tr('The word is chosen — hidden.', 'Ordet är valt — dolt.') : `${tr('Chosen word:', 'Valt ord:')} ${x.w}`, ''); };
+    rows.appendChild(b);
+  }
+  $('pickCount').textContent = all.length > 300 ? tr(`${all.length} words · showing 300 — search for more`, `${all.length} ord · visar 300 — sök för fler`)
+                                                : `${all.length} ${tr('words', 'ord')}`;
+}
+$('pickSearch').addEventListener('input', renderPicker);
+$('btnNext').onclick = newWord;
+$('btnReveal').onclick = () => { if (!over) { misses = GALLOWS.length; lose(); } };
+/* arrows walk each palette row, like the workbench's shape row */
+for (const rowId of ['famRow', 'varRow', 'tray']) {
+  $(rowId).addEventListener('keydown', (ev) => {
+    if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
+    const btns = [...$(rowId).querySelectorAll('button')];
+    const i = btns.indexOf(document.activeElement);
+    if (i < 0) return;
+    ev.preventDefault();
+    const j = (i + (ev.key === 'ArrowRight' ? 1 : -1) + btns.length) % btns.length;
+    btns[j].focus();
+  });
+}
+/* focus loop: Tab from the last control wraps straight to the board, and
+   Shift+Tab from the board wraps back — no trip through the browser chrome */
+document.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Tab') return;
+  const first = document.body.classList.contains('picker') ? $('pickSearch') : $('board');
+  if (!ev.shiftKey && document.activeElement === $('btnReveal')) {
+    ev.preventDefault(); first.focus();
+  } else if (ev.shiftKey && document.activeElement === first) {
+    ev.preventDefault(); $('btnReveal').focus();
+  }
+});
+/* Kortkommando (Håkans blissanvändare, 2026-09-24): # följt av en bokstav
+   väljer familjen — för fjärrstyrning, styrplatta och externa tangentbord.
+   I "familj räcker"-läget är det samtidigt gissningen. */
+let hashArmed = 0;
+document.addEventListener('keydown', (ev) => {
+  const t = ev.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+  if (ev.key === '#') {
+    hashArmed = Date.now(); ev.preventDefault();
+    say(tr('# — press the family letter (A–Y).', '# — tryck familjens bokstav (A–Y).'), ''); return;
+  }
+  if (!hashArmed) return;
+  if (ev.key.length !== 1) return;                 // Shift/Alt etc: keep waiting
+  if (Date.now() - hashArmed > 4000) { hashArmed = 0; return; }
+  hashArmed = 0;
+  const f = ev.key.toUpperCase();
+  if (!families[f]) { say(tr('No family is called ', 'Ingen familj heter ') + f + '.', 'bad'); return; }
+  ev.preventDefault();
+  curFam = f; renderFams(); renderVars();
+  if ($('famMode').checked && !over) guess(key(f, families[f][0], 1));
+  else say(tr('Family ', 'Familj ') + f + tr(' — pick a shape.', ' — välj en form.'), '');
+});
+$('diff').onchange = newWord;
+/* theme: the game's OWN setting (gissa-theme), independent of WinBliss (PeO's call) */
+function applyTheme(mode) {
+  if (mode === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', mode);
+  localStorage.setItem('gissa-theme', mode);
+  $('theme').value = mode;
+}
+$('theme').onchange = () => applyTheme($('theme').value);
+applyTheme(localStorage.getItem('gissa-theme') || 'auto');
+window.addEventListener('resize', () => renderBoard());
+newWord();
+/* the first render can run before layout settles (the frame then follows the
+   svg's default size, not the real box) — redraw whenever the box changes */
+new ResizeObserver(() => renderBoard()).observe($('board'));
+
+/* delade $-genvägar (shortcuts.js) */
+wbShortcuts({
+  title: () => tr('Hangman', 'Hänga gubbe'),
+  actions: {
+    O: { run: () => $('btnList').click(), desc: () => tr('open your own word list (.wbs)', 'öppna egen ordlista (.wbs)') },
+    H: { run: () => { location.href = 'start.html'; }, desc: () => tr('to the start page', 'till startsidan') },
+  },
+  extra: () => [
+    [tr('# + letter', '# + bokstav'), tr('pick a form family (A–Y) — in family mode this is the guess', 'välj formfamilj (A–Y) — i familjeläget är det gissningen')],
+    [tr('Arrows + Enter', 'Pilar + Enter'), tr('place a found shape on the grid', 'placera en hittad form på rutnätet')],
+  ],
+});
+</script>
+</body>
+</html>

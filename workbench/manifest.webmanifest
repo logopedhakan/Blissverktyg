@@ -1,0 +1,22 @@
+{
+  "id": "start.html",
+  "name": "Blissverktyget",
+  "short_name": "Blissverktyget",
+  "description": "WinBliss² — skriv, skapa och visa Blissymboler: editor, Skriv, Bildspel, Hänga gubbe, Formfamiljer och Gravyrkort.",
+  "lang": "sv",
+  "start_url": "start.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ECEBE6",
+  "theme_color": "#28558C",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Skriv", "url": "index.html?vy=skriv", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Bildspel", "url": "bildspel.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Editera", "url": "index.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

@@ -1,0 +1,26 @@
+/* WinBliss² — the suite's shared palette and base rules (start page, Bildspel,
+   Gissa, Formfamiljer, Gravyrkort). The editor (index.html) keeps its own,
+   richer palette. A page's own <style> comes after this file and adds to it.
+   Dark mode follows the system, and an explicit data-theme on <html> (as the
+   claude.ai viewer sets it) wins in both directions. */
+:root{
+  --ink:#1B1B1D; --dim:#6E6E73; --panel:#FFFFFF; --panel-2:#F4F3EF; --bg:#ECEBE6;
+  --accent:#28558C; --accent-soft:#DCE6F2; --rule:#DAD7CE; --sel:#B4436C; --ok:#2E7D46;
+  --stage:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --ink:#ECECEE; --dim:#9A9AA2; --panel:#1F2023; --panel-2:#26282A; --bg:#17181B;
+  --accent:#7FA8DB; --accent-soft:#223146; --rule:#33363B; --sel:#E0759E; --ok:#6FBF8A;
+  --stage:#17181B;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --ink:#ECECEE; --dim:#9A9AA2; --panel:#1F2023; --panel-2:#26282A; --bg:#17181B;
+  --accent:#7FA8DB; --accent-soft:#223146; --rule:#33363B; --sel:#E0759E; --ok:#6FBF8A;
+  --stage:#17181B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0}
+/* the ⌂ Start link in every part's header */
+.homeLink{color:var(--dim);text-decoration:none;font-size:13.5px;border:1px solid var(--rule);border-radius:9px;padding:4px 9px;background:var(--panel)}
+.homeLink:hover{border-color:var(--accent);color:var(--accent)}

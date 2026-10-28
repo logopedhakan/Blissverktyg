@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Blissverktyget — PWA-kontroll</title>
+</head>
+<body>
+<!-- Dev tool, not part of the app. With tools/serve.ps1 running, open
+     http://localhost:8765/tools/pwa-check.html in Chrome/Edge (or run
+     tools/check-pwa.ps1). It registers the service worker, loads every part
+     online, then asks the server to drop all connections (= no network) and
+     loads them again from the cache. The result shows here and is saved as
+     tools/last-pwa-check.json. -->
+<pre id="result">kör…</pre>
+<script>
+'use strict';
+const PAGES = ['start.html', 'index.html?vy=skriv', 'skriv.html?ordval=1', 'bildspel.html', 'gissa.html',
+               'former.html', 'gravyr.html', 'js/data/glosses.js', 'icons/icon-512.png'];
+async function loadAll() {
+  const res = {};
+  for (const p of PAGES) {
+    try {
+      const r = await fetch('../' + p, { cache: 'no-store' });
+      res[p] = r.status + ' · ' + (await r.blob()).size + ' B';
+    } catch (e) { res[p] = 'FAIL ' + e.message; }
+  }
+  return res;
+}
+(async () => {
+  const out = {};
+  try {
+    // tools/ is served beside the app, so the app's root is one level up
+    const reg = await navigator.serviceWorker.register('../sw.js', { scope: '../' });
+    await navigator.serviceWorker.ready;
+    out.sw = (reg.active || {}).state || 'none';
+    const keys = (await caches.keys()).filter(k => k.startsWith('blissverktyget-'));
+    out.cache = keys;
+    if (keys.length) out.cachedAtInstall = (await (await caches.open(keys[0])).keys()).length;
+    // this page only goes through the worker once the worker controls it
+    if (!navigator.serviceWorker.controller) {
+      await new Promise(r => { navigator.serviceWorker.oncontrollerchange = r; setTimeout(r, 3000); });
+    }
+    out.controlled = !!navigator.serviceWorker.controller;
+    out.online = await loadAll();
+    await fetch('/__offline/on', { method: 'POST' });
+    try { out.offline = await loadAll(); }
+    finally { await fetch('/__offline/off', { method: 'POST' }); }
+  } catch (e) { out.error = e.name + ': ' + e.message; }
+  document.getElementById('result').textContent = JSON.stringify(out, null, 2);
+  fetch('/__report', { method: 'POST', body: JSON.stringify(out, null, 2) }).catch(() => {});
+})();
+</script>
+</body>
+</html>

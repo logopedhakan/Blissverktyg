@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Blissverktyget — ikoner</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:24px;background:#ECEBE6;color:#1B1B1D}
+#row{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;margin:16px 0}
+figure{margin:0;text-align:center;font-size:12px}
+figure img{display:block;margin-bottom:4px;box-shadow:0 1px 6px rgba(0,0,0,.2)}
+button{font:inherit;padding:8px 14px;border-radius:10px;border:1px solid #28558C;background:#28558C;color:#fff;cursor:pointer}
+#log{font-family:monospace;font-size:12px;white-space:pre-wrap;margin-top:12px}
+</style>
+</head>
+<body>
+<!-- Dev tool, not part of the app. Run tools/serve.ps1, open
+     http://localhost:8765/tools/make-icons.html and press Save: the icons land in
+     workbench/icons/. Change SYMBOL to draw the app icon from another Bliss word. -->
+<h1>Blissverktyget — appikoner</h1>
+<p>Symbol: <b id="name"></b>. Ritad av WinBliss egen motor, vit på accentblått.</p>
+<div id="row"></div>
+<button id="save">Spara ikonerna i workbench/icons/</button>
+<div id="log"></div>
+<script src="../js/engine/bliss-shapes.js"></script>
+<script src="../js/engine/bliss-engine.js"></script>
+<script src="../js/data/bliss-data.js"></script>
+<script>
+'use strict';
+const SYMBOL = 'blissymbol,Bliss-word';     // BCI-AV gloss of the icon's symbol
+const BG = '#28558C', INK = '#FFFFFF';
+const sym = BLISS_DATA.find(s => s.n === SYMBOL);
+document.getElementById('name').textContent = sym ? `${sym.n} (BCI ${sym.id})` : 'saknas!';
+
+/* the symbol as standalone SVG markup, white ink, fitted to its own bbox */
+function symbolSVG() {
+  return blissSVG(sym, { unit: 40, color: INK, strokeUnits: 0.55 });
+}
+/* full icon as SVG: `round` gives the rounded 'any' tile, `fill` how much of
+   the side the symbol may take (maskable icons keep it inside the safe circle) */
+function iconSVG(size, round, fill) {
+  const s = symbolSVG();
+  const vb = s.match(/viewBox="([-\d.]+) ([-\d.]+) ([-\d.]+) ([-\d.]+)"/).slice(1).map(Number);
+  const inner = (s.match(/<svg[^>]*>([\s\S]*)<\/svg>/) || [, ''])[1];
+  const k = size * fill / Math.max(vb[2], vb[3]);
+  const w = vb[2] * k, h = vb[3] * k;
+  const r = round ? size * 0.2 : 0;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+<rect width="${size}" height="${size}" rx="${r}" fill="${BG}"/>
+<svg x="${(size - w) / 2}" y="${(size - h) / 2}" width="${w}" height="${h}" viewBox="${vb.join(' ')}"
+  stroke="${INK}" stroke-width="${0.55 * 100}" stroke-linecap="round" stroke-linejoin="round" fill="none" style="color:${INK}">${inner}</svg>
+</svg>`;
+}
+function toPNG(svg, size) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas'); cv.width = cv.height = size;
+      cv.getContext('2d').drawImage(img, 0, 0, size, size);
+      cv.toBlob(b => b ? res(b) : rej(new Error('png')), 'image/png');
+    };
+    img.onerror = rej;
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+const ICONS = [
+  { file: 'icon-192.png', size: 192, round: true, fill: 0.62 },
+  { file: 'icon-512.png', size: 512, round: true, fill: 0.62 },
+  { file: 'icon-maskable-512.png', size: 512, round: false, fill: 0.48 },
+  { file: 'apple-touch-icon.png', size: 180, round: false, fill: 0.58 },
+  { file: 'favicon.svg', size: 64, round: true, fill: 0.66, svg: true },
+];
+const made = {};
+(async () => {
+  for (const ic of ICONS) {
+    const svg = iconSVG(ic.size, ic.round, ic.fill);
+    made[ic.file] = ic.svg ? new Blob([svg], { type: 'image/svg+xml' }) : await toPNG(svg, ic.size);
+    const f = document.createElement('figure');
+    f.innerHTML = `<img src="${URL.createObjectURL(made[ic.file])}" width="${Math.min(ic.size, 160)}" alt=""><span>${ic.file}</span>`;
+    document.getElementById('row').appendChild(f);
+  }
+})();
+document.getElementById('save').onclick = async () => {
+  const log = document.getElementById('log'); log.textContent = '';
+  for (const [file, blob] of Object.entries(made)) {
+    const r = await fetch('/__save/icons/' + file, { method: 'POST', body: blob });
+    log.textContent += `${file}: ${r.ok ? 'sparad' : 'FEL ' + r.status}\n`;
+  }
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# built artifact pages (tools/build-artifact.ps1)
+dist/
+# last result from tools/check-pwa.ps1
+tools/last-pwa-check.json
+# Windows
+Thumbs.db
+desktop.ini

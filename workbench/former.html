@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#28558C">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Bliss — formfamiljer</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="css/wb-base.css">
+<style>
+body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;
+  background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:baseline;gap:14px;padding:12px 18px;flex-wrap:wrap}
+header h1{font-size:20px}
+header .sub{color:var(--dim);font-size:13px}
+main{flex:1;display:grid;grid-template-columns:340px 1fr 300px;gap:14px;padding:0 18px 14px;min-height:0}
+.col{display:flex;flex-direction:column;gap:8px;min-height:0}
+/* palette */
+#palette{flex:1;overflow-y:auto;min-height:0;background:var(--panel-2);border-radius:12px;padding:10px}
+.famhead{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;
+  margin:10px 2px 4px}
+.famhead:first-child{margin-top:0}
+.famrow{display:flex;flex-wrap:wrap;gap:6px}
+.form{position:relative;display:flex;align-items:center;justify-content:center;
+  width:56px;height:56px;background:var(--panel);border:2px solid var(--rule);border-radius:10px;
+  cursor:pointer;padding:4px}
+.form:hover{border-color:var(--accent)}
+.form.on{border-color:var(--sel);background:var(--accent-soft)}
+.form svg{max-width:44px;max-height:40px;height:auto;width:auto}
+.form .n{position:absolute;right:3px;bottom:1px;font-size:9px;color:var(--dim)}
+#palTools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#palTools .lbl{font-size:13px;color:var(--dim)}
+/* results */
+#mid{display:flex;flex-direction:column;gap:8px;min-height:0}
+#stats{font-size:13.5px;color:var(--dim);min-height:20px}
+#stats b{color:var(--ink)}
+#words{flex:1;overflow-y:auto;min-height:0;background:var(--panel-2);border-radius:12px;
+  padding:10px;display:flex;flex-direction:column;gap:4px;align-content:flex-start}
+.word{display:flex;align-items:center;gap:12px;background:var(--panel);border:1.5px solid var(--rule);
+  border-radius:10px;padding:6px 10px;cursor:pointer;text-align:left;font:inherit;color:var(--ink)}
+.word:hover{border-color:var(--accent)}
+.word.cur{border-color:var(--sel)}
+.word .sym{min-width:80px;display:flex;justify-content:center}
+.word .nm{font-size:14px}
+.word .en{font-size:11.5px;color:var(--dim)}
+.empty{color:var(--dim);font-size:13.5px;padding:8px}
+/* right panel */
+#side{display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0}
+#side h3{font-size:12.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+.mode{display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+.mode label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.mode input{margin-top:3px}
+.famopt{display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-size:13.5px;
+  padding:8px 10px;background:var(--panel-2);border-radius:10px}
+.famopt input{margin-top:3px}
+body.fam .famhead{cursor:pointer;color:var(--ink)}
+body.fam .famhead:hover{color:var(--accent)}
+body.fam .famhead.on{color:var(--sel)}
+#detail{background:var(--panel-2);border-radius:12px;padding:12px;display:none;
+  flex-direction:column;gap:8px}
+#detail.show{display:flex}
+#dSym{display:flex;justify-content:center;padding:8px;background:var(--panel);border-radius:10px}
+#dName{font-size:16px;font-weight:600}
+#dEn{font-size:12.5px;color:var(--dim)}
+#dForms{display:flex;flex-wrap:wrap;gap:6px}
+#dForms .form{width:46px;height:46px;cursor:default}
+#dForms .form svg{max-width:36px;max-height:32px}
+button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--rule);
+  border-radius:10px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
+@media (max-width:900px){main{grid-template-columns:1fr};body{height:auto}}
+</style>
+</head>
+<body>
+<header>
+  <a class="homeLink" href="start.html" title="Till startsidan">⌂ Start</a>
+  <h1>Formfamiljer <span style="color:var(--sel)">·</span> Bliss</h1>
+  <span class="sub">välj former — se vilka blissord som byggs av dem</span>
+</header>
+<main>
+  <aside class="col" aria-label="Formpalett">
+    <div id="palTools">
+      <span class="lbl">Klicka på former för att välja:</span>
+      <button id="btnClear">Rensa val</button>
+    </div>
+    <div id="palette"></div>
+  </aside>
+  <section id="mid" aria-label="Ordförslag">
+    <div id="stats"></div>
+    <div id="words"></div>
+  </section>
+  <aside class="col" id="side" aria-label="Läge och detaljer">
+    <h3>Läge</h3>
+    <label class="famopt"><input type="checkbox" id="famMode">
+      <span><b>Familj räcker</b><br>
+      <span style="color:var(--dim)">ett klick väljer hela familjen — orden matchas på familj, inte exakt form (som i Gissa). Kortkommando: <b>#</b> + bokstav, t.ex. #B</span></span></label>
+    <div class="mode">
+      <label><input type="radio" name="mode" value="only" checked>
+        <span><b>Bara valda former</b><br>
+        <span style="color:var(--dim)">ord som kan byggas helt av de valda formerna</span></span></label>
+      <label><input type="radio" name="mode" value="all">
+        <span><b>Innehåller alla valda</b><br>
+        <span style="color:var(--dim)">ord där varje vald form ingår (även andra former)</span></span></label>
+      <label><input type="radio" name="mode" value="any">
+        <span><b>Innehåller någon vald</b><br>
+        <span style="color:var(--dim)">ord där minst en vald form ingår</span></span></label>
+    </div>
+    <div id="detail">
+      <div id="dSym"></div>
+      <div id="dName"></div>
+      <div id="dEn"></div>
+      <h3>Ordets former</h3>
+      <div id="dForms"></div>
+      <label class="famopt" style="padding:6px 8px"><input type="checkbox" id="copyText" checked>
+        <span>Ta med ordet under symbolen</span></label>
+      <button id="dCopy">Kopiera bild till klippbordet</button>
+      <div id="dCopyMsg" style="font-size:12px;color:var(--dim)"></div>
+      <button id="dGravyr">Öppna på gravyrkort →</button>
+    </div>
+  </aside>
+</main>
+<footer>WinBliss² · formfamiljer · 2026 AnyCom AB · CC BY 4.0 · <span title="Blissymbolics © C.K. Bliss 1949, 1965 · symbols © Blissymbolics Communication International (BCI), distributed under CC BY-SA 4.0 — conforming to the BCI Authorized Vocabulary, blissymbolics.org">Blissymbolics © BCI, CC BY-SA 4.0</span></footer>
+
+<script src="js/shared/lang.js"></script>
+<script src="js/shared/pwa.js"></script>
+<script src="js/shared/shortcuts.js"></script>
+<script src="js/engine/bliss-shapes.js"></script>
+<script src="js/engine/bliss-engine.js"></script>
+<script src="js/data/bliss-data.js"></script>
+<script src="js/data/glosses.js"></script>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const SV = (BLISS_GLOSSES && BLISS_GLOSSES.sv) || {};
+
+/* Language (PeO, 2026-09-25): follows the suite's wb-lang from the start page. */
+const LNG = wbLang();
+const tr = (en, sv) => LNG === 'sv' ? sv : en;
+document.documentElement.lang = LNG;
+function svName(s) {
+  return (LNG === 'sv' ? (SV[s.id] || s.n || '') : (s.n || SV[s.id] || '')).split(',')[0].replace(/_/g, ' ');
+}
+if (LNG === 'en') {
+  document.title = 'Bliss — form families';
+  document.querySelector('.homeLink').title = 'To the start page';
+  document.querySelector('header h1').innerHTML = 'Form families <span style="color:var(--sel)">·</span> Bliss';
+  document.querySelector('header .sub').textContent = 'pick shapes — see which Bliss-words they build';
+  document.querySelector('#palTools .lbl').textContent = 'Click shapes to choose:';
+  $('btnClear').textContent = 'Clear choices';
+  document.querySelector('aside[aria-label="Formpalett"]').setAttribute('aria-label', 'Shape palette');
+  document.querySelector('section[aria-label="Ordförslag"]').setAttribute('aria-label', 'Word suggestions');
+  document.querySelector('aside[aria-label="Läge och detaljer"]').setAttribute('aria-label', 'Mode and details');
+  document.querySelector('#side h3').textContent = 'Mode';
+  const famopt = document.querySelector('.famopt span');
+  famopt.innerHTML = '<b>Family is enough</b><br><span style="color:var(--dim)">one click picks the whole family — words match by family, not exact shape (as in Hangman). Shortcut: <b>#</b> + a letter, e.g. #B</span>';
+  const modes = [
+    ['<b>Only chosen shapes</b>', 'words built entirely from the chosen shapes'],
+    ['<b>Contains all chosen</b>', 'words where every chosen shape appears (other shapes too)'],
+    ['<b>Contains any chosen</b>', 'words where at least one chosen shape appears']];
+  document.querySelectorAll('.mode label > span').forEach((sp, i) => {
+    sp.innerHTML = modes[i][0] + '<br><span style="color:var(--dim)">' + modes[i][1] + '</span>'; });
+  document.querySelectorAll('#detail h3')[0].textContent = "The word's shapes";
+  document.querySelector('#detail .famopt span').textContent = 'Include the word under the symbol';
+  $('dCopy').textContent = 'Copy image to the clipboard';
+  $('dGravyr').textContent = 'Open on an engraving tag →';
+  const foot = document.querySelector('footer');
+  foot.firstChild.nodeValue = 'WinBliss² · form families · 2026 AnyCom AB · CC BY 4.0 · ';
+}
+
+/* ---- index: element key ("V2") -> usage, and per-symbol key sets ---- */
+const useCount = new Map();      // key -> number of words using it
+const symKeys = new Map();       // symbol id -> Set of keys ("V2")
+const symFams = new Map();       // symbol id -> Set of family letters ("V")
+const SYMS = BLISS_DATA.filter(s => s.e && s.e.length);
+for (const s of SYMS) {
+  const ks = new Set(), fs = new Set();
+  for (const e of s.e) { ks.add(e[0] + e[1]); fs.add(e[0]); }
+  symKeys.set(s.id, ks); symFams.set(s.id, fs);
+  for (const k of ks) useCount.set(k, (useCount.get(k) || 0) + 1);
+}
+
+/* Tillval (Håkans blissanvändare, 2026-09-24): "familj räcker" — som i Gissa.
+   Ett klick väljer hela familjen och orden matchas på familjenivå. */
+const famMode = () => $('famMode').checked;
+const selFams = new Set();
+const famHeads = new Map();
+
+/* ---- render one bare element as a small SVG (palette chip) ---- */
+function elementSVG(fam, sub, unit) {
+  // synthetic one-element symbol; Z (bokstäver) gets a sample glyph
+  const e = fam === 'Z'
+    ? ['Z', 1, 1, 0, 0, 0, 0, 0, 'Ab', 0, 6]
+    : [fam, sub, 1, 0, 0, 0, 0, 0, '', 0, 4];
+  try { return blissSVG({ e: [e] }, { unit: unit || 5, color: 'currentColor' }); }
+  catch (_) { return '<span style="font-size:11px">' + fam + sub + '</span>'; }
+}
+
+/* ---- palette, grouped by family letter ---- */
+const selected = new Set();
+const chipByKey = new Map();
+function buildPalette() {
+  const byFam = new Map();
+  for (const k of useCount.keys()) {
+    const fam = k[0], sub = +k.slice(1);
+    if (!byFam.has(fam)) byFam.set(fam, []);
+    byFam.get(fam).push(sub);
+  }
+  const pal = $('palette');
+  for (const fam of [...byFam.keys()].sort()) {
+    const head = document.createElement('div');
+    head.className = 'famhead';
+    head.textContent = tr('Family ', 'Familj ') + fam + (fam === 'Z' ? tr(' (letters)', ' (bokstäver)') : '');
+    head.onclick = () => { if (famMode()) toggleFam(fam); };
+    famHeads.set(fam, head);
+    pal.appendChild(head);
+    const row = document.createElement('div');
+    row.className = 'famrow';
+    for (const sub of byFam.get(fam).sort((a, b) => a - b)) {
+      const key = fam + sub;
+      const chip = document.createElement('div');
+      chip.className = 'form'; chip.setAttribute('role', 'button'); chip.tabIndex = 0;
+      chip.title = key + tr(' — used in ', ' — används i ') + useCount.get(key) + tr(' words', ' ord');
+      chip.innerHTML = elementSVG(fam, sub) +
+        '<span class="n">' + useCount.get(key) + '</span>';
+      const toggle = () => {
+        if (famMode()) { toggleFam(fam); return; }
+        if (selected.has(key)) { selected.delete(key); chip.classList.remove('on'); }
+        else { selected.add(key); chip.classList.add('on'); }
+        renderWords();
+      };
+      chip.onclick = toggle;
+      chip.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(); } };
+      chipByKey.set(key, chip);
+      row.appendChild(chip);
+    }
+    pal.appendChild(row);
+  }
+}
+
+/* ---- family mode: whole-family selection, painted onto the palette ---- */
+function toggleFam(fam) {
+  if (selFams.has(fam)) selFams.delete(fam); else selFams.add(fam);
+  paintFams(); renderWords();
+}
+function paintFams() {
+  for (const [k, chip] of chipByKey)
+    chip.classList.toggle('on', famMode() ? selFams.has(k[0]) : selected.has(k));
+  for (const [fam, head] of famHeads)
+    head.classList.toggle('on', famMode() && selFams.has(fam));
+}
+function chosenCount() { return famMode() ? selFams.size : selected.size; }
+
+/* ---- matching ---- */
+function matches() {
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  const fam = famMode();
+  const out = [];
+  for (const s of SYMS) {
+    const ks = fam ? symFams.get(s.id) : symKeys.get(s.id);
+    const sel = fam ? selFams : selected;
+    let ok;
+    if (mode === 'only') {
+      ok = true;
+      for (const k of ks) if (!sel.has(k)) { ok = false; break; }
+    } else if (mode === 'all') {
+      ok = true;
+      for (const k of sel) if (!ks.has(k)) { ok = false; break; }
+    } else {
+      ok = false;
+      for (const k of sel) if (ks.has(k)) { ok = true; break; }
+    }
+    if (ok) out.push(s);
+  }
+  // simplest words first: fewest drawn elements, then Swedish name
+  out.sort((a, b) => a.e.length - b.e.length || svName(a).localeCompare(svName(b), 'sv'));
+  return out;
+}
+
+/* ---- results (batched rendering — thousands of SVGs would stall) ---- */
+let current = null, hits = [], shown = 0;
+const BATCH = 80;
+function renderWords() {
+  const box = $('words'); box.innerHTML = ''; shown = 0;
+  const n = chosenCount();
+  if (!n) {
+    $('stats').innerHTML = famMode() ? tr('No families chosen yet.', 'Inga familjer valda ännu.') : tr('No shapes chosen yet.', 'Inga former valda ännu.');
+    box.innerHTML = '<span class="empty">' + (famMode()
+      ? tr('Click a family heading or any shape in the palette on the left — the whole family is chosen, ',
+           'Klicka på en familjerubrik eller en form i paletten till vänster — hela familjen väljs, ')
+      : tr('Choose one or more shapes in the palette on the left, ',
+           'Välj en eller flera former i paletten till vänster, ')) +
+      tr('and the Bliss-words they build appear here.</span>', 'så visas här vilka blissord de bygger.</span>');
+    return;
+  }
+  hits = matches();
+  $('stats').innerHTML = '<b>' + hits.length + '</b> ' + tr('words match', 'ord matchar') + ' ' + n +
+    (famMode() ? (n > 1 ? tr(' chosen families', ' valda familjer') : tr(' chosen family', ' vald familj'))
+               : (n > 1 ? tr(' chosen shapes', ' valda former') : tr(' chosen shape', ' vald form'))) + '.';
+  if (!hits.length) {
+    box.innerHTML = '<span class="empty">' + tr('No word matches — try adding more shapes or switching mode on the right.',
+      'Inget ord matchar — prova att lägga till fler former eller byta läge till höger.') + '</span>';
+    return;
+  }
+  showMore();
+}
+function showMore() {
+  const box = $('words');
+  const upto = Math.min(hits.length, shown + BATCH);
+  for (; shown < upto; shown++) {
+    const s = hits[shown];
+    const b = document.createElement('button');
+    b.className = 'word'; b.dataset.id = s.id;
+    b.innerHTML = '<span class="sym">' + blissSVG(s, { unit: 3.2, color: 'currentColor' }) +
+      '</span><span><span class="nm">' + svName(s) + '</span><br><span class="en">' +
+      (s.n || '') + '</span></span>';
+    b.onclick = () => showDetail(s, b);
+    box.appendChild(b);
+  }
+  const old = $('more'); if (old) old.remove();
+  if (shown < hits.length) {
+    const m = document.createElement('button');
+    m.id = 'more'; m.textContent = tr('Show more (', 'Visa fler (') + (hits.length - shown) + tr(' left)', ' kvar)');
+    m.onclick = showMore;
+    box.appendChild(m);
+  }
+}
+
+/* ---- detail panel ---- */
+function showDetail(s, btn) {
+  document.querySelectorAll('.word.cur').forEach(x => x.classList.remove('cur'));
+  if (btn) btn.classList.add('cur');
+  current = s;
+  $('detail').classList.add('show');
+  $('dSym').innerHTML = blissSVG(s, { unit: 7, color: 'currentColor' });
+  $('dName').textContent = (LNG === 'sv' ? (SV[s.id] || svName(s)) : (s.n || svName(s)))
+    .replace(/_/g, ' ').split(',').join(', ');
+  $('dEn').textContent = (LNG === 'sv' ? (s.n || '') : (SV[s.id] || '')) + ' · BCI ' + s.id;
+  const df = $('dForms'); df.innerHTML = '';
+  for (const k of [...symKeys.get(s.id)].sort()) {
+    const chip = document.createElement('div');
+    chip.className = 'form' + ((famMode() ? selFams.has(k[0]) : selected.has(k)) ? ' on' : '');
+    chip.title = k;
+    chip.innerHTML = elementSVG(k[0], +k.slice(1), 4);
+    df.appendChild(chip);
+  }
+}
+$('dGravyr').onclick = () => { if (current) location.href = 'gravyr.html?w=' + current.id; };
+
+/* ---- copy the chosen symbol as a PNG (Word and friends paste it as a picture) ---- */
+async function copySymbol() {
+  if (!current) return;
+  const msg = $('dCopyMsg'); msg.textContent = '';
+  // 32 px per half-unit: a standard-height symbol becomes ~256 px tall — crisp in a document
+  const svg = blissSVG(current, { unit: 32, color: '#000' });
+  const w = +svg.match(/width="([\d.]+)"/)[1], h = +svg.match(/height="([\d.]+)"/)[1];
+  // Håkans blissanvändare (2026-09-24): symbol med eller utan ordet under
+  const label = $('copyText').checked ? svName(current) : '';
+  const fontPx = 44, pad = 16, gap = 14;
+  const png = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      const font = `${fontPx}px "Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif`;
+      const cx = cv.getContext('2d');
+      cx.font = font;
+      const tw = label ? cx.measureText(label).width : 0;
+      // NB: setting width/height resets the context (font included) — re-set below
+      cv.width = Math.ceil(Math.max(w, tw) + 2 * pad);
+      cv.height = Math.ceil(h + 2 * pad + (label ? gap + fontPx * 1.2 : 0));
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);   // opaque: Word renders transparency badly
+      cx.drawImage(img, (cv.width - w) / 2, pad, w, h);
+      if (label) {
+        cx.font = font; cx.fillStyle = '#000';
+        cx.textAlign = 'center'; cx.textBaseline = 'top';
+        cx.fillText(label, cv.width / 2, pad + h + gap);
+      }
+      cv.toBlob(b => b ? resolve(b) : reject(new Error('toBlob')), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+  try {
+    if (!navigator.clipboard || !window.ClipboardItem) throw new Error('no-clipboard');
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+    msg.textContent = tr('Copied — paste with Ctrl+V (⌘V) in Word.', 'Kopierad — klistra in med Ctrl+V (⌘V) i Word.');
+  } catch (_) {
+    // no clipboard access (e.g. http over LAN): hand over the PNG as a file instead
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(png); a.download = svName(current) + '.png'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    msg.textContent = tr('The clipboard is not reachable here — the image was downloaded as a PNG instead.', 'Klippbordet nås inte här — bilden laddades ner som PNG i stället.');
+  }
+}
+$('dCopy').onclick = copySymbol;
+
+$('btnClear').onclick = () => {
+  selected.clear(); selFams.clear();
+  paintFams(); renderWords();
+};
+document.querySelectorAll('input[name=mode]').forEach(r =>
+  r.addEventListener('change', renderWords));
+/* Kortkommando (Håkans blissanvändare, 2026-09-24): # följt av en bokstav
+   väljer familjen — fjärrstyrning och externa tangentbord. I "familj räcker"-
+   läget växlar det familjen; annars rullas familjen fram i paletten. */
+let hashArmed = 0;
+document.addEventListener('keydown', (ev) => {
+  const t = ev.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+  if (ev.key === '#') {
+    hashArmed = Date.now(); ev.preventDefault();
+    $('stats').innerHTML = '<b>#</b>' + tr(' — press the family letter (A–Z).', ' — tryck familjens bokstav (A–Z).'); return;
+  }
+  if (!hashArmed) return;
+  if (ev.key.length !== 1) return;                 // Shift/Alt etc: keep waiting
+  if (Date.now() - hashArmed > 4000) { hashArmed = 0; return; }
+  hashArmed = 0;
+  const f = ev.key.toUpperCase();
+  const head = famHeads.get(f);
+  if (!head) { $('stats').innerHTML = tr('No family is called ', 'Ingen familj heter ') + f + '.'; return; }
+  ev.preventDefault();
+  head.scrollIntoView({ block: 'nearest' });
+  if (famMode()) toggleFam(f);
+  else { head.classList.add('on'); setTimeout(() => head.classList.remove('on'), 900); }
+});
+$('famMode').addEventListener('change', () => {
+  document.body.classList.toggle('fam', famMode());
+  try { localStorage.setItem('former-fam', famMode() ? '1' : '0'); } catch (_) {}
+  paintFams(); renderWords();
+  if (current) showDetail(current, document.querySelector('.word.cur'));
+});
+try { $('famMode').checked = localStorage.getItem('former-fam') !== '0'; } catch (_) { $('famMode').checked = true; }
+document.body.classList.toggle('fam', famMode());
+
+buildPalette();
+renderWords();
+
+/* delade $-genvägar (shortcuts.js) */
+wbShortcuts({
+  title: () => tr('Form families', 'Formfamiljer'),
+  actions: {
+    C: { run: () => $('dCopy').click(), desc: () => tr('copy the chosen symbol to the clipboard (pick a word first)', 'kopiera vald symbol till klippbordet (välj ett ord först)') },
+    H: { run: () => { location.href = 'start.html'; }, desc: () => tr('to the start page', 'till startsidan') },
+  },
+  extra: () => [[tr('# + letter', '# + bokstav'), tr('pick a form family (A–Z) in family mode', 'välj formfamilj (A–Z) i familjeläget')]],
+});
+</script>
+</body>
+</html>

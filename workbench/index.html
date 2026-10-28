@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#28558C">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>WinBliss²</title>
+<meta name="robots" content="noindex, nofollow"><!-- beta: remove at public launch -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ground:#EDEBE4; --panel:#FBFAF7; --panel-2:#F3F1EA; --ink:#1B1C1E; --dim:#54565A;
+  --accent:#28558C; --accent-soft:#DCE6F2; --rule:#DAD7CE; --rule-soft:#EFEDE6;
+  --sel:#B4436C; --mono-bg:#EFEDE6; --stage:#FFFFFF;
+  --grid-a:#D8D5CC; --grid-b:#ECEADE; --staff:#9AA7B8; --staff-dim:#C9CFD8; --staff-text:#8A94A2;
+  --shadow:0 1px 3px rgba(25,26,30,.08),0 4px 14px rgba(25,26,30,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#141518; --panel:#1E2023; --panel-2:#26282C; --ink:#E8E6E1; --dim:#A5A7AB;
+    --accent:#7FA8DB; --accent-soft:#223146; --rule:#33363B; --rule-soft:#2A2C30;
+    --sel:#E0759E; --mono-bg:#26282A; --stage:#17181B;
+    --grid-a:#33363C; --grid-b:#232529; --staff:#5A6A80; --staff-dim:#3A4350; --staff-text:#78828F;
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#141518; --panel:#1E2023; --panel-2:#26282C; --ink:#E8E6E1; --dim:#A5A7AB;
+  --accent:#7FA8DB; --accent-soft:#223146; --rule:#33363B; --rule-soft:#2A2C30;
+  --sel:#E0759E; --mono-bg:#26282A; --stage:#17181B;
+  --grid-a:#33363C; --grid-b:#232529; --staff:#5A6A80; --staff-dim:#3A4350; --staff-text:#78828F;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',system-ui,sans-serif;
+  font-size:14px;color:var(--ink);background:var(--ground);display:flex;flex-direction:column;}
+button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--rule);
+  border-radius:8px;padding:5px 12px;cursor:pointer;}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+button.primary:hover{color:var(--panel);filter:brightness(1.08)}
+button:disabled{opacity:.45;cursor:default;pointer-events:none}
+input,select{font:inherit;color:var(--ink);padding:5px 9px;border:1px solid var(--rule);
+  border-radius:8px;background:var(--panel)}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.mono{font-family:'Atkinson Hyperlegible Mono',ui-monospace,Menlo,monospace}
+
+header{display:flex;align-items:center;gap:14px;padding:10px 16px 4px;flex:none}
+#homeLink{color:var(--dim);text-decoration:none;font-size:13.5px;border:1px solid var(--rule);
+  border-radius:9px;padding:5px 9px;background:var(--panel);white-space:nowrap}
+#homeLink:hover{border-color:var(--accent);color:var(--accent)}
+header button{white-space:nowrap}
+header #btnSettings{font-size:20px;line-height:1;padding:2px 10px 4px}
+header h1{font-size:17px;margin:0;font-weight:700}
+header h1 sup{color:var(--accent);font-size:.62em;font-weight:700;vertical-align:super;margin-left:1px}
+header .sub{color:var(--dim);font-size:12px}
+header .spacer{flex:1}
+#status{font-size:12px;color:var(--dim)}
+
+main{flex:1;display:flex;min-height:0;gap:10px;padding:10px}
+.card, #listPanel, #paneB, #editor{background:var(--panel);border-radius:14px;box-shadow:var(--shadow)}
+
+/* ---- left: list panel ---- */
+#listPanel{width:300px;flex:none;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.paneHead{display:flex;gap:6px;align-items:center;padding:10px 10px 8px;flex-wrap:wrap}
+.paneHead .name{font-weight:600;font-size:12.5px;flex:1 0 100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#search,#searchB{margin:0 10px 6px;width:calc(100% - 20px)}
+.rows{flex:1;overflow-y:auto;min-height:0;border-radius:0 0 0 0}
+.rows.dropping{outline:2.5px dashed var(--accent);outline-offset:-5px;background:var(--accent-soft)}
+.row.insBefore{box-shadow:inset 0 3px 0 var(--accent)}
+.row.insAfter{box-shadow:inset 0 -3px 0 var(--accent)}
+.row{display:flex;align-items:center;gap:8px;padding:2px 10px;cursor:pointer;border-bottom:1px solid var(--rule-soft);user-select:none}
+.row:hover{background:var(--panel-2)}
+.row.sel{background:var(--accent-soft)}
+.row .thumb{flex:none;width:96px;height:42px;display:flex;justify-content:center;align-items:center;color:var(--ink);overflow:hidden}
+.row .thumb svg{max-width:100%;max-height:100%;width:auto;height:auto}
+.row .g{flex:1;font-size:12.5px;line-height:1.25;overflow:hidden}
+.row .id{font-size:11px;color:var(--dim)}
+.row .editG{visibility:hidden;flex:none;padding:2px 7px;font-size:12px;border-color:transparent;background:transparent}
+.row:hover .editG,.row:focus-within .editG{visibility:visible}
+.row .editG:hover{border-color:var(--accent)}
+.count{padding:6px 12px 8px;font-size:11.5px;color:var(--dim);border-top:1px solid var(--rule-soft)}
+
+/* ---- center: editor ---- */
+#editor{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+#edMeta{display:flex;gap:8px;align-items:flex-end;padding:10px 14px 8px;flex-wrap:wrap}
+#edMeta label{font-size:11px;color:var(--dim);display:flex;flex-direction:column;gap:2px}
+#gloss{width:230px} #symId{width:80px} #country{width:60px}
+/* The canvas may never be hidden (Håkan, 2026-10-14: on a cramped window the
+   wrapped meta/tool rows and the palette squeezed the drawing surface to a
+   sliver). min-height guarantees it working space; the chrome yields instead
+   (compact media query below + the single-row palette). */
+#stageWrap{position:relative;flex:1;overflow:auto;background:var(--panel-2);
+  display:flex;align-items:flex-start;justify-content:center;padding:18px;min-height:250px}
+#stage{background:var(--stage);border-radius:10px;box-shadow:var(--shadow);touch-action:none}
+#edTools{display:flex;gap:6px;align-items:center;padding:8px 14px;flex-wrap:wrap}
+#edTools .sep{width:1px;height:22px;background:var(--rule);margin:0 4px}
+#edTools .inline{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim)}
+#edTools input[type=color]{padding:0;width:30px;height:26px;border-radius:6px;cursor:pointer}
+#btnInkReset{padding:3px 8px;font-size:11.5px}
+.saveGroup{display:flex;gap:8px;flex-wrap:nowrap}
+#hint{font-size:11.5px;color:var(--dim);margin-left:auto}
+
+/* ---- palette ---- */
+#palette{flex:none;background:var(--panel-2);border-radius:0 0 14px 14px}
+#glossXl{font-size:11.5px;color:var(--dim);margin-left:6px;white-space:nowrap}
+/* canvas elements: hover glints the line ("click now and THIS is what you
+   pick"), keyboard focus glows the same way — focus and selection are one */
+#stage .el{transition:filter .12s ease;outline:none}
+/* the glint is the SELECTION colour — "click now and it becomes this" (PeO).
+   Strong on purpose: thicker pen + triple glow; a thin stroke's shadow alone
+   was barely visible (PeO, 2026-08-25). */
+/* NB: shadow radii are in the stage's viewBox UNITS (the stroke itself is 35),
+   not screen px — px-scale radii were invisible, which was the whole bug */
+#stage .el:hover,#stage .el:focus,#stage .el:has(+ .handle:hover){
+  stroke-width:50;
+  filter:drop-shadow(0 0 20px var(--sel))
+         drop-shadow(0 0 55px color-mix(in srgb, var(--sel) 60%, transparent))}
+/* dark mode drowns the glow (light strokes on dark ground) — brighter core,
+   more layers, and a slight rose tint on the stroke itself */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) #stage .el:hover,
+  :root:not([data-theme="light"]) #stage .el:focus,
+  :root:not([data-theme="light"]) #stage .el:has(+ .handle:hover){
+    stroke:color-mix(in srgb, var(--ink) 55%, var(--sel));
+    filter:drop-shadow(0 0 16px #FF8FC0)
+           drop-shadow(0 0 45px color-mix(in srgb, #FF7FB5 65%, transparent))}
+}
+:root[data-theme="dark"] #stage .el:hover,
+:root[data-theme="dark"] #stage .el:focus,
+:root[data-theme="dark"] #stage .el:has(+ .handle:hover){
+  stroke:color-mix(in srgb, var(--ink) 55%, var(--sel));
+  filter:drop-shadow(0 0 16px #FF8FC0)
+         drop-shadow(0 0 45px color-mix(in srgb, #FF7FB5 65%, transparent))}
+@media (prefers-reduced-motion: reduce){#stage .el{transition:none}}
+/* one row always — on narrow windows the family row scrolls sideways instead
+   of wrapping into extra rows that eat the canvas height */
+#famRow{display:flex;gap:calc(3px * var(--pal, 1));padding:calc(8px * var(--pal, 1)) 12px 0;flex-wrap:nowrap;overflow-x:auto}
+#famRow button{padding:4px 7px;border-radius:8px;border-color:transparent;background:transparent;font-weight:600;color:var(--dim);
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:calc(38px * var(--pal, 1));height:calc(34px * var(--pal, 1));line-height:0}
+#famRow svg{max-height:calc(26px * var(--pal, 1));width:auto}
+/* palette size stepper (− / +), far right of the family row */
+#palSizer{margin-left:auto;display:flex;gap:2px;align-self:center}
+#palSizer button{padding:2px 9px;font-size:15px;font-weight:600;border-radius:8px;
+  border-color:transparent;background:transparent;color:var(--dim)}
+#palSizer button:hover:not(:disabled){color:var(--accent)}
+#palSizer button:disabled{opacity:.35}
+#famRow button:hover{color:var(--accent)}
+#famRow button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+#variantRow{display:flex;gap:calc(8px * var(--pal, 1));padding:calc(10px * var(--pal, 1)) 12px calc(12px * var(--pal, 1));overflow-x:auto;min-height:78px;align-items:flex-end}
+/* short windows: the chrome gives, the canvas keeps its space. If even that
+   is not enough, the editor column scrolls while the palette stays pinned at
+   the bottom — the canvas and the palette are always on screen together. */
+@media (max-height: 820px){
+  #edMeta{padding:6px 14px 4px}
+  #edTools{padding:4px 14px}
+  #hint{display:none}
+  #stageWrap{padding:10px}
+  #variantRow{min-height:64px}
+  #editor{overflow-y:auto}
+  #palette{position:sticky;bottom:0;z-index:3}
+}
+.varBtn{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--rule);
+  border-radius:10px;padding:7px 9px 4px;background:var(--panel);cursor:grab;flex:none;color:var(--ink)}
+.varBtn:hover{border-color:var(--accent)}
+.varBtn .cap{font-size:min(calc(10px * var(--pal, 1)), 14px);color:var(--dim)}
+
+/* ---- right: pane B ---- */
+#paneB{width:300px;flex:none;display:none;flex-direction:column;min-height:0;overflow:hidden}
+#paneB.open{display:flex}
+#moveBtns{flex-direction:column;gap:6px;justify-content:center;padding:0;display:none;background:none;box-shadow:none}
+body.manager #moveBtns{display:flex}
+/* in Write mode both panes are vocabulary palettes for composing —
+   click/select/drag words into the sentence; the move buttons belong
+   to the editor flow and hide. The → sentence button shows only here. */
+body.writing #moveBtns{display:none}
+/* AAC writing-surface modes (Håkan's field feedback 2026-09-09): each part of
+   the apparatus can be switched off to give the text every pixel */
+body.writing.wnolist #listPanel,body.writing.wnolist #paneB{display:none}
+body.wnochips #wChips{display:none}
+body.wnochooser #wChooser{display:none !important}
+/* EMBED MODE (?skriv=1 — Philip's MindExpress web window, 2026-09-11): the
+   page IS the writing surface. Header, footer and hint go; paddings shrink.
+   &verktyg=0 hides the tools row too. Licensing note: the attribution that
+   the footer carried stays in every export and on the normal view. */
+body.embed header,body.embed #colophon,body.embed #wHint{display:none}
+/* the clean view still carries ONE settings button, beside Rensa (PeO
+   2026-09-11): the URL sets the start state, ⚙ adjusts in the moment */
+#wSettings{display:none;font-size:18px;line-height:1;padding:4px 10px 6px}
+body.embed #wSettings{display:inline-block}
+#edBackWrite,#edBackSep{display:none}
+body.embed #edBackWrite{display:inline-block} body.embed #edBackSep{display:inline-block}
+body.embed main{padding:4px;gap:4px}
+body.embed #wTools{padding:4px 8px}
+body.embed.embed-notools #wTools{display:none}
+/* Write mode: the list-management buttons belong to the EDITING view (PeO
+   2026-09-09) — the header shows only what serves the writing */
+body.writing #btnExportList,body.writing #btnManager{display:none}
+/* quick toggles in the header (PeO 2026-09-09): visible in Write mode only —
+   pressed = the surface is shown, released = switched off */
+.wToggle{display:none;font-size:12.5px;padding:5px 10px}
+body.writing .wToggle{display:inline-block}
+.wToggle.on{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.wToggle:not(.on){opacity:.6;text-decoration:line-through}
+.wAddBtn{display:none}
+body.writing .wAddBtn{display:inline-block}
+
+dialog{border:none;border-radius:14px;padding:20px;max-width:520px;font:inherit;
+  color:var(--ink);background:var(--panel);box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(12,13,16,.45)}
+.dlgRows{display:flex;flex-direction:column;gap:12px;min-width:320px}
+.dlgRow{display:flex;justify-content:space-between;align-items:center;gap:18px;font-size:13.5px}
+#helpDlg{max-width:760px}
+.dlgSec{margin:18px 0 8px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--dim)}
+#stage .staffLbl{font-family:"Atkinson Hyperlegible Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+#stage .stageCap{fill:var(--ink);stroke:none;cursor:text;
+  font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",sans-serif}
+#stage .stageCap.autoCap{fill:var(--dim)}
+#stage .stageCap:hover{fill:var(--accent, var(--ink))}
+.capInput{position:absolute;z-index:5;font-size:15px;text-align:center;
+  border:1px solid var(--rule);border-radius:6px;padding:2px 8px;background:var(--panel);color:var(--ink)}
+.stdBadge{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.03em;
+  padding:0 5px;border-radius:5px;vertical-align:1px;border:1px solid transparent}
+.stdBadge.std{color:var(--accent);border-color:var(--accent-soft);background:var(--accent-soft)}
+.stdBadge.mod{color:#8a5a00;background:rgba(220,160,40,.16);border-color:rgba(220,160,40,.3)}
+.stdBadge.own{color:var(--dim);border-color:var(--rule)}
+#edStdBadge{margin-left:auto;align-self:center}
+#edStdBadge .stdBadge{font-size:11.5px;padding:2px 8px;vertical-align:middle}
+/* ---- write view ---- */
+#writeView{flex:1;display:none;flex-direction:column;min-width:0;min-height:0;overflow:hidden;
+  background:var(--panel);border-radius:14px;box-shadow:var(--shadow)}
+body.writing #writeView{display:flex}
+body.writing #editor{display:none}
+#wInputRow{display:flex;gap:8px;padding:12px 14px 8px}
+#wInput{flex:1;font-size:15px;font:inherit;resize:vertical;min-height:38px;padding:8px 10px;border:1px solid var(--rule);border-radius:8px;background:var(--panel);color:var(--ink)}
+#wMic{font-size:17px;line-height:1}
+/* live recording state: unmistakably red and pulsing (steady red when the
+   user prefers reduced motion) */
+#wMic.recording{background:#C62828;border-color:#C62828;color:#fff;font-size:14px;
+  animation:micPulse 1.2s ease-in-out infinite}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(198,40,40,.45)}50%{box-shadow:0 0 0 7px rgba(198,40,40,0)}}
+@media (prefers-reduced-motion: reduce){#wMic.recording{animation:none}}
+#wChips{display:flex;gap:10px;padding:6px 14px;flex-wrap:wrap;align-items:flex-end;min-height:64px}
+.wChip{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--rule);
+  border-radius:10px;padding:6px 9px 3px;background:var(--panel-2);cursor:pointer;color:var(--ink)}
+.wChip:hover{border-color:var(--accent)}
+.wChip.on{border-color:var(--accent);outline:2px solid var(--accent-soft)}
+.wChip.unmatched{border-style:dashed;color:var(--dim)}
+.wChip.fuzzy{border-style:dashed;border-color:#c99b2e}
+.wBr{flex-basis:100%;height:0}
+.wChip .cap{font-size:10.5px;color:var(--dim)}
+.wChip svg{max-height:42px;width:auto}
+#wChooser{margin:0 14px 6px;padding:10px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--panel-2)}
+#wChooser .wCands{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+#wChooser .wInds{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--dim)}
+#wChooser button.sel{border-color:var(--accent);background:var(--accent-soft)}
+#wChooser .wInds kbd{font:inherit;font-size:9.5px;color:var(--dim);margin-left:5px;
+  border:1px solid var(--rule);border-radius:4px;padding:0 3px;background:var(--panel)}
+/* centre via margin:auto, NOT align/justify-center: flex-centering makes the
+   top of oversized content unscrollable (caught by PeO + Håkan 2026-09-09) */
+#wPreviewWrap{flex:1;overflow:auto;background:var(--panel-2);display:flex;padding:14px;min-height:0}
+/* the writing surface is a full-width PAGE, not a floating card — lines start
+   at the left margin like a document (PeO 2026-09-09) */
+#wPreview{background:var(--stage);border-radius:10px;box-shadow:var(--shadow);padding:16px 26px;width:100%;margin:auto}
+#wTools{display:flex;gap:8px;align-items:center;padding:8px 14px}
+#wHint{font-size:11.5px;color:var(--dim);margin-left:auto}
+.bIcon{margin-right:7px;display:inline-block;line-height:0;vertical-align:middle}
+.bIcon:empty{display:none}
+.bIcon svg{height:17px;width:auto;vertical-align:middle}
+/* indicator glyphs on the Form buttons: small characters, keep them modest */
+.indIcon{margin-right:5px}
+.indIcon svg{height:12px}
+.helpCols{display:flex;gap:28px;flex-wrap:wrap}
+.helpCols section{flex:1;min-width:280px}
+.helpCols h3{font-size:13px;margin:10px 0 6px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+.keys{border-collapse:collapse;font-size:13px;width:100%}
+.keys td{padding:3.5px 10px 3.5px 0;vertical-align:top;border-bottom:1px solid var(--rule-soft)}
+.keys td:first-child{white-space:nowrap;color:var(--dim)}
+kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11.5px;background:var(--mono-bg);
+  border:1px solid var(--rule);border-radius:5px;padding:1px 5px;margin:0 1px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--ground);
+  padding:8px 16px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50}
+.toast.show{opacity:.95}
+#colophon{flex:none;display:flex;flex-wrap:wrap;justify-content:center;gap:0 12px;text-align:center;
+  padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
+#colophon a{color:var(--dim);text-decoration-color:var(--rule)}
+#colophon a:hover{color:var(--accent)}
+@media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+<header>
+  <!-- the same visible way home as the other parts (PeO, 2026-09-25); the footer
+       link stays for whoever looks there. Hidden in embed mode with the header. -->
+  <a id="homeLink" href="start.html" title="To the start page">⌂ Start</a>
+  <h1>WinBliss<sup>2</sup></h1>
+  <button id="btnExportList"><span class="bIcon"></span>Export list…</button>
+  <button id="btnManager"><span class="bIcon"></span>List manager</button>
+  <button id="wtList" class="wToggle" title="Show or hide the word list" aria-pressed="true">List</button>
+  <button id="wtChips" class="wToggle" title="Show or hide the word alternatives" aria-pressed="true">Words</button>
+  <button id="wtChooser" class="wToggle" title="Show or hide the form row" aria-pressed="true">Forms</button>
+  <span class="spacer"></span>
+  <button id="btnWrite">✎ Write</button>
+  <button id="btnSettings" title="Settings" aria-label="Settings">⚙</button>
+  <button id="btnHelp" title="Help & keyboard shortcuts (?)" aria-label="Help and keyboard shortcuts">?</button>
+</header>
+<main>
+  <section id="listPanel" aria-label="Symbol list">
+    <div class="paneHead">
+      <span class="name" id="listAName">BCI-AV 2026-07-25</span>
+      <button id="btnOpen">Open…</button>
+      <button id="btnSaveList">Save</button>
+      <button id="btnNewList" title="Empty the list">New</button>
+      <button id="btnResetStd" title="Reload the shipped BCI-AV 2026 standard">BCI-AV</button>
+      <button id="wAddA" class="wAddBtn" title="Append the selected symbols to the sentence">→ sentence</button>
+    </div>
+    <input id="search" type="search" placeholder="Search gloss or BCI id…" autocomplete="off">
+    <div class="rows" id="rowsA" tabindex="0"></div>
+    <div class="count" id="countA"></div>
+  </section>
+
+  <div id="moveBtns">
+    <button id="mvSelR" title="Move selected right">▶</button>
+    <button id="mvAllR" title="Move all right">⏩</button>
+    <button id="mvSelL" title="Move selected left">◀</button>
+    <button id="mvAllL" title="Move all left">⏪</button>
+  </div>
+
+  <section id="writeView" aria-label="Write in Bliss">
+    <div id="wInputRow">
+      <textarea id="wInput" rows="2" placeholder="Write — every word becomes Bliss; new line = new line…" autocomplete="off"></textarea>
+      <button id="wMic" title="Dictate" aria-label="Dictate">🎤</button>
+      <button id="wAI" title="Let AI interpret the sentence into Bliss grammar — every choice stays editable" style="display:none">✨ Interpret</button>
+      <button id="wClear">Clear</button>
+      <button id="wSettings" title="Settings" aria-label="Settings">⚙</button>
+    </div>
+    <div id="wChips" aria-label="Sentence words"></div>
+    <div id="wChooser" hidden></div>
+    <div id="wPreviewWrap"><div id="wPreview"></div></div>
+    <div id="wTools">
+      <span class="saveGroup">
+        <button id="wOpenDoc">Open…</button>
+        <button id="wSaveDoc">Save ↓</button>
+      </span>
+      <span class="sep" style="width:1px;height:22px;background:var(--rule)"></span>
+      <span class="saveGroup">
+        <button id="wSVG">SVG ↓</button>
+        <button id="wPNG">PNG ↓</button>
+        <button id="wDoc">Word ↓</button>
+        <button id="wPrint">PDF…</button>
+        <button id="wClip">Clipboard ↓</button>
+      </span>
+      <span id="wHint">every word can be adjusted — click it · unmatched words become text, or new symbols of your own</span>
+    </div>
+  </section>
+
+  <section id="paneB" aria-label="Second list">
+    <div class="paneHead">
+      <span class="name" id="listBName">(empty list)</span>
+      <button id="btnOpenB">Open…</button>
+      <button id="btnSaveB">Save</button>
+      <button id="btnNewB">New</button>
+      <button id="wAddB" class="wAddBtn" title="Append the selected symbols to the sentence">→ sentence</button>
+      <button id="btnCloseB" title="Close pane">✕</button>
+    </div>
+    <input id="searchB" placeholder="Search gloss or BCI id…" autocomplete="off">
+    <div class="rows" id="rowsB" tabindex="0"></div>
+    <div class="count" id="countB"></div>
+  </section>
+
+  <section id="editor" aria-label="Symbol editor">
+    <div id="edMeta">
+      <label>Gloss <input id="gloss" placeholder="new_symbol"><span id="glossXl" style="display:none"></span></label>
+      <label>BCI id <input id="symId" class="mono" placeholder="—" title="Only BCI assigns standard ids"></label>
+      <label>Word class <select id="wclass">
+        <option>YELLOW</option><option>RED</option><option>GREEN</option>
+        <option>BLUE</option><option>WHITE</option><option>GRAY</option></select></label>
+      <label style="display:none">Origin <input id="country" value="SWE"></label>
+      <button id="btnNewSym">New symbol</button>
+      <span class="saveGroup">
+        <button id="btnAddToList" class="primary">Save to list</button>
+        <button id="btnAddToListB" class="primary" style="display:none"></button>
+      </span>
+      <span id="edStdBadge"></span>
+    </div>
+    <!-- Toolbar ABOVE the canvas (PeO, 2026-08-25): tab order runs
+         meta -> tools -> canvas shapes -> palette, so moving between the
+         shapes and the palette never crosses the whole toolbar. -->
+    <div id="edTools">
+      <!-- embed mode hides the header, so "open in editor" needs a way back (Håkan, 2026-09-24) -->
+      <button id="edBackWrite" class="primary">← Write</button>
+      <span class="sep" id="edBackSep"></span>
+      <button id="btnRotate" title="R">⟳ Rotate</button>
+      <button id="btnDelete" title="Delete/Backspace">🗑 Delete</button>
+      <button id="btnDup" title="D">⧉ Duplicate</button>
+      <span class="sep"></span>
+      <button id="btnUndo" title="Cmd/Ctrl+Z">↩ Undo</button>
+      <span class="sep"></span>
+      <span class="saveGroup">
+        <button id="btnExportSVG">SVG ↓</button>
+        <button id="btnExportPNG">PNG ↓</button>
+        <button id="btnCopyClip">Clipboard ↓</button>
+        <button id="btnGravyr" title="Open the symbol on an engraving tag">Engrave →</button>
+      </span>
+      <span id="hint">drag shapes from the palette · Shift = fine grid · double-click a list row to edit it</span>
+    </div>
+    <div id="stageWrap"><svg id="stage" tabindex="0" aria-label="Editing canvas"></svg></div>
+    <div id="palette">
+      <div id="famRow" role="tablist" aria-label="Shape families"></div>
+      <div id="variantRow"></div>
+    </div>
+  </section>
+</main>
+<!-- Compact footer (Håkan, 2026-09-24: on a low-res screen with enlarged text the two-line
+     colophon ate the workspace). The full attribution lives in Settings → About & licence. -->
+<footer id="colophon">
+  <span>WinBliss² · 1997–2026 · AnyCom AB · CC BY 4.0</span>
+  <a href="start.html" title="Till startsidan">⌂ Start</a>
+  <a href="#" id="aboutLink">About &amp; licence</a>
+</footer>
+<div class="toast" id="toast" role="status"></div>
+
+<dialog id="helpDlg" aria-label="Help and keyboard shortcuts">
+  <h2 style="margin:0 0 4px;font-size:16px">Keyboard shortcuts</h2>
+  <p style="margin:0 0 14px;color:var(--dim);font-size:12.5px">WinBliss can be driven entirely from the keyboard.</p>
+  <div class="helpCols">
+    <section>
+      <h3>Canvas (editing)</h3>
+      <table class="keys">
+        <tr><td><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd></td><td>move selected elements</td></tr>
+        <tr><td><kbd>Shift</kbd>+arrows / drag</td><td>fine grid (1 unit)</td></tr>
+        <tr><td><kbd>R</kbd></td><td>rotate (cycles the four orientations)</td></tr>
+        <tr><td><kbd>D</kbd></td><td>duplicate</td></tr>
+        <tr><td><kbd>Delete</kbd></td><td>delete selected</td></tr>
+        <tr><td><kbd>⌘/Ctrl</kbd>+<kbd>Z</kbd></td><td>undo</td></tr>
+        <tr><td><kbd>⌘/Ctrl</kbd>+<kbd>A</kbd></td><td>select all elements</td></tr>
+        <tr><td><kbd>⌘/Ctrl</kbd>+click</td><td>add/remove from selection</td></tr>
+        <tr><td>double-click text element</td><td>edit its text</td></tr>
+      </table>
+    </section>
+    <section>
+      <h3>Shape palette</h3>
+      <table class="keys">
+        <tr><td><kbd>Tab</kbd> → family, <kbd>Enter</kbd></td><td>open family; focus jumps to its first shape</td></tr>
+        <tr><td><kbd>←</kbd><kbd>→</kbd></td><td>browse shapes</td></tr>
+        <tr><td><kbd>Enter</kbd>/<kbd>Space</kbd></td><td>add the focused shape to the canvas</td></tr>
+      </table>
+      <h3>Symbol lists</h3>
+      <table class="keys">
+        <tr><td>click</td><td>open the symbol in the editor</td></tr>
+        <tr><td><kbd>⌘/Ctrl</kbd>+click, <kbd>Shift</kbd>+click</td><td>multi-select, range select</td></tr>
+        <tr><td><kbd>F2</kbd></td><td>edit gloss &amp; synonyms (<kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels)</td></tr>
+        <tr><td>drag a row</td><td>reorder in place · drag to the other list copies (<kbd>Shift</kbd> moves) · drop on the canvas to merge</td></tr>
+      </table>
+      <h3>Everywhere</h3>
+      <table class="keys">
+        <tr><td><kbd>?</kbd></td><td>this help</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>close any dialog</td></tr>
+        <tr><td><kbd>$</kbd> then <kbd>C</kbd>/<kbd>S</kbd>/<kbd>O</kbd>/<kbd>H</kbd></td>
+          <td>copy · save · open · start page — pressed one at a time, nothing held down;
+          the same keys in every WinBliss part (<kbd>$</kbd><kbd>?</kbd> lists them)</td></tr>
+      </table>
+    </section>
+  </div>
+  <form method="dialog" style="display:flex;justify-content:flex-end;margin-top:16px">
+    <button value="done" class="primary" autofocus>Done</button>
+  </form>
+</dialog>
+
+<dialog id="settingsDlg" aria-label="Settings">
+  <h2 style="margin:0 0 14px;font-size:16px">Settings</h2>
+  <h3 class="dlgSec" style="margin:0 0 8px">Interface</h3>
+  <div class="dlgRows">
+    <label class="dlgRow"><span>Language</span>
+      <select id="setLang">
+        <option value="en">English</option>
+        <option value="sv">Svenska</option>
+      </select></label>
+    <label class="dlgRow"><span>Symbol glosses</span>
+      <select id="setGloss"></select></label>
+    <label class="dlgRow"><span>Theme</span>
+      <select id="setTheme">
+        <option value="auto">Follow system</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select></label>
+  </div>
+  <h3 class="dlgSec">Export</h3>
+  <div class="dlgRows">
+    <label class="dlgRow">Ink colour
+      <span style="display:flex;gap:8px;align-items:center">
+        <input type="color" id="inkColor" value="#1b1c1e">
+        <button id="btnInkReset" title="Follow the light/dark theme">auto</button>
+      </span></label>
+    <label class="dlgRow"><span>Background</span>
+      <span style="display:flex;gap:8px;align-items:center">
+        <select id="bgMode">
+          <option value="transparent">Transparent</option>
+          <option value="white">White</option>
+          <option value="class">Word-class colour</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <input type="color" id="bgColor" value="#000000" style="display:none" aria-label="Custom background colour">
+      </span></label>
+    <label class="dlgRow"><span>Text</span>
+      <select id="expText">
+        <option value="none">Without text</option>
+        <option value="top">Above the symbol</option>
+        <option value="bottom">Below the symbol</option>
+      </select></label>
+    <label class="dlgRow"><span>Size (px per unit)</span>
+      <input type="number" id="expUnit" value="24" min="4" max="96" style="width:70px"></label>
+  </div>
+  <h3 class="dlgSec">Write view</h3>
+  <div class="dlgRows">
+    <label class="dlgRow"><span>Show the word list</span>
+      <input type="checkbox" id="wsList" checked></label>
+    <label class="dlgRow"><span>Show word alternatives</span>
+      <input type="checkbox" id="wsChips" checked></label>
+    <label class="dlgRow"><span>Show the form row</span>
+      <input type="checkbox" id="wsChooser" checked></label>
+    <label class="dlgRow"><span>Symbol size (px per square)</span>
+      <input type="number" id="wsUnit" value="11" min="6" max="60" style="width:70px"></label>
+    <label class="dlgRow"><span>Text size (%)</span>
+      <input type="number" id="wsText" value="100" min="0" max="300" step="10" style="width:70px"></label>
+    <label class="dlgRow"><span>Word spacing (squares)</span>
+      <input type="number" id="wsGap" value="8" min="1" max="40" style="width:70px"></label>
+    <label class="dlgRow"><span>Line thickness</span>
+      <input type="number" id="wsPen" value="35" min="15" max="150" step="5" style="width:70px"></label>
+  </div>
+  <h3 class="dlgSec">About &amp; licence</h3>
+  <p id="aboutText" style="margin:0;font-size:12.5px;line-height:1.45;color:var(--dim)">
+    <span id="aboutA">WinBliss² · THE Bliss tool 1997–2026 · © 2026 AnyCom AB · CC BY 4.0.</span><br>
+    <span id="aboutB">Blissymbolics © C.K. Bliss 1949, 1965 · symbols © Blissymbolics Communication International (BCI),
+    distributed under CC BY-SA 4.0 — conforming to the BCI Authorized Vocabulary,</span>
+    <a href="https://www.blissymbolics.org" target="_blank" rel="noopener">blissymbolics.org</a>
+  </p>
+  <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap">
+    <button id="btnWbxSave">Save preferences</button>
+    <button id="btnWbxOpen">Load preferences</button>
+    <span style="flex:1"></span>
+    <form method="dialog" style="display:inline"><button value="done" class="primary" autofocus>Done</button></form>
+  </div>
+</dialog>
+
+<dialog id="confirmDlg" aria-labelledby="confirmMsg">
+  <p id="confirmMsg" style="margin:0 0 16px;max-width:46ch"></p>
+  <form method="dialog" style="display:flex;gap:8px;justify-content:flex-end">
+    <button value="cancel" id="confirmCancel">Cancel</button>
+    <button value="ok" id="confirmOk" class="primary" autofocus>OK</button>
+  </form>
+</dialog>
+
+<dialog id="dirtyDlg">
+  <p id="dirtyMsg" style="margin:0 0 6px;font-weight:600"></p>
+  <p style="margin:0 0 16px;color:var(--dim)">Save it to the list before opening the next symbol?</p>
+  <form method="dialog" style="display:flex;gap:8px;justify-content:flex-end">
+    <button value="cancel">Cancel</button>
+    <button value="discard">Don't save</button>
+    <button value="save" class="primary" autofocus>Save</button>
+  </form>
+</dialog>
+
+<script src="js/shared/lang.js"></script>
+<script src="js/shared/pwa.js"></script>
+<script src="js/shared/wbs.js"></script>
+<script src="js/engine/bliss-shapes.js"></script>
+<script src="js/engine/bliss-engine.js"></script>
+<script src="js/data/bliss-data.js"></script>
+<script src="js/data/glosses.js"></script>
+<script src="js/shared/shortcuts.js"></script>
+<script src="js/editor/app.js"></script>
+<script src="js/editor/i18n.js"></script>
+</body>
+</html>

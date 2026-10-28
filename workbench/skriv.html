@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#28558C">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>WinBliss² — Skriv</title>
+<meta name="robots" content="noindex, nofollow">
+<script>
+// Double-clickable entry to the embedded Write mode (Håkan, 2026-09-11):
+// opens index.html?skriv=1 and passes any extra parameters through, so
+// skriv.html?ordval=1&symbol=30 -> index.html?skriv=1&ordval=1&symbol=30
+const q = new URLSearchParams(location.search);
+q.set('skriv', '1');
+location.replace('index.html?' + q.toString());
+</script>
+</head>
+<body>Öppnar WinBliss Skriv…</body>
+</html>
