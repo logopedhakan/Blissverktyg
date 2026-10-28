@@ -1,0 +1,46 @@
+Blissverktyget (WinBliss²) — licenser / licenses
+
+Projektet består av två delar med olika licenser.
+This project has two parts under different licenses.
+
+
+1. Koden / The code
+   Allt utom innehållet i workbench/js/data/ — sidorna, ritmotorn
+   (workbench/js/engine/, porterad från WinBliss Bliss_Common), editorn,
+   de delade skripten, verktygen i tools/ och ikonerna.
+   Everything except the contents of workbench/js/data/.
+
+   Copyright © 2026 AnyCom AB
+   Ritmotorn ursprungligen / original engine: © AnyCom AB / P-O Hedvall
+
+   Licens: Creative Commons Erkännande 4.0 Internationell (CC BY 4.0)
+   License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+   https://creativecommons.org/licenses/by/4.0/
+   Fullständig licenstext / legal code:
+   https://creativecommons.org/licenses/by/4.0/legalcode
+
+   Du får dela och bearbeta koden, även kommersiellt, om du anger
+   upphovet (AnyCom AB), länkar till licensen och anger om du har ändrat.
+   You may share and adapt the code, also commercially, if you credit
+   AnyCom AB, link to the license and indicate if changes were made.
+
+
+2. Blissymbolerna och ordlistorna / The Bliss symbols and glosses
+   workbench/js/data/bliss-data.js (symbolerna, BCI-AV)
+   workbench/js/data/glosses.js (översättningarna / translated glosses)
+
+   Blissymbolics © C.K. Bliss 1949, 1965.
+   Symbolerna © Blissymbolics Communication International (BCI).
+   Följer BCI:s auktoriserade ordförråd / conforming to the
+   BCI Authorized Vocabulary (BCI-AV). https://www.blissymbolics.org
+
+   Licens: Creative Commons Erkännande-DelaLika 4.0 Internationell (CC BY-SA 4.0)
+   License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
+   https://creativecommons.org/licenses/by-sa/4.0/
+   Fullständig licenstext / legal code:
+   https://creativecommons.org/licenses/by-sa/4.0/legalcode
+
+   Den som sprider symbolerna, eller något som bygger på dem, ska ange
+   BCI och dela det under samma licens.
+   Anyone distributing the symbols, or work built on them, must credit
+   BCI and share it under the same license.

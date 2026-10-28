@@ -8,6 +8,7 @@ en gång.
 © 2026 AnyCom AB · koden under CC BY 4.0 · Blissymbolics © C.K. Bliss 1949, 1965 ·
 symbolerna © Blissymbolics Communication International (BCI), CC BY-SA 4.0 —
 följer BCI:s auktoriserade ordförråd (BCI-AV). <https://www.blissymbolics.org>
+Se [LICENSE](LICENSE) för vad som gäller för koden och för symbolerna.
 
 ## Mappar
 
