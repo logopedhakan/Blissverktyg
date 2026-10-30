@@ -69,6 +69,8 @@ body.fam .famhead.on{color:var(--sel)}
 #dForms .form{width:46px;height:46px;cursor:default}
 #dForms .form svg{max-width:36px;max-height:32px}
 #dSkriv{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+header[hidden],footer[hidden],#dGravyr[hidden]{display:none}
+body:has(header[hidden]) main{padding-top:12px}
 button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--rule);
   border-radius:10px;padding:6px 10px;cursor:pointer}
 button:hover{border-color:var(--accent)}
@@ -382,7 +384,23 @@ function sendToSkriv(id) {
     setTimeout(() => ch.close(), 500);
   }, 250);
 }
-$('dSkriv').onclick = () => { if (current) sendToSkriv(current.id); };
+/* inside Skriv's overlay (former.html?iskriv=1, Håkan 2026-10-30): the symbol
+   goes straight to the Skriv page around us, which adds it and closes the
+   overlay. No own header there — Skriv's overlay carries the title and ✕. */
+const IN_SKRIV = new URLSearchParams(location.search).get('iskriv') === '1' && window.parent !== window;
+if (IN_SKRIV) {
+  document.querySelector('header').hidden = true;
+  document.querySelector('footer').hidden = true;
+  $('dGravyr').hidden = true;
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') window.parent.postMessage({ type: 'wb-fam-close' }, location.origin);
+  });
+}
+$('dSkriv').onclick = () => {
+  if (!current) return;
+  if (IN_SKRIV) window.parent.postMessage({ type: 'wb-add', ids: [current.id] }, location.origin);
+  else sendToSkriv(current.id);
+};
 
 /* ---- copy the chosen symbol as a PNG (Word and friends paste it as a picture) ---- */
 async function copySymbol() {

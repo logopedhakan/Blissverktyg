@@ -1728,7 +1728,37 @@ function wRender() {
   wRenderChips();
   wRenderChooser();
   wRenderPreview();
+  wSaveDraft();
 }
+
+/* Skriv keeps its text (Håkan, 2026-10-30): the text and every word's choices
+   (symbol, form, as text) are kept in this browser, so Skriv opened again —
+   from the menu, in a new window — continues where you were, and an open
+   Skriv window follows what another one writes. Not in the embed (?skriv=1):
+   an AAC host's writing surface stays its own. */
+const W_DRAFT_KEY = 'wb-skriv-utkast';
+let wDraftOn = false, wDraftT = null;
+function wSaveDraft() {
+  if (!wDraftOn) return;
+  clearTimeout(wDraftT);
+  wDraftT = setTimeout(() => {
+    try { localStorage.setItem(W_DRAFT_KEY, JSON.stringify({ text: $('wInput').value, words: W })); } catch (_) {}
+  }, 300);
+}
+function wLoadDraft() {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(W_DRAFT_KEY) || 'null'); } catch (_) {}
+  if (!d || typeof d.text !== 'string') return false;
+  $('wInput').value = d.text;
+  // keyOf is a Map in memory and comes back from JSON as {}: drop it (it only names guesses)
+  W = (Array.isArray(d.words) ? d.words : []).map(w => { if (w && w.keyOf) delete w.keyOf; return w; });
+  return true;
+}
+window.addEventListener('storage', (ev) => {
+  // another Skriv window wrote: follow it — unless this window is the one in use
+  if (!wDraftOn || ev.key !== W_DRAFT_KEY || document.hasFocus()) return;
+  if (wLoadDraft()) { wOpen = -1; if (document.body.classList.contains('writing')) wParse(); }
+});
 
 function wRenderChooser() {
   const ch = $('wChooser');
@@ -2001,6 +2031,34 @@ function wAddSymbols(ids) {
   wParse();
   return codes.length;
 }
+/* Formfamiljer inside Skriv (Håkan, 2026-10-30): former.html?iskriv=1 in an
+   overlay. Its "Skicka till Skriv" posts the symbol here; it is added at the
+   end of the text and the overlay closes — the Skriv window never changes.
+   The frame is loaded once and kept, so the chosen shapes stay between uses. */
+function famOpen() {
+  const fr = $('famFrame');
+  if (!fr.getAttribute('src')) fr.src = 'former.html?iskriv=1';
+  $('famOverlay').hidden = false;
+  try { fr.contentWindow.focus(); } catch (_) {}
+}
+function famClose() {
+  $('famOverlay').hidden = true;
+  $('wInput').focus();
+}
+$('wFam').onclick = famOpen;
+$('wFam').title = tr('Fetch a word from Form families without leaving Write', 'Hämta ett ord från Formfamiljer utan att lämna Skriv');
+$('famClose').onclick = famClose;
+$('famOverlay').addEventListener('click', (ev) => { if (ev.target === $('famOverlay')) famClose(); });
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !$('famOverlay').hidden) famClose(); });
+window.addEventListener('message', (ev) => {
+  if (ev.origin !== location.origin || ev.source !== $('famFrame').contentWindow) return;
+  const m = ev.data || {};
+  if (m.type === 'wb-fam-close') famClose();
+  else if (m.type === 'wb-add' && Array.isArray(m.ids)) {
+    famClose();
+    if (wAddSymbols(m.ids.map(Number))) toast(tr('Added at the end of the text', 'Lagt sist i texten'));
+  }
+});
 if ('BroadcastChannel' in window) {
   const tabId = Math.random().toString(36).slice(2);
   const ch = new BroadcastChannel('wb-skriv');
@@ -2333,6 +2391,8 @@ applyWS();
    hides the tools row. All display settings (WS) apply as usual. */
 (() => {
   const q = new URLSearchParams(location.search);
+  // the kept Skriv text comes back first, so a symbol sent in (&ord=) lands after it
+  if (!q.get('skriv')) { wLoadDraft(); wDraftOn = true; }
   if (q.get('skriv')) {
     document.body.classList.add('embed');
     if (q.get('verktyg') === '0') document.body.classList.add('embed-notools');
