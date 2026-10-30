@@ -50,6 +50,10 @@ button:disabled{opacity:.45;cursor:default}
 #hint{font-size:12px;color:var(--dim)}
 /* controls */
 #controls{display:flex;flex-direction:column;gap:9px;overflow-y:auto;min-height:0;padding-right:2px}
+/* nothing in the panel may shrink: when room runs out (a small screen, or
+   zoomed in) the panel scrolls instead. Before, the picture gallery was the
+   one part that could shrink, and it collapsed to a sliver (Håkan, 2026-10-30) */
+#controls > *{flex-shrink:0}
 #controls h3{font-size:12.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin-top:6px}
 #controls label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px}
 #controls select,#controls input[type=range]{font:inherit;font-size:13px}
@@ -72,7 +76,7 @@ button:disabled{opacity:.45;cursor:default}
 #dirRow #btnDir{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 #dirRow [hidden]{display:none}
 #gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:5px;
-  max-height:230px;overflow-y:auto;background:var(--panel-2);border-radius:10px;padding:6px}
+  min-height:84px;max-height:min(230px,40vh);overflow-y:auto;background:var(--panel-2);border-radius:10px;padding:6px}
 #gallery[hidden]{display:none}
 #gallery button{padding:2px;border-radius:7px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
 #gallery img{width:100%;height:52px;object-fit:contain;display:block}
@@ -97,7 +101,17 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 #show svg{width:100vw;height:100vh;display:block}
 #showNo{position:fixed;right:14px;bottom:10px;color:#888;font-size:13px;z-index:61;display:none}
 #show.on + #showNo{display:block}
-@media (max-width:900px){
+/* zoomed in or a small window: the slides become a strip on top, and the
+   slide and the panel (picture folder included) stay side by side on screen */
+@media (max-width:900px) and (min-width:601px){
+  main{grid-template-columns:1fr 280px;grid-template-rows:auto minmax(0,1fr)}
+  main > aside:first-child{grid-column:1/-1;flex-direction:row;align-items:stretch}
+  #slides{flex-direction:row;overflow-x:auto;padding:6px}
+  .thumb{flex:0 0 120px}
+  #slideBtns{grid-template-columns:repeat(2,1fr);width:150px;align-content:start}
+}
+/* phones: one column, the page scrolls */
+@media (max-width:600px){
   body{height:auto;min-height:100vh}
   main{grid-template-columns:1fr}
   #slides{flex-direction:row;overflow-x:auto;max-height:none}
