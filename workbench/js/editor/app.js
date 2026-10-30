@@ -1987,6 +1987,35 @@ $('btnGravyr').onclick = () => {
   window.open('gravyr.html?from=editor', '_blank');
 };
 $('wInput').addEventListener('input', wParse);
+
+/* ---- symbols sent from the other parts (Håkan, 2026-10-30: Formfamiljer →
+   Skriv). index.html?vy=skriv&ord=12345[,678] adds them when Skriv opens; an
+   open Skriv tab gets them over the 'wb-skriv' channel instead, so the text
+   already written stays. "#id" is Skriv's own BCI-code syntax: it resolves to
+   exactly that symbol, never a guess. */
+function wAddSymbols(ids) {
+  const codes = ids.filter(id => wSymById(id)).map(id => '#' + id);
+  if (!codes.length) return 0;
+  if (!document.body.classList.contains('writing')) setWriting(true);
+  $('wInput').value = ($('wInput').value + ' ' + codes.join(' ')).trim();
+  wParse();
+  return codes.length;
+}
+if ('BroadcastChannel' in window) {
+  const tabId = Math.random().toString(36).slice(2);
+  const ch = new BroadcastChannel('wb-skriv');
+  ch.onmessage = (ev) => {
+    const m = ev.data || {};
+    // only a tab that is in Skriv answers — an editor tab is not "Skriv"
+    if (m.type === 'ping' && document.body.classList.contains('writing')) ch.postMessage({ type: 'pong', tab: tabId });
+    else if (m.type === 'add' && m.to === tabId && Array.isArray(m.ids)) {
+      if (wAddSymbols(m.ids.map(Number))) {
+        toast(tr('Symbol received from Form families', 'Symbol mottagen från Formfamiljer'));
+        try { window.focus(); } catch (_) {}
+      }
+    }
+  };
+}
 $('wInput').addEventListener('keyup', wScrollToCaret);
 $('wInput').addEventListener('click', wScrollToCaret);
 /* drop targets: the input takes the browser's native text drop (position-exact,
@@ -2329,6 +2358,14 @@ applyWS();
     // with the normal header — ⌂ Start and the toggles stay reachable. The
     // chrome-free embed remains the skriv.html / MindExpress route.
     setWriting(true);
+  }
+  // &ord=<BCI id>[,<id>…]: symbols sent from another part (Formfamiljer)
+  const ord = q.get('ord');
+  if (ord) {
+    wAddSymbols(ord.split(',').map(Number).filter(Boolean));
+    // a reload must not add them a second time
+    q.delete('ord');
+    history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : ''));
   }
 })();
 /* re-wrap the writing page when its box changes (first-layout settle, list
