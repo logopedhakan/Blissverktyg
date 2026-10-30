@@ -75,12 +75,15 @@ button:disabled{opacity:.45;cursor:default}
 #dirRow{display:flex;gap:6px}
 #dirRow #btnDir{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 #dirRow [hidden]{display:none}
-#gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:5px;
-  min-height:84px;max-height:min(230px,40vh);overflow-y:auto;background:var(--panel-2);border-radius:10px;padding:6px}
+/* the picture folder as a small strip of thumbnails, at most 3 cm high
+   (Håkan, 2026-10-30); more pictures scroll inside it. The file name shows
+   on hover (title) rather than under each thumbnail. */
+#gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px;
+  max-height:3cm;overflow-y:auto;background:var(--panel-2);border-radius:8px;padding:4px}
 #gallery[hidden]{display:none}
-#gallery button{padding:2px;border-radius:7px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
-#gallery img{width:100%;height:52px;object-fit:contain;display:block}
-#gallery .cap{font-size:10.5px;color:var(--dim);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#gallery button{padding:1px;border-radius:5px;display:flex;align-items:center;justify-content:center;min-width:0}
+#gallery img{width:100%;height:30px;object-fit:contain;display:block}
+#gallery .cap{display:none}
 #gallery .msg{grid-column:1/-1;font-size:12.5px;color:var(--dim);padding:4px}
 #chooser[hidden]{display:none}
 #fitNote{font-size:12.5px;color:var(--sel);font-weight:600}
