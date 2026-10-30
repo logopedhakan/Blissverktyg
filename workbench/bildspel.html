@@ -16,6 +16,8 @@
 #dlg::backdrop{background:rgba(0,0,0,.35)}
 #dlg form{display:flex;flex-direction:column;gap:14px}
 #dlg .btns{display:flex;gap:8px;justify-content:flex-end}
+#dlgInput{font:inherit;font-size:15px;padding:7px 10px;border:1px solid var(--rule);border-radius:8px;
+  background:var(--panel-2);color:var(--ink);width:100%}
 #dirRow[hidden],#dlgCancel[hidden]{display:none}
 body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;
   background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
@@ -132,6 +134,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
   <input id="showTitle" type="text" placeholder="Bildspelets namn" data-en-ph="Slideshow name" autocomplete="off">
   <button id="btnOpen" data-en="Open…">Öppna…</button>
   <button id="btnSave" data-en="Save ↓">Spara ↓</button>
+  <button id="btnSaveAs" data-en="Save as…">Spara som…</button>
   <button id="btnPptx" data-en="PowerPoint ↓">PowerPoint ↓</button>
   <button id="btnPlay" class="primary" title="F5" data-en="▶ Show">▶ Visa</button>
 </header>
@@ -188,6 +191,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 <div id="show" role="dialog" aria-label="Bildspel"></div><div id="showNo"></div>
 <dialog id="dlg"><form method="dialog">
   <p id="dlgMsg"></p>
+  <input id="dlgInput" type="text" autocomplete="off" hidden>
   <div class="btns"><button id="dlgCancel" value="cancel"></button><button id="dlgOk" value="ok" class="primary">OK</button></div>
 </form></dialog>
 <footer>WinBliss² · <span data-en="slideshow">bildspel</span> · 2026 AnyCom AB · CC BY 4.0 · <span title="Blissymbolics © C.K. Bliss 1949, 1965 · symbols © Blissymbolics Communication International (BCI), distributed under CC BY-SA 4.0 — conforming to the BCI Authorized Vocabulary, blissymbolics.org">Blissymbolics © BCI, CC BY-SA 4.0</span></footer>
@@ -223,19 +227,36 @@ if (LNG === 'en') {
 }
 const SV = (BLISS_GLOSSES && BLISS_GLOSSES.sv) || {};
 /* the page's own message and yes/no dialog — alert/confirm do nothing in an artifact */
-function ask(msg, okLabel, cancelLabel) {
+/* Answers come straight from the buttons, Enter and Esc — not from the
+   dialog's 'close' event, which some embedded views never deliver. */
+function openDlg(msg, { okLabel, cancelLabel, input } = {}) {
   return new Promise(res => {
-    const d = $('dlg');
+    const d = $('dlg'), inp = $('dlgInput');
     $('dlgMsg').textContent = msg;
+    inp.hidden = input === undefined; inp.value = input || '';
     $('dlgOk').textContent = okLabel || 'OK';
     $('dlgCancel').hidden = cancelLabel === null;
     $('dlgCancel').textContent = cancelLabel || tr('Cancel', 'Avbryt');
-    d.returnValue = '';
-    d.onclose = () => res(d.returnValue === 'ok');
+    let done = false;
+    const finish = (ok) => {
+      if (done) return; done = true;
+      d.querySelector('form').onsubmit = d.oncancel = $('dlgOk').onclick = $('dlgCancel').onclick = null;
+      if (d.open) d.close();
+      res(ok);
+    };
+    $('dlgOk').onclick = (e) => { e.preventDefault(); finish(true); };
+    $('dlgCancel').onclick = (e) => { e.preventDefault(); finish(false); };
+    d.querySelector('form').onsubmit = (e) => { e.preventDefault(); finish(true); };   // Enter in the field
+    d.oncancel = (e) => { e.preventDefault(); finish(false); };                      // Esc
     d.showModal();
+    if (!inp.hidden) inp.select();
   });
 }
-const say = (msg) => ask(msg, 'OK', null);
+const ask = (msg, okLabel, cancelLabel) => openDlg(msg, { okLabel, cancelLabel });
+const say = (msg) => openDlg(msg, { cancelLabel: null });
+/* the same dialog with a text field; resolves the text, or null on cancel */
+const askText = (msg, value, okLabel) =>
+  openDlg(msg, { okLabel, input: value || '' }).then(ok => ok ? $('dlgInput').value.trim() : null);
 const escXml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /* ---- symbols: the own list first, then BCI-AV (same order as Skriv) ---- */
@@ -1051,19 +1072,85 @@ async function download(blob, name) {
   a.href = URL.createObjectURL(blob); a.download = name; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
-$('btnSave').onclick = () => download(new Blob([serialize()], { type: 'application/json' }), fileName() + '.wbbild');
-$('btnOpen').onclick = () => {
+/* ---- Spara / Spara som… / Öppna… (Håkan, 2026-10-30) ----
+   Chrome/Edge (File System Access): "Spara som…" lets you pick the name and
+   the folder; after that, and after "Öppna…", "Spara" writes back into that
+   same file, as in Word. The file is remembered (IndexedDB) across reloads.
+   Elsewhere, and in an artifact, "Spara" downloads a new file and "Spara
+   som…" first asks for the file name. */
+const FS_SAVE = !IN_FRAME && 'showSaveFilePicker' in window;
+const WBBILD_TYPES = [{ description: tr('WinBliss slideshow', 'WinBliss-bildspel'),
+                        accept: { 'application/json': ['.wbbild', '.json'] } }];
+let showFile = null;                          // FileSystemFileHandle of the open show
+function setShowFile(h) {
+  showFile = h;
+  $('btnSave').title = h ? tr('Saves into ', 'Sparar i ') + h.name : tr('Downloads the slideshow as a file', 'Laddar ner bildspelet som en fil');
+  if (FS_SAVE) idb('readwrite', st => h ? st.put(h, 'showFile') : st.delete('showFile')).catch(() => {});
+}
+const showBlob = () => new Blob([serialize()], { type: 'application/json' });
+function flash(btn, text) {
+  const was = btn.textContent; btn.textContent = text; btn.disabled = true;
+  setTimeout(() => { btn.textContent = was; btn.disabled = false; }, 1600);
+}
+async function writeShow(h) {
+  if (await h.queryPermission({ mode: 'readwrite' }) !== 'granted' &&
+      await h.requestPermission({ mode: 'readwrite' }) !== 'granted') return false;
+  const w = await h.createWritable();
+  await w.write(showBlob()); await w.close();
+  return true;
+}
+async function saveAs() {
+  if (!FS_SAVE) {
+    const name = await askText(tr('File name for the slideshow:', 'Filnamn för bildspelet:'), fileName(), tr('Save', 'Spara'));
+    if (!name) return;
+    const clean = name.replace(/[\\/:*?"<>|]+/g, '').replace(/\.(wbbild|json)$/i, '').trim() || 'bildspel';
+    return download(showBlob(), clean + '.wbbild');
+  }
+  let h;
+  try {
+    h = await window.showSaveFilePicker({ suggestedName: (showFile ? showFile.name : fileName() + '.wbbild'),
+      types: WBBILD_TYPES, startIn: showFile || 'documents' });
+  } catch (e) { return pickerFailed(e, tr('Save as', 'Spara som')); }
+  try {
+    if (!await writeShow(h)) return;
+    setShowFile(h);
+    if (!show.title) { show.title = h.name.replace(/\.(wbbild|json)$/i, ''); renderOptions(); autosave(); }
+    flash($('btnSaveAs'), tr('Saved ✓', 'Sparat ✓'));
+  } catch (e) { say(tr('The file could not be saved: ', 'Filen kunde inte sparas: ') + (e && e.message)); }
+}
+$('btnSaveAs').onclick = saveAs;
+$('btnSave').onclick = async () => {
+  if (!FS_SAVE) return download(showBlob(), fileName() + '.wbbild');
+  if (!showFile) return saveAs();               // the first save asks where, as in Word
+  try {
+    if (await writeShow(showFile)) flash($('btnSave'), tr('Saved ✓', 'Sparat ✓'));
+  } catch (e) {
+    // moved or deleted since: ask for a new place instead
+    say(tr(`“${showFile.name}” could not be saved (${e && e.message}). Choose where to save it.`,
+           `”${showFile.name}” gick inte att spara (${e && e.message}). Välj var den ska sparas.`)).then(saveAs);
+  }
+};
+function openShowText(t, handle) {
+  try { load(JSON.parse(t)); autosave(); setShowFile(handle || null); }
+  catch (_) { say(tr('That file is not a WinBliss slideshow.', 'Filen är inte ett bildspel från WinBliss.')); }
+}
+$('btnOpen').onclick = async () => {
+  if (FS_SAVE && 'showOpenFilePicker' in window) {
+    let h;
+    try { [h] = await window.showOpenFilePicker({ types: WBBILD_TYPES, startIn: showFile || 'documents' }); }
+    catch (e) { return pickerFailed(e, tr('Open', 'Öppna')); }
+    return openShowText(await (await h.getFile()).text(), h);
+  }
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = '.wbbild,.json';
   inp.onchange = () => {
     const f = inp.files[0]; if (!f) return;
-    f.text().then(t => {
-      try { load(JSON.parse(t)); autosave(); }
-      catch (_) { say(tr('That file is not a WinBliss slideshow.', 'Filen är inte ett bildspel från WinBliss.')); }
-    });
+    f.text().then(t => openShowText(t, null));
   };
   inp.click();
 };
+// the file the show came from last time, so "Spara" keeps saving into it
+if (FS_SAVE) idb('readonly', st => st.get('showFile')).then(h => { if (h) setShowFile(h); }).catch(() => {});
 
 /* ================= PowerPoint export =================
    A real .pptx written here, no library: a stored (uncompressed) zip with the
