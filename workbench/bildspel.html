@@ -1006,16 +1006,17 @@ $('optImg').addEventListener('input', () => { show.imgPct = +$('optImg').value; 
 $('optGap').addEventListener('input', () => { show.gap = +$('optGap').value; renderSlides(); renderStage(); autosave(); });
 $('optSpeak').addEventListener('change', () => { show.speakAuto = $('optSpeak').checked; autosave(); });
 
-/* ---- read aloud (Håkan, 2026-11-04): a slide's words as they read under
-   their symbols ("gick" for gå + dåtid), punctuation and line breaks as pauses */
+/* ---- read aloud (Håkan, 2026-11-04): ONLY the text under the symbols — the
+   same words the slide prints under them ("gick" for gå + dåtid). Never the
+   symbols' own content: punctuation symbols carry no text and are not read;
+   a line break is a pause. */
 function slideSpoken(s) {
-  const parts = [];
+  const lines = [[]];
   for (const w of (s && s.words) || []) {
-    if (w.br) parts.push('.');
-    else if (w.punct) parts.push(w.token);
-    else parts.push(w.label || w.token);
+    if (w.br) lines.push([]);
+    else if (!w.punct) lines[lines.length - 1].push((w.label || w.token).replace(/_/g, ' '));
   }
-  return parts.join(' ').replace(/ ([?!.,])/g, '$1').replace(/^[.\s]+/, '');
+  return lines.filter(l => l.length).map(l => l.join(' ')).join('. ');
 }
 let speakWarned = false;
 function speakSlide(s) {

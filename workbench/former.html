@@ -402,10 +402,10 @@ function sendToSkriv(id) {
 /* ---- read aloud (Håkan, 2026-11-04) ----
    🔊 on the chosen word; "read the word when I click" (remembered); and the
    whole list of suggestions read one after another — the shown ones, as many
-   as are on screen. The spoken word is the word as listed, without the
-   bracketed notes of the glossary ("äta (att)" → "äta"). */
-// also a note cut off by the synonym split ("våglinje (vertikal, …" → "våglinje")
-const spoken = (s) => svName(s).replace(/\s*\([^)]*\)?/g, '').trim();
+   as are on screen. What is read is exactly the word that stands under the
+   symbol (the list's word, the same the copied image carries) — never the
+   symbol's own content, the English name or the other glosses. */
+const spoken = (s) => svName(s).trim();
 const speakProblem = (m) => { $('dSkrivMsg').textContent = m; };
 wbSpeakButton($('dSpeak'), () => current ? spoken(current) : '', speakProblem);
 wbSpeakButton($('speakAll'), () => hits.slice(0, shown).map(spoken).filter(Boolean).join(', '), (m) => { $('stats').textContent = m; });

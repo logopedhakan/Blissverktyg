@@ -2035,16 +2035,17 @@ function wAddSymbols(ids) {
    overlay. Its "Skicka till Skriv" posts the symbol here; it is added at the
    end of the text and the overlay closes — the Skriv window never changes.
    The frame is loaded once and kept, so the chosen shapes stay between uses. */
-/* read the text aloud (Håkan, 2026-11-04): each word as it reads under its
-   symbol ("gick" for gå + dåtid), punctuation and line breaks as pauses */
+/* read the text aloud (Håkan, 2026-11-04): ONLY the text that stands under
+   the symbols — the same words the preview prints ("gick" for gå + dåtid).
+   Never the symbols' own content: punctuation symbols carry no text under
+   them and are not read; a line break is a pause. */
 function wSpokenText() {
-  const parts = [];
+  const lines = [[]];
   for (const w of W) {
-    if (w.br) parts.push('.');
-    else if (w.punct) parts.push(w.token);
-    else parts.push(w.label || w.token);
+    if (w.br) lines.push([]);
+    else if (!w.punct) lines[lines.length - 1].push((w.label || w.token).replace(/_/g, ' '));
   }
-  return parts.join(' ').replace(/ ([?!.,])/g, '$1').replace(/^[.\s]+/, '');
+  return lines.filter(l => l.length).map(l => l.join(' ')).join('. ');
 }
 wbSpeakButton($('wSpeak'), wSpokenText, toast);
 $('wSpeak').title = tr('Read the text aloud (click again to stop)', 'Läs upp texten (klicka igen för att stoppa)');
