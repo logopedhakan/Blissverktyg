@@ -2035,6 +2035,19 @@ function wAddSymbols(ids) {
    overlay. Its "Skicka till Skriv" posts the symbol here; it is added at the
    end of the text and the overlay closes — the Skriv window never changes.
    The frame is loaded once and kept, so the chosen shapes stay between uses. */
+/* read the text aloud (Håkan, 2026-11-04): each word as it reads under its
+   symbol ("gick" for gå + dåtid), punctuation and line breaks as pauses */
+function wSpokenText() {
+  const parts = [];
+  for (const w of W) {
+    if (w.br) parts.push('.');
+    else if (w.punct) parts.push(w.token);
+    else parts.push(w.label || w.token);
+  }
+  return parts.join(' ').replace(/ ([?!.,])/g, '$1').replace(/^[.\s]+/, '');
+}
+wbSpeakButton($('wSpeak'), wSpokenText, toast);
+$('wSpeak').title = tr('Read the text aloud (click again to stop)', 'Läs upp texten (klicka igen för att stoppa)');
 function famOpen() {
   const fr = $('famFrame');
   if (!fr.getAttribute('src')) fr.src = 'former.html?iskriv=1';

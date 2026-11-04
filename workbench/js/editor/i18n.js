@@ -16,6 +16,7 @@ const SV = [
   ['#wtChooser', 'Böjning'],
   ['#wClear', 'Rensa'],
   ['#wFam', '⬡ Formfamiljer…'],
+  ['#wSpeak', '🔊 Läs upp'],
   ['#famTitle', 'Formfamiljer'],
   ['#famSub', 'välj ett ord och tryck ”Skicka till Skriv” — det hamnar sist i texten'],
   ['#famClose', '✕ Stäng'],
