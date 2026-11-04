@@ -21,6 +21,8 @@ const SV = [
   ['#famClose', '✕ Stäng'],
   ['#wAI', '✨ Tolka'],
   ['#wClip', 'Urklipp ↓'],
+  ['#wToShow', '→ Bildspel'],
+  ['#wToTag', '→ Gravyrkort'],
   ['#wOpenDoc', 'Öppna…'],
   ['#wSaveDoc', 'Spara ↓'],
   ['#wHint', 'varje ord kan justeras — klicka på det · omatchade ord blir text, eller egna nya symboler'],

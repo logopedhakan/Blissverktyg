@@ -1366,6 +1366,50 @@ if (IN_FRAME) {
 }
 renderOptions(); go(cur);
 
+/* ---- text sent from Skriv (Håkan, 2026-11-04) ----
+   Becomes a new slide with the words as chosen in Skriv (symbol, form, as
+   text); an empty current slide is filled instead of adding one more.
+   Arrives either over the 'wb-bildspel' channel (this tab open) or, when
+   Skriv opened this tab, as bildspel.html?from=skriv with the data left in
+   localStorage. */
+function addSlideFromSkriv(data) {
+  if (!data || typeof data.text !== 'string' || !data.text.trim()) return false;
+  if (Array.isArray(data.custom) && data.custom.length) useCustom(data.custom);
+  const s = newSlide();
+  s.text = data.text;
+  s.words = Array.isArray(data.words) ? data.words : [];
+  parseSlide(s);                         // keeps each word that still reads the same
+  // the word under a symbol with a form ("gå" + dåtid → "gick"), as when written here;
+  // a word the writer typed in by hand stays as it is
+  for (const w of s.words) if (!w.br && !w.asText && w.ind) autoLabel(w);
+  const here = show.slides[cur];
+  if (here && !here.text.trim() && !here.img) show.slides[cur] = s;
+  else { show.slides.push(s); cur = show.slides.length - 1; }
+  go(cur); autosave();
+  return true;
+}
+(() => {
+  const q = new URLSearchParams(location.search);
+  if (q.get('from') !== 'skriv') return;
+  let data = null;
+  try { data = JSON.parse(lsGet('wb-bildspel-fran-skriv') || 'null'); localStorage.removeItem('wb-bildspel-fran-skriv'); } catch (_) {}
+  addSlideFromSkriv(data);
+  q.delete('from');                       // a reload must not add it again
+  history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : ''));
+})();
+if ('BroadcastChannel' in window) {
+  const tabId = Math.random().toString(36).slice(2);
+  const ch = new BroadcastChannel('wb-bildspel');
+  ch.onmessage = (ev) => {
+    const m = ev.data || {};
+    if (m.type === 'ping') ch.postMessage({ type: 'pong', tab: tabId });
+    else if (m.type === 'add' && m.to === tabId) {
+      if (showing()) endShow();             // back to editing, so the new slide is seen
+      if (addSlideFromSkriv(m.data)) { try { window.focus(); } catch (_) {} }
+    }
+  };
+}
+
 /* delade $-genvägar (shortcuts.js) */
 try { wbShortcuts({
   title: () => tr('Slideshow', 'Bildspel'),

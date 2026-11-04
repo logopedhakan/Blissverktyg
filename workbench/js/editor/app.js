@@ -2222,6 +2222,66 @@ $('wClip').onclick = () => {
     .then(() => toast(tr('Text copied to the clipboard as PNG', 'Texten kopierad till urklipp som PNG')))
     .catch(() => toast(tr('Copy failed', 'Kopieringen misslyckades')));
 };
+/* ---- the text onward to Bildspel and Gravyrkort (Håkan, 2026-11-04) ----
+   Skriv stays open; the other part opens in its own tab. Bildspel gets the
+   whole text with every word's choice (symbol, form, as text) as a new slide —
+   an open Bildspel tab takes it over the 'wb-bildspel' channel, else Bildspel
+   opens with it (bildspel.html?from=skriv). Gravyrkort gets the words as tag
+   members, each symbol already composed with its form. Symbols from the open
+   list that are not BCI-AV's own travel along, so they draw the same there. */
+function wCustomSyms(ids) {
+  const out = [];
+  for (const id of new Set(ids)) {
+    const s = lists.A.syms.find(sy => sy.id === +id);
+    const std = BLISS_DATA.find(sy => sy.id === +id);
+    if (s && s.e && s.e.length && (!std || std.n !== s.n || JSON.stringify(std.e) !== JSON.stringify(s.e)))
+      out.push({ id: s.id, n: s.n, c: s.c, k: s.k, e: s.e });
+  }
+  return out;
+}
+function wShowPayload() {
+  const words = W.map(w => { const c = Object.assign({}, w); delete c.keyOf; delete c.off; return c; });
+  return { text: $('wInput').value, words, custom: wCustomSyms(W.filter(w => !w.br && !w.asText).map(w => w.ids[w.pick])) };
+}
+$('wToShow').onclick = () => {
+  if (!W.some(w => !w.br)) return toast(tr('Write something first', 'Skriv något först'));
+  const data = wShowPayload();
+  const open = () => {
+    try { localStorage.setItem('wb-bildspel-fran-skriv', JSON.stringify(data)); }
+    catch (_) { return toast(tr('The text could not be handed over (browser storage is full or blocked)', 'Texten kunde inte lämnas över (webbläsarens lagring är full eller spärrad)')); }
+    if (!window.open('bildspel.html?from=skriv', 'wb-bildspel'))
+      toast(tr('The browser blocked the new tab — allow pop-ups for this page', 'Webbläsaren stoppade den nya fliken — tillåt popup-fönster för sidan'));
+  };
+  if (!('BroadcastChannel' in window)) return open();
+  const ch = new BroadcastChannel('wb-bildspel');
+  let target = null;
+  ch.onmessage = (ev) => { if (ev.data && ev.data.type === 'pong' && !target) target = ev.data.tab; };
+  ch.postMessage({ type: 'ping' });
+  setTimeout(() => {                                   // well inside the click's pop-up allowance
+    if (target) {
+      ch.postMessage({ type: 'add', to: target, data });
+      toast(tr('Sent to Slideshow ✓ — a new slide', 'Skickat till Bildspel ✓ — en ny sida'));
+    } else open();
+    setTimeout(() => ch.close(), 500);
+  }, 250);
+};
+$('wToTag').onclick = () => {
+  const members = [];
+  for (const w of W) {
+    if (w.br) continue;
+    if (w.asText) { members.push({ id: 0, n: w.label || w.token, text: true, e: [['Z', 1, 1, 0, 0, 10, 0, 0, w.label || w.token, 0, 6]] }); continue; }
+    const id = w.ids[w.pick], s = wSymById(id);
+    const e = wComposeEls(id, w.ind);
+    if (s && e.length) members.push({ id: s.id, n: w.punct ? s.n : (w.label || w.token), c: s.c, e });
+  }
+  if (!members.length) return toast(tr('Write something first', 'Skriv något först'));
+  try { localStorage.setItem('wb-gravyr-fran-skriv', JSON.stringify(members)); }
+  catch (_) { return toast(tr('The text could not be handed over', 'Texten kunde inte lämnas över')); }
+  if (!window.open('gravyr.html?from=skriv', '_blank'))
+    toast(tr('The browser blocked the new tab — allow pop-ups for this page', 'Webbläsaren stoppade den nya fliken — tillåt popup-fönster för sidan'));
+};
+$('wToShow').title = tr('The text as a new slide in Slideshow', 'Texten som en ny sida i Bildspel');
+$('wToTag').title = tr('The symbols onto an engraving tag', 'Symbolerna på ett gravyrkort');
 const W_ATTRIBUTION = 'Blissymbolics © C.K. Bliss 1949, 1965 · Parts herein © Blissymbolics Communication International (BCI), CC BY-SA 4.0 · WinBliss² (AnyCom AB)';
 $('wDoc').onclick = async () => {
   if (!W.length) return toast(tr('Nothing to export', 'Inget att exportera'));

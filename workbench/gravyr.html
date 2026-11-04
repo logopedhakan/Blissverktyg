@@ -435,7 +435,10 @@ $('btnSVG').onclick = () => {
 
 /* bridges: ?w=id,id,id preloads standard symbols (formfamiljer → gravyr);
    ?from=editor takes the symbol WinBliss's editor left in localStorage (any
-   composition, incl. text elements — the "person Lisa" case) */
+   composition, incl. text elements — the "person Lisa" case);
+   ?from=skriv takes Skriv's whole text: one member per word, each symbol
+   already composed with its form, words kept as text stay text runs
+   (Håkan, 2026-11-04) */
 (() => {
   const q = new URLSearchParams(location.search);
   const w = q.get('w');
@@ -448,6 +451,15 @@ $('btnSVG').onclick = () => {
       const s = JSON.parse(localStorage.getItem('wb-gravyr') || 'null');
       if (s && s.e && s.e.length) chosen.push(s);
     } catch (_) {}
+  }
+  if (q.get('from') === 'skriv') {
+    try {
+      const list = JSON.parse(localStorage.getItem('wb-gravyr-fran-skriv') || 'null');
+      localStorage.removeItem('wb-gravyr-fran-skriv');
+      if (Array.isArray(list)) for (const s of list) if (s && s.e && s.e.length) chosen.push(s);
+    } catch (_) {}
+    q.delete('from');                     // a reload must not add the text again
+    history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : ''));
   }
 })();
 renderHits(); renderAll();
