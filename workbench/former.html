@@ -412,6 +412,8 @@ wbSpeakButton($('speakAll'), () => hits.slice(0, shown).map(spoken).filter(Boole
 try { $('speakPick').checked = localStorage.getItem('wb-former-las') === '1'; } catch (_) {}
 $('speakPick').addEventListener('change', () => { try { localStorage.setItem('wb-former-las', $('speakPick').checked ? '1' : '0'); } catch (_) {} });
 if (!WB_SPEECH) { $('speakPickRow').hidden = true; }
+// Alt+P: the chosen word, or — with none chosen — the suggestions
+wbSpeakHotkey(() => current ? $('dSpeak').click() : (!$('speakAll').hidden && $('speakAll').click()));
 function speakOnPick(s) {
   if (!$('speakPick').checked) return;
   const res = wbSpeak(spoken(s));
@@ -531,7 +533,8 @@ wbShortcuts({
     C: { run: () => $('dCopy').click(), desc: () => tr('copy the chosen symbol to the clipboard (pick a word first)', 'kopiera vald symbol till klippbordet (välj ett ord först)') },
     H: { run: () => { location.href = 'start.html'; }, desc: () => tr('to the start page', 'till startsidan') },
   },
-  extra: () => [[tr('# + letter', '# + bokstav'), tr('pick a form family (A–Z) in family mode', 'välj formfamilj (A–Z) i familjeläget')]],
+  extra: () => [[tr('# + letter', '# + bokstav'), tr('pick a form family (A–Z) in family mode', 'välj formfamilj (A–Z) i familjeläget')],
+                ['Alt+P', tr('read the chosen word (or the suggestions) aloud / stop reading', 'läs upp det valda ordet (eller förslagen) / stoppa uppläsningen')]],
 });
 </script>
 </body>

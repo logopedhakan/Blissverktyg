@@ -58,7 +58,9 @@ const SV = [
   ['#settingsDlg h3:nth-of-type(1)', 'Gränssnitt'],
   ['#settingsDlg h3:nth-of-type(2)', 'Export'],
   ['#settingsDlg h3:nth-of-type(3)', 'Skriv-vyn'],
-  ['#settingsDlg h3:nth-of-type(4)', 'Om & licens'],
+  ['#setSpeakHead', 'Uppläsning'],
+  ['#setSpeakKey', 'Alt+P — läs upp, eller stoppa uppläsningen. Fungerar i Skriv, Bildspel och Formfamiljer.'],
+  ['#aboutHead', 'Om & licens'],
   ['#btnWbxSave', 'Spara inställningar'],
   ['#btnWbxOpen', 'Ladda inställningar'],
   ['#btnInkReset', 'auto'],
@@ -134,6 +136,7 @@ const HELP_SV = `
       <table class="keys">
         <tr><td><kbd>?</kbd></td><td>den här hjälpen</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>stäng alla dialogrutor</td></tr>
+        <tr><td><kbd>Alt</kbd>+<kbd>P</kbd></td><td>läs upp / stoppa uppläsningen (Skriv, Bildspel, Formfamiljer)</td></tr>
         <tr><td><kbd>$</kbd> sedan <kbd>C</kbd>/<kbd>S</kbd>/<kbd>O</kbd>/<kbd>H</kbd></td>
           <td>kopiera · spara · öppna · startsidan — en tangent i taget, inget hålls ner;
           samma tangenter i alla WinBliss-delar (<kbd>$</kbd><kbd>?</kbd> visar listan)</td></tr>

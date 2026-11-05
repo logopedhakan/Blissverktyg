@@ -488,6 +488,7 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
       <table class="keys">
         <tr><td><kbd>?</kbd></td><td>this help</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>close any dialog</td></tr>
+        <tr><td><kbd>Alt</kbd>+<kbd>P</kbd></td><td>read aloud / stop reading (Write, Slideshow, Form families)</td></tr>
         <tr><td><kbd>$</kbd> then <kbd>C</kbd>/<kbd>S</kbd>/<kbd>O</kbd>/<kbd>H</kbd></td>
           <td>copy · save · open · start page — pressed one at a time, nothing held down;
           the same keys in every WinBliss part (<kbd>$</kbd><kbd>?</kbd> lists them)</td></tr>
@@ -560,7 +561,9 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
     <label class="dlgRow"><span>Line thickness</span>
       <input type="number" id="wsPen" value="35" min="15" max="150" step="5" style="width:70px"></label>
   </div>
-  <h3 class="dlgSec">About &amp; licence</h3>
+  <h3 class="dlgSec" id="setSpeakHead">Read aloud</h3>
+  <p id="setSpeakKey" style="margin:0 0 4px;font-size:13px;line-height:1.45">Alt+P — read aloud, or stop reading. Works in Write, Slideshow and Form families.</p>
+  <h3 class="dlgSec" id="aboutHead">About &amp; licence</h3>
   <p id="aboutText" style="margin:0;font-size:12.5px;line-height:1.45;color:var(--dim)">
     <span id="aboutA">WinBliss² · THE Bliss tool 1997–2026 · © 2026 AnyCom AB · CC BY 4.0.</span><br>
     <span id="aboutB">Blissymbolics © C.K. Bliss 1949, 1965 · symbols © Blissymbolics Communication International (BCI),

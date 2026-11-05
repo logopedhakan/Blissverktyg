@@ -2048,7 +2048,8 @@ function wSpokenText() {
   return lines.filter(l => l.length).map(l => l.join(' ')).join('. ');
 }
 wbSpeakButton($('wSpeak'), wSpokenText, toast);
-$('wSpeak').title = tr('Read the text aloud (click again to stop)', 'Läs upp texten (klicka igen för att stoppa)');
+wbSpeakHotkey(() => $('wSpeak').click());          // Alt+P
+$('wSpeak').title = tr('Read the text aloud (click again, or Alt+P, to stop)', 'Läs upp texten (klicka igen, eller Alt+P, för att stoppa)');
 function famOpen() {
   const fr = $('famFrame');
   if (!fr.getAttribute('src')) fr.src = 'former.html?iskriv=1';
@@ -2578,7 +2579,8 @@ if (typeof wbShortcuts === 'function') {
     }),
     extra: () => inWriting()
       ? [['# 0–7', tr('form on the word: none/verb/present/past/future/plural/imperative/definite — also inline: "gå #2" → går', 'form på ordet: ingen/verb/presens/dåtid/futurum/plural/uppmaning/bestämd — även i texten: "gå #2" → går')],
-         ['Ctrl+S / Ctrl+O', tr('save / open a document', 'spara / öppna dokument')]]
+         ['Ctrl+S / Ctrl+O', tr('save / open a document', 'spara / öppna dokument')],
+         ['Alt+P', tr('read the text aloud / stop reading', 'läs upp texten / stoppa uppläsningen')]]
       : [['R', tr('rotate the shape', 'rotera formen')],
          ['D', tr('duplicate', 'duplicera')],
          ['Delete', tr('remove the shape', 'ta bort formen')],

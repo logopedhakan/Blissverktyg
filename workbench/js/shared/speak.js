@@ -61,6 +61,8 @@ function wbSpeakButton(btn, getText, onProblem) {
   let warned = false, idle = '';
   // the label is read at click time: a page may translate the button after setup
   const done = () => { if (btn.classList.contains('speaking')) btn.textContent = idle; btn.classList.remove('speaking'); };
+  if (!btn.title.includes('Alt+P'))
+    btn.title = (btn.title || (wbLang() === 'sv' ? 'Läs upp' : 'Read aloud')) + ' (Alt+P)';
   btn.addEventListener('click', () => {
     if (btn.classList.contains('speaking')) { wbStopSpeaking(); done(); return; }
     const res = wbSpeak(getText(), { onend: done });
@@ -68,6 +70,20 @@ function wbSpeakButton(btn, getText, onProblem) {
     idle = btn.textContent;
     btn.textContent = wbLang() === 'sv' ? '■ Stoppa' : '■ Stop'; btn.classList.add('speaking');
     if (res === 'novoice' && !warned && onProblem) { warned = true; onProblem(wbSpeakProblem(res)); }
+  });
+}
+/* Alt+P starts or stops reading aloud, in every part (Håkan, 2026-11-05).
+   Ctrl+T was wished for, but browsers keep it for "new tab" and never pass it
+   to a page; Alt+P is free in Chrome, Edge and Firefox (Alt+T would open
+   Firefox's Tools menu). Reading → stop; silent → `start()`, the page's own
+   "read aloud" action. Matched on the physical key, so Option+P on a Mac
+   (which types π) works too. */
+function wbSpeakHotkey(start) {
+  if (!WB_SPEECH) return;
+  document.addEventListener('keydown', (e) => {
+    if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.code !== 'KeyP') return;
+    e.preventDefault();
+    if (wbSpeaking()) wbStopSpeaking(); else start();
   });
 }
 // Chrome loads its voice list lazily: ask early so it is ready at the first click

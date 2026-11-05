@@ -1104,6 +1104,8 @@ function speakSlide(s) {
   return res;
 }
 wbSpeakButton($('btnSpeak'), () => slideSpoken(show.slides[cur]), (m) => say(m));
+// Alt+P: the slide being shown, else the slide being edited
+wbSpeakHotkey(() => showing() ? speakSlide(show.slides[pIdx]) : $('btnSpeak').click());
 if (!WB_SPEECH) { $('optSpeak').closest('label').hidden = true; $('showSpeak').hidden = true; }
 
 /* ---- own word list (.wbs) — read by js/shared/wbs.js ---- */
@@ -1550,6 +1552,7 @@ try { wbShortcuts({
   },
   extra: () => [['F5', tr('show from the first slide (Shift+F5: from this one)', 'visa från första sidan (Skift+F5: från den här)')],
                 ['Ctrl+V', tr('paste a picture onto the slide', 'klistra in en bild på sidan')],
+                ['Alt+P', tr('read the slide aloud / stop reading', 'läs upp sidan / stoppa uppläsningen')],
                 ['L', tr('while showing: read the slide aloud', 'under visning: läs upp sidan')]],
 }); } catch (_) {}
 </script>
