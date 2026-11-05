@@ -402,6 +402,7 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
       <span class="saveGroup">
         <button id="btnAddToList" class="primary">Save to list</button>
         <button id="btnAddToListB" class="primary" style="display:none"></button>
+        <button id="btnSaveAsNew" title="Save the drawing as a new symbol with its own id — the symbol it was made from stays as it was">Save as new symbol…</button>
       </span>
       <span id="edStdBadge"></span>
     </div>
@@ -575,6 +576,15 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
     <button id="btnWbxOpen">Load preferences</button>
     <span style="flex:1"></span>
     <form method="dialog" style="display:inline"><button value="done" class="primary" autofocus>Done</button></form>
+  </div>
+</dialog>
+
+<dialog id="nameDlg" aria-labelledby="nameMsg">
+  <p id="nameMsg" style="margin:0 0 10px;max-width:46ch"></p>
+  <input id="nameInput" autocomplete="off" style="width:100%;margin-bottom:16px">
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button type="button" id="nameCancel">Cancel</button>
+    <button type="button" id="nameOk" class="primary">OK</button>
   </div>
 </dialog>
 

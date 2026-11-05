@@ -7,7 +7,7 @@
    When you add a file the app needs, add it to CORE and bump VERSION — the
    new version then replaces the old cache on the next visit. */
 'use strict';
-const VERSION = '2026-11-05.9';
+const VERSION = '2026-11-05.10';
 const CACHE = 'blissverktyget-' + VERSION;
 const CORE = [
   'start.html', 'index.html', 'skriv.html', 'bildspel.html', 'gissa.html', 'former.html', 'gravyr.html',

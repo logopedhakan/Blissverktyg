@@ -879,6 +879,49 @@ async function saveCurrentToList(key = ed.srcKey) {
 $('btnAddToList').onclick = () => saveCurrentToList('A');
 $('btnAddToListB').onclick = () => saveCurrentToList('B');
 
+/* "Spara som ny symbol" (Håkan, 2026-11-05): the drawing becomes a NEW symbol
+   with its own personal id in the list it came from — the symbol it was made
+   from stays exactly as it was. The editor then works on the new one. */
+function askName(msg, value, okLabel) {
+  return new Promise((res) => {
+    const dlg = $('nameDlg'), inp = $('nameInput');
+    $('nameMsg').textContent = msg;
+    $('nameOk').textContent = okLabel || 'OK';
+    $('nameCancel').textContent = tr('Cancel', 'Avbryt');
+    inp.value = value || '';
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; if (dlg.open) dlg.close(); res(v); };
+    $('nameOk').onclick = () => finish(inp.value.trim());
+    $('nameCancel').onclick = () => finish(null);
+    inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); finish(inp.value.trim()); } };
+    dlg.oncancel = (e) => { e.preventDefault(); finish(null); };   // Esc
+    dlg.showModal(); inp.select();
+  });
+}
+$('btnSaveAsNew').title = tr('Save the drawing as a new symbol with its own id — the symbol it was made from stays as it was',
+  'Spara ritningen som en ny symbol med eget id — symbolen den gjordes från lämnas som den var');
+$('btnSaveAsNew').onclick = async () => {
+  if (!ed.sym.e.length) { toast(tr('Nothing drawn yet', 'Inget ritat ännu')); return; }
+  const key = ed.srcKey === 'B' && managerOpen() ? 'B' : 'A', L = lists[key];
+  const name = await askName(
+    tr(`Name of the new symbol (it is saved in "${L.name}" with its own id):`,
+       `Namn på den nya symbolen (den sparas i "${L.name}" med ett eget id):`),
+    $('gloss').value.trim(), tr('Save as new', 'Spara som ny'));
+  if (name === null) return;
+  // personal ids start at 90000 — BCI assigns the standard ones
+  const id = Math.max(89999, ...lists.A.syms.map(s => +s.id || 0), ...lists.B.syms.map(s => +s.id || 0)) + 1;
+  ed.sym.n = name || tr('unnamed', 'namnlös');
+  ed.sym.id = id;
+  $('gloss').value = ed.sym.n; $('symId').value = id;
+  L.syms.push(deep({ id, n: ed.sym.n, c: ed.sym.c, k: ed.sym.k, e: ed.sym.e }));
+  ed.dirty = false; ed.srcKey = key;
+  L.mod = true;
+  wListChanged();
+  renderListPane(key);
+  updateCaptionBar();
+  toast(tr(`Saved as a new symbol: ${ed.sym.n} (${id}) → ${L.name}`, `Sparad som ny symbol: ${ed.sym.n} (${id}) → ${L.name}`));
+};
+
 /* export current symbol */
 function currentSVG(unit = ed.unit || 24) { return withBg(withText(blissSVG(ed.sym, { unit, color: exportInk() }), captionText())); }
 $('btnExportSVG').onclick = () => {
