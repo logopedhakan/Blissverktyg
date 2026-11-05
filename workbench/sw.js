@@ -7,7 +7,7 @@
    When you add a file the app needs, add it to CORE and bump VERSION — the
    new version then replaces the old cache on the next visit. */
 'use strict';
-const VERSION = '2026-11-05.5';
+const VERSION = '2026-11-05.6';
 const CACHE = 'blissverktyget-' + VERSION;
 const CORE = [
   'start.html', 'index.html', 'skriv.html', 'bildspel.html', 'gissa.html', 'former.html', 'gravyr.html',
@@ -21,7 +21,11 @@ const CORE = [
 ];
 
 self.addEventListener('install', (ev) => {
-  ev.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
+  // 'no-cache' here too: a new version must not fill its cache with the old files
+  // the browser still holds
+  ev.waitUntil(caches.open(CACHE)
+    .then(c => c.addAll(CORE.map(u => new Request(u, { cache: 'no-cache' }))))
+    .then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (ev) => {
   ev.waitUntil(caches.keys()
@@ -40,7 +44,12 @@ self.addEventListener('fetch', (ev) => {
   ev.respondWith((async () => {
     const cache = await caches.open(CACHE);
     try {
-      const res = await fetch(req);
+      // the app's own files: ask the server every time (cache: 'no-cache' = a quick
+      // "has it changed?" check, answered 304 when not). Without it the browser's
+      // HTTP cache served a published update for up to 10 minutes — GitHub Pages
+      // sends max-age=600 (Håkan, 2026-11-05). A navigation Request cannot be
+      // re-made with options, so the URL is fetched instead.
+      const res = sameOrigin ? await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }) : await fetch(req);
       if (res.ok || res.type === 'opaque') cache.put(req, res.clone());
       return res;
     } catch (err) {
