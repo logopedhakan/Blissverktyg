@@ -2241,8 +2241,8 @@ $('wClip').onclick = () => {
    Skriv stays open; the other part opens in its own tab. Bildspel gets the
    whole text with every word's choice (symbol, form, as text) as a new slide —
    an open Bildspel tab takes it over the 'wb-bildspel' channel, else Bildspel
-   opens with it (bildspel.html?from=skriv). Gravyrkort gets the words as tag
-   members, each symbol already composed with its form. Symbols from the open
+   opens with it (bildspel.html?from=skriv). Gravyrkort gets the same text and
+   choices into its own Bliss text (gravyr.html?from=skriv). Symbols from the open
    list that are not BCI-AV's own travel along, so they draw the same there. */
 function wCustomSyms(ids) {
   const out = [];
@@ -2281,16 +2281,10 @@ $('wToShow').onclick = () => {
   }, 250);
 };
 $('wToTag').onclick = () => {
-  const members = [];
-  for (const w of W) {
-    if (w.br) continue;
-    if (w.asText) { members.push({ id: 0, n: w.label || w.token, text: true, e: [['Z', 1, 1, 0, 0, 10, 0, 0, w.label || w.token, 0, 6]] }); continue; }
-    const id = w.ids[w.pick], s = wSymById(id);
-    const e = wComposeEls(id, w.ind);
-    if (s && e.length) members.push({ id: s.id, n: w.punct ? s.n : (w.label || w.token), c: s.c, e });
-  }
-  if (!members.length) return toast(tr('Write something first', 'Skriv något först'));
-  try { localStorage.setItem('wb-gravyr-fran-skriv', JSON.stringify(members)); }
+  // the same hand-over as Bildspel: the text with every word's choice — Gravyrkort
+  // writes it into its own Bliss text (Håkan, 2026-11-05)
+  if (!W.some(w => !w.br)) return toast(tr('Write something first', 'Skriv något först'));
+  try { localStorage.setItem('wb-gravyr-fran-skriv', JSON.stringify(wShowPayload())); }
   catch (_) { return toast(tr('The text could not be handed over', 'Texten kunde inte lämnas över')); }
   if (!window.open('gravyr.html?from=skriv', '_blank'))
     toast(tr('The browser blocked the new tab — allow pop-ups for this page', 'Webbläsaren stoppade den nya fliken — tillåt popup-fönster för sidan'));

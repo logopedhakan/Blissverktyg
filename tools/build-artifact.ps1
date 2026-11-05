@@ -5,7 +5,7 @@
 # those tags go; app-only links (manifest, icons, pwa.js) go too, and the shared
 # stylesheet is inlined. Publish the page with these files beside it, at the
 # same relative paths as in workbench\:
-#   js/shared/lang.js  js/shared/wbs.js  js/shared/shortcuts.js
+#   js/shared/lang.js  js/shared/wbs.js  js/shared/shortcuts.js  js/shared/speak.js  js/shared/blisstext.js
 #   js/engine/bliss-shapes.js  js/engine/bliss-engine.js
 #   js/data/bliss-data.js  js/data/glosses.js
 $app = Join-Path $PSScriptRoot '..\workbench'
@@ -28,6 +28,8 @@ $t = $t -replace '(?m)^<!DOCTYPE html>\r?\n', '' `
         -replace '(?m)^</html>\r?\n?', '' `
         -replace '<title>[^<]*</title>', "<title>WinBliss$([char]0xB2) Bildspel</title>"
 $t = $t.Replace('<link rel="stylesheet" href="css/wb-base.css">', "<style>`n$css</style>")
+$css2 = [IO.File]::ReadAllText((Join-Path $app 'css\wb-blisstext.css'), $utf8)
+$t = $t.Replace('<link rel="stylesheet" href="css/wb-blisstext.css">', "<style>`n$css2</style>")
 [IO.File]::WriteAllText($out, $t, $utf8)
 "wrote $out ($((Get-Item $out).Length) bytes)"
 Select-String -Path $out -Pattern '<!DOCTYPE|<html|<head>|<body>|</body>|</html>|manifest\.webmanifest|pwa\.js|wb-base\.css' |

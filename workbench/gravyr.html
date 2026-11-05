@@ -10,6 +10,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="css/wb-base.css">
+<link rel="stylesheet" href="css/wb-blisstext.css">
 <style>
 body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;
   background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
@@ -25,12 +26,8 @@ main{flex:1;display:grid;grid-template-columns:240px 1fr 280px;gap:14px;padding:
 #hits button{text-align:left;border-color:transparent;background:transparent;padding:4px 8px;font-size:13.5px}
 #hits button:hover{background:var(--panel);border-color:var(--accent)}
 #mid{display:flex;flex-direction:column;gap:10px;min-height:0}
-#chosen{display:flex;gap:6px;flex-wrap:wrap;min-height:38px;align-items:center}
-#chosen .lbl{font-size:13px;color:var(--dim)}
-.chip{display:inline-flex;align-items:center;gap:7px;padding:4px 8px;background:var(--panel);
-  border:1px solid var(--rule);border-radius:9px;font-size:13.5px}
-.chip button{border:none;background:none;padding:0 2px;font-size:14px;color:var(--dim);cursor:pointer}
-.chip button:hover{color:var(--sel)}
+/* the text box, word chips and chooser: css/wb-blisstext.css (as in Bildspel) */
+#controls > *{flex-shrink:0}
 #stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
   background:var(--panel-2);border-radius:14px;padding:18px;overflow:auto}
 #stage svg{background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.18);max-width:100%;max-height:100%;height:auto}
@@ -64,15 +61,12 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 <main>
   <aside class="col" aria-label="Sök symboler">
     <input id="search" type="search" placeholder="Sök ord…" autocomplete="off">
-    <!-- Håkan, 2026-09-24: en textsträng som eget led i raden ("Hej · Kvinna · Lisa") —
-         som strängarna i gamla WinBliss, utan omväg via editorn -->
-    <button id="btnText">+ Text… (t.ex. ett namn)</button>
+    <!-- Håkan, 2026-11-05: ett klick lägger ordet sist i blisstexten till höger -->
     <div id="hits"></div>
     <!-- Håkan, 2026-09-24: egna symboler (t.ex. "person Lisa") kommer från den egna listan -->
     <button id="btnList">Öppna egen ordlista (.wbs)…</button>
   </aside>
   <section id="mid" aria-label="Förhandsvisning">
-    <div id="chosen"><span class="lbl">Kortets symboler — klicka i listan för att lägga till:</span></div>
     <div id="stage"></div>
     <div id="fitWarn" style="display:none;font-size:13px;color:var(--sel);font-weight:600"></div>
     <div id="hint">Förhandsvisningen visar kortet i verklig proportion. Svart = graveringslager,
@@ -80,6 +74,12 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
   </section>
   <aside class="col" aria-label="Inställningar">
     <div id="controls">
+      <!-- Håkan, 2026-11-05: skriv texten som i Bildspel — orden blir symboler,
+           klicka på ett ord för att välja symbol, böjning eller text -->
+      <h3>Blisstext</h3>
+      <textarea id="txt" placeholder="Skriv texten här, t.ex. hej jag heter Lisa" spellcheck="false"></textarea>
+      <div id="chips"></div>
+      <div id="chooser" hidden></div>
       <h3>Kort</h3>
       <!-- Håkan, 2026-11-05: färdiga pappersformat — fyller i bredd och höjd -->
       <label>Format
@@ -147,6 +147,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 <script src="js/engine/bliss-engine.js"></script>
 <script src="js/data/bliss-data.js"></script>
 <script src="js/data/glosses.js"></script>
+<script src="js/shared/blisstext.js"></script>
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
@@ -165,15 +166,15 @@ if (LNG === 'en') {
   document.querySelector('section[aria-label="Förhandsvisning"]').setAttribute('aria-label', 'Preview');
   document.querySelector('aside[aria-label="Inställningar"]').setAttribute('aria-label', 'Settings');
   $('search').placeholder = 'Search words…';
-  $('btnText').textContent = '+ Text… (e.g. a name)';
   $('btnList').textContent = 'Open your own word list (.wbs)…';
+  $('txt').placeholder = 'Write the text here, e.g. hello my name is Lisa';
   $('hint').innerHTML = 'The preview shows the tag at true proportion. Black = engraving layer, ' +
     'red line = cutting layer (laser software such as LightBurn sorts the layers by colour).';
   $('hint2').innerHTML = 'The symbols\' shapes export as pure vector paths. Text — the caption line and ' +
     'text inside symbols (e.g. a name) — comes along as SVG text, so check in the laser software that the ' +
     'typeface looks right, or ask Claude to bake outline paths.';
   const H3 = document.querySelectorAll('#controls h3');
-  H3[0].textContent = 'Tag'; H3[1].textContent = 'Symbols'; H3[2].textContent = 'Text';
+  H3[0].textContent = 'Bliss text'; H3[1].textContent = 'Tag'; H3[2].textContent = 'Symbols'; H3[3].textContent = 'Text';
   const L = (id, txt) => { const el = $(id).closest('label') || $(id).parentElement; el.firstChild.nodeValue = txt + ' '; };
   L('cardW', 'Width (mm)'); L('cardH', 'Height (mm)'); L('cutFrame', 'Cut frame');
   L('cardFmt', 'Format');
@@ -212,6 +213,10 @@ $('btnList').onclick = () => {
     f.arrayBuffer().then(buf => {
       customList = parseWbsText(decodeWbsBuffer(buf)).filter(s => s.e && s.e.length);
       $('btnList').textContent = `${tr('List', 'Lista')}: ${f.name.replace(/\.wbs$/i, '')} (${customList.length} ${tr('words', 'ord')}) ${tr('— searched together with BCI-AV', '— sök i den och i BCI-AV')}`;
+      // the text finds the list's own symbols too; words without a symbol try again
+      BT.useCustom(customList, true);
+      state.words = state.words.map(w => (w.asText && !w.ids.length) ? null : w);
+      textChanged();
       renderHits();
     });
   };
@@ -232,47 +237,64 @@ function renderHits() {
     const b = document.createElement('button');
     b.textContent = svName(s);
     b.title = (s.n || '') + ' · ' + s.id;
-    b.onclick = () => { chosen.push(s); renderAll(); };
+    b.onclick = () => addSymbol(s);
     box.appendChild(b);
   }
   if (!out.length) box.innerHTML = '<span style="font-size:12.5px;color:var(--dim);padding:6px">' + tr('No word matched.', 'Inget ord matchade.') + '</span>';
 }
 $('search').addEventListener('input', renderHits);
 
-/* ---- chosen symbols ---- */
-let chosen = [];
+/* ---- the tag's content: the Bliss text (Håkan, 2026-11-05) ----
+   Written and chosen as in Bildspel (js/shared/blisstext.js): every word
+   becomes its symbol, a click on a word chooses another symbol, a form or
+   text, "gå #2" and "#12345" work. The tag's members are made from the words:
+   a symbol already composed with its form, a word kept as text a text run. */
+const state = { text: '', words: [] };
+let open = -1;                 // word whose chooser is open
+let chosen = [];               // the members drawn on the tag, made from state.words
 /* a text run as a card member: one Z element, 6 units high, baseline on the
    earthline — the same geometry Skriv uses for words that stay text */
 function textSym(txt) {
   return { id: 0, n: txt, text: true, e: [['Z', 1, 1, 0, 0, 10, 0, 0, txt, 0, 6]] };
 }
-$('btnText').onclick = () => {
-  const txt = prompt(tr('Text on the tag (a word or a name, e.g. Lisa):', 'Text på kortet (ett ord eller ett namn, t.ex. Lisa):'), '');
-  if (txt === null || !txt.trim()) return;
-  chosen.push(textSym(txt.trim())); renderAll();
-};
-function renderChosen() {
-  const c = $('chosen');
-  c.innerHTML = '<span class="lbl">' + (chosen.length ? tr("The tag's symbols:", 'Kortets symboler:') :
-    tr("The tag's symbols — click the list to add:", 'Kortets symboler — klicka i listan för att lägga till:')) + '</span>';
-  chosen.forEach((s, i) => {
-    const chip = document.createElement('span'); chip.className = 'chip';
-    if (s.text) {
-      chip.textContent = '„' + s.n + '”';
-      chip.title = tr('Text — click to edit', 'Text — klicka för att ändra'); chip.style.cursor = 'pointer';
-      chip.onclick = (ev) => {
-        if (ev.target.tagName === 'BUTTON') return;
-        const t = prompt(tr('Text on the tag:', 'Text på kortet:'), s.n);
-        if (t === null || !t.trim()) return;
-        chosen[i] = textSym(t.trim()); renderAll();
-      };
-    } else chip.textContent = svName(s);
-    const x = document.createElement('button'); x.textContent = '✕';
-    x.title = tr('Remove', 'Ta bort'); x.onclick = () => { chosen.splice(i, 1); renderAll(); };
-    chip.appendChild(x); c.appendChild(chip);
+function membersFromWords() {
+  const out = [];
+  for (const w of state.words) {
+    if (w.br) continue;                         // the tag is one row
+    if (w.asText) { out.push(textSym(w.label || w.token)); continue; }
+    const id = w.ids[w.pick], s = BT.symById(id);
+    const e = BT.composeEls(id, w.punct ? '' : w.ind);
+    if (s && e.length) out.push({ id: s.id, n: w.punct ? s.n : (w.label || w.token), c: s.c, e });
+  }
+  return out;
+}
+function renderChips() {
+  BT.renderChips($('chips'), state, open, (i) => { open = open === i ? -1 : i; renderChips(); renderChooser(); });
+}
+function renderChooser() {
+  BT.renderChooser($('chooser'), state, open, {
+    change: () => { renderChips(); renderChooser(); chosen = membersFromWords(); renderStage(); },
+    label: () => { chosen = membersFromWords(); renderStage(); },
+    labelDone: renderChips,
   });
 }
-
+/* the text box and everything that writes into it */
+function textChanged() {
+  BT.parse(state, $('txt'));
+  if (open >= state.words.length) open = -1;
+  chosen = membersFromWords();
+  renderAll();
+}
+$('txt').addEventListener('input', () => { state.text = $('txt').value; textChanged(); });
+/* add a symbol at the end of the text — the search list, Formfamiljer, the editor.
+   "#id" is the exact symbol, never a guess (Skriv's own code syntax) */
+function addSymbol(s) {
+  if (!s || !s.e || !s.e.length) return;
+  if (!BT.symById(s.id) || BT.symById(s.id) !== s) BT.useCustom([s]);
+  state.text = (state.text.replace(/\s+$/, '') + ' #' + s.id + ' ').replace(/^\s+/, '');
+  $('txt').value = state.text;
+  textChanged();
+}
 /* ---- geometry: measure a symbol's engine-space bbox ---- */
 const NS = 'http://www.w3.org/2000/svg';
 function measure(els) {
@@ -454,7 +476,7 @@ function renderStage() {
     w.style.display = 'block';
   } else w.style.display = 'none';
 }
-function renderAll() { renderChosen(); renderStage(); }
+function renderAll() { renderChips(); renderChooser(); renderStage(); }
 
 for (const id of ['cardW', 'cardH', 'symH', 'gap', 'penW', 'caption', 'txtH', 'cornerR', 'holeD', 'bgLight', 'posY'])
   $(id).addEventListener('input', renderStage);
@@ -488,30 +510,35 @@ $('btnSVG').onclick = () => {
   a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 };
 
-/* bridges: ?w=id,id,id preloads standard symbols (formfamiljer → gravyr);
-   ?from=editor takes the symbol WinBliss's editor left in localStorage (any
+/* bridges, all into the Bliss text:
+   ?w=id,id,id — standard symbols (Formfamiljer → gravyr);
+   ?from=editor — the symbol WinBliss's editor left in localStorage (any
    composition, incl. text elements — the "person Lisa" case);
-   ?from=skriv takes Skriv's whole text: one member per word, each symbol
-   already composed with its form, words kept as text stay text runs
-   (Håkan, 2026-11-04) */
+   ?from=skriv — Skriv's whole text with every word's choice (symbol, form,
+   text), as Bildspel gets it (Håkan, 2026-11-04/05) */
 (() => {
   const q = new URLSearchParams(location.search);
   const w = q.get('w');
-  if (w) for (const id of w.split(',')) {
-    const s = BLISS_DATA.find(x => x.id === +id);
-    if (s) chosen.push(s);
-  }
+  if (w) for (const id of w.split(',')) addSymbol(BLISS_DATA.find(x => x.id === +id));
   if (q.get('from') === 'editor') {
     try {
       const s = JSON.parse(localStorage.getItem('wb-gravyr') || 'null');
-      if (s && s.e && s.e.length) chosen.push(s);
+      // an unsaved composition has no id of its own: give it one outside BCI's range
+      if (s && s.e && s.e.length) addSymbol(Object.assign({}, s, { id: s.id || 990000 }));
     } catch (_) {}
   }
   if (q.get('from') === 'skriv') {
     try {
-      const list = JSON.parse(localStorage.getItem('wb-gravyr-fran-skriv') || 'null');
+      const data = JSON.parse(localStorage.getItem('wb-gravyr-fran-skriv') || 'null');
       localStorage.removeItem('wb-gravyr-fran-skriv');
-      if (Array.isArray(list)) for (const s of list) if (s && s.e && s.e.length) chosen.push(s);
+      if (data && typeof data.text === 'string') {
+        if (Array.isArray(data.custom) && data.custom.length) BT.useCustom(data.custom);
+        state.text = data.text; state.words = Array.isArray(data.words) ? data.words : [];
+        $('txt').value = state.text;
+        BT.parse(state, $('txt'));
+        for (const ww of state.words) if (!ww.br && !ww.asText && ww.ind) BT.autoLabel(ww);
+        chosen = membersFromWords();
+      }
     } catch (_) {}
     q.delete('from');                     // a reload must not add the text again
     history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : ''));
@@ -527,7 +554,7 @@ wbShortcuts({
     O: { run: () => $('btnList').click(), desc: () => tr('open your own word list (.wbs)', 'öppna egen ordlista (.wbs)') },
     H: { run: () => { location.href = 'start.html'; }, desc: () => tr('to the start page', 'till startsidan') },
   },
-  extra: () => [[tr('the + Text… button', '+ Text…-knappen'), tr('add a text run as its own member of the tag', 'lägg en textsträng som eget led på kortet')]],
+  extra: () => [[tr('the Bliss text', 'Blisstexten'), tr('write — every word becomes its symbol; click a word for symbol, form or text', 'skriv — varje ord blir sin symbol; klicka på ett ord för symbol, böjning eller text')]],
 });
 </script>
 </body>
