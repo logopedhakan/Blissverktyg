@@ -1273,6 +1273,7 @@ $('btnSettings').onclick = () => {
   $('expText').value = ed.textPlace || 'none';
   $('wsList').checked = WS.list; $('wsChips').checked = WS.chips; $('wsChooser').checked = WS.chooser;
   $('wsUnit').value = WS.unit; $('wsText').value = WS.text; $('wsGap').value = WS.gap; $('wsPen').value = WS.pen;
+  if (typeof fillVoiceSelect === 'function') fillVoiceSelect();   // the voices may have loaded since
   $('settingsDlg').showModal();
 };
 for (const [id, key, kind] of [['wsList', 'list', 'b'], ['wsChips', 'chips', 'b'], ['wsChooser', 'chooser', 'b'],
@@ -2092,6 +2093,31 @@ function wSpokenText() {
 }
 wbSpeakButton($('wSpeak'), wSpokenText, toast);
 wbSpeakHotkey(() => $('wSpeak').click());          // Alt+P
+
+/* Settings → Read aloud: voice, speed and a test (Håkan, 2026-11-05). The
+   list is the browser's own voices for the interface language, men's and
+   women's marked where the name is known; kept in 'wb-tal' for every part. */
+function fillVoiceSelect() {
+  const sel = $('setVoice');
+  if (!WB_SPEECH) { sel.closest('.dlgRows').hidden = true; return; }
+  const chosen = wbChosenVoice(lang);
+  sel.innerHTML = '';
+  for (const c of wbVoiceChoices(lang)) {
+    const o = document.createElement('option');
+    o.value = c.name; o.textContent = c.label;
+    sel.appendChild(o);
+  }
+  sel.value = [...sel.options].some(o => o.value === chosen) ? chosen : '';
+  $('setRate').value = String(wbRate());
+}
+$('setVoice').addEventListener('change', () => wbSetVoice(lang, $('setVoice').value));
+$('setRate').addEventListener('change', () => wbSetRate($('setRate').value));
+$('btnVoiceTest').onclick = () => {
+  const res = wbSpeak(tr('This is how the text is read aloud.', 'Så här låter uppläsningen av texten.'), { lang });
+  if (res === 'novoice') toast(wbSpeakProblem(res));
+};
+fillVoiceSelect();
+if (WB_SPEECH) speechSynthesis.addEventListener('voiceschanged', fillVoiceSelect);
 $('wSpeak').title = tr('Read the text aloud (click again, or Alt+P, to stop)', 'Läs upp texten (klicka igen, eller Alt+P, för att stoppa)');
 function famOpen() {
   const fr = $('famFrame');

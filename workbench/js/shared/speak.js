@@ -72,6 +72,44 @@ function wbSpeakButton(btn, getText, onProblem) {
     if (res === 'novoice' && !warned && onProblem) { warned = true; onProblem(wbSpeakProblem(res)); }
   });
 }
+/* ---- choosing the voice and the speed (Håkan, 2026-11-05) ----
+   The browser lists the voices but not whether they are a man's or a woman's,
+   so the well-known ones are labelled by name. On Windows, Chrome sees only
+   Bengt for Swedish; Edge adds the natural online voices Sofie, Hillevi and
+   Mattias. The choice is kept in 'wb-tal' and used by every part. */
+const WB_VOICE_KIND = {
+  bengt: 'm', mattias: 'm', kristian: 'm', oskar: 'm', 'google svenska': 'f',
+  sofie: 'f', hillevi: 'f', alva: 'f', klara: 'f',
+  david: 'm', mark: 'm', george: 'm', ryan: 'm', guy: 'm', daniel: 'm',
+  zira: 'f', hazel: 'f', susan: 'f', aria: 'f', jenny: 'f', libby: 'f', sonia: 'f', samantha: 'f', claire: 'f',
+};
+function wbVoiceKind(v) {
+  const n = (v.name || '').toLowerCase();
+  for (const [k, g] of Object.entries(WB_VOICE_KIND)) if (n.includes(k)) return g;
+  return '';
+}
+/* [{ name, label }] for the language; the first entry ('') is "automatic" */
+function wbVoiceChoices(lang) {
+  const sv = wbLang() === 'sv';
+  const out = [{ name: '', label: sv ? 'Automatisk (bästa tillgängliga)' : 'Automatic (best available)' }];
+  for (const v of wbVoices(lang)) {
+    const k = wbVoiceKind(v);
+    const kind = k === 'f' ? (sv ? 'kvinna' : 'woman') : k === 'm' ? (sv ? 'man' : 'man') : '';
+    const where = v.localService ? '' : (sv ? 'online' : 'online');
+    const extra = [kind, where].filter(Boolean).join(', ');
+    out.push({ name: v.name, label: v.name.replace(/^Microsoft\s+/, '').replace(/\s+-\s+.*$/, '') + (extra ? ' (' + extra + ')' : '') });
+  }
+  return out;
+}
+function wbChosenVoice(lang) { return wbTal['voice-' + ((lang || wbLang()) === 'sv' ? 'sv' : 'en')] || ''; }
+function wbSetVoice(lang, name) {
+  const key = 'voice-' + ((lang || wbLang()) === 'sv' ? 'sv' : 'en');
+  if (name) wbTal[key] = name; else delete wbTal[key];
+  wbTalSave();
+}
+function wbRate() { return wbTal.rate || 0.9; }
+function wbSetRate(r) { wbTal.rate = Math.min(1.6, Math.max(0.5, +r || 0.9)); wbTalSave(); }
+
 /* Alt+P starts or stops reading aloud, in every part (Håkan, 2026-11-05).
    Ctrl+T was wished for, but browsers keep it for "new tab" and never pass it
    to a page; Alt+P is free in Chrome, Edge and Firefox (Alt+T would open
