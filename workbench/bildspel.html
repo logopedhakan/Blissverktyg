@@ -113,6 +113,13 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 #show.on ~ #showSpeak{display:block}
 #showSpeak[hidden]{display:none !important}
 #btnSpeak.speaking{background:var(--accent);border-color:var(--accent);color:#fff}
+/* background colour of the slides: swatches + a free colour */
+.bgRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
+.bgRow > span:first-child{flex:1 0 100%}
+#bgSwatches{display:flex;gap:5px;flex-wrap:wrap}
+#bgSwatches button{width:26px;height:26px;padding:0;border-radius:7px;border:2px solid var(--rule)}
+#bgSwatches button.on,#bgSwatches button:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+#optBg{width:34px;height:28px;padding:0 2px;border:1px solid var(--rule);border-radius:7px;background:var(--panel);cursor:pointer}
 /* zoomed in or a small window: the slides become a strip on top, and the
    slide and the panel (picture folder included) stay side by side on screen */
 @media (max-width:900px) and (min-width:601px){
@@ -191,6 +198,9 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
         </select></label>
       <label><span data-en="Picture height">Bildens höjd</span> <input id="optImg" type="range" min="30" max="85" step="1"></label>
       <label><span data-en="Space between symbols">Avstånd mellan symbolerna</span> <input id="optGap" type="range" min="1" max="24" step="1"></label>
+      <div class="bgRow"><span data-en="Background colour">Bakgrundsfärg</span>
+        <span id="bgSwatches"></span>
+        <input id="optBg" type="color" value="#ffffff" title="Välj en egen färg" data-en-title="Choose your own colour"></div>
       <label><span data-en="Read each slide aloud when showing">Läs upp sidorna vid visning</span> <input id="optSpeak" type="checkbox"></label>
       <button id="btnList" data-en="Open your own word list (.wbs)…">Öppna egen ordlista (.wbs)…</button>
       <div id="saveNote"></div>
@@ -692,20 +702,31 @@ function layoutOf(s) {
 }
 function slideSVG(s, placeholder) {
   const L = layoutOf(s);
-  let inner = `<rect width="${SW}" height="${SH}" fill="#fff"/>`;
+  const bg = show.bg || '#ffffff', ink = inkFor(bg);
+  let inner = `<rect width="${SW}" height="${SH}" fill="${bg}"/>`;
   if (L.img) inner += `<image href="${s.img}" x="${L.img.x}" y="${L.img.y}" width="${L.img.w}" height="${L.img.h}" preserveAspectRatio="xMidYMid meet"/>`;
   if (L.blk) inner += `<svg x="${L.txt.x}" y="${L.txt.y}" width="${L.txt.w}" height="${L.txt.h}"
       viewBox="${L.vb.x.toFixed(1)} ${L.vb.y.toFixed(1)} ${L.vb.w.toFixed(1)} ${L.vb.h.toFixed(1)}" preserveAspectRatio="xMidYMid meet">
-      <g stroke="#000" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
+      <g stroke="${ink}" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
   if (!L.img && !L.blk && placeholder)
     inner += `<text x="${SW / 2}" y="${SH / 2}" text-anchor="middle" font-size="44" fill="#9A9AA2"
       font-family="Atkinson Hyperlegible Next, Atkinson Hyperlegible, sans-serif">${escXml(placeholder)}</text>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SW} ${SH}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:#000}</style>${inner}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SW} ${SH}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:${ink}}</style>${inner}</svg>`;
+}
+/* the slide's ink follows its background (Håkan, 2026-11-05): black symbols on
+   a light colour, white on a dark one — whichever reads best (WCAG luminance) */
+function inkFor(bg) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(bg || '');
+  if (!m) return '#000';
+  const n = parseInt(m[1], 16);
+  const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * lin(n >> 16 & 255) + 0.7152 * lin(n >> 8 & 255) + 0.0722 * lin(n & 255);
+  return L < 0.179 ? '#fff' : '#000';
 }
 
 /* ================= the show ================= */
 const newSlide = () => ({ text: '', words: [], img: null, imgW: 0, imgH: 0 });
-let show = { v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, imgPct: 62, speakAuto: false, slides: [newSlide()], custom: [] };
+let show = { v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, imgPct: 62, speakAuto: false, bg: '#ffffff', slides: [newSlide()], custom: [] };
 let cur = 0;          // current slide
 let open = -1;        // word whose chooser is open
 
@@ -826,6 +847,8 @@ function renderOptions() {
   $('optImg').value = String(show.imgPct);
   $('optGap').value = String(show.gap);
   $('optSpeak').checked = !!show.speakAuto;
+  $('optBg').value = show.bg || '#ffffff';
+  for (const b of $('bgSwatches').children) b.classList.toggle('on', b.dataset.bg.toLowerCase() === (show.bg || '#ffffff').toLowerCase());
 }
 function renderAll() { renderSlides(); renderStage(); renderImgRow(); renderChips(); renderChooser(); }
 function go(i) {
@@ -1006,6 +1029,24 @@ $('optImg').addEventListener('input', () => { show.imgPct = +$('optImg').value; 
 $('optGap').addEventListener('input', () => { show.gap = +$('optGap').value; renderSlides(); renderStage(); autosave(); });
 $('optSpeak').addEventListener('change', () => { show.speakAuto = $('optSpeak').checked; autosave(); });
 
+/* ---- background colour for the whole show (Håkan, 2026-11-05): a few calm
+   colours that help reading (light yellow and light blue are common choices
+   for low vision), black and dark blue for high contrast, or any colour */
+const BG_SWATCHES = [
+  ['#ffffff', 'Vit', 'White'], ['#fff6c2', 'Ljusgul', 'Light yellow'], ['#dcebfa', 'Ljusblå', 'Light blue'],
+  ['#dff2e1', 'Ljusgrön', 'Light green'], ['#e9e9e9', 'Ljusgrå', 'Light grey'],
+  ['#12233d', 'Mörkblå', 'Dark blue'], ['#000000', 'Svart', 'Black'],
+];
+for (const [c, sv, en] of BG_SWATCHES) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.dataset.bg = c; b.style.background = c;
+  b.title = tr(en, sv); b.setAttribute('aria-label', tr(en, sv));
+  b.onclick = () => setBg(c);
+  $('bgSwatches').appendChild(b);
+}
+function setBg(c) { show.bg = c; renderOptions(); renderSlides(); renderStage(); autosave(); }
+$('optBg').addEventListener('input', () => setBg($('optBg').value));
+
 /* ---- read aloud (Håkan, 2026-11-04): ONLY the text under the symbols — the
    same words the slide prints under them ("gick" for gå + dåtid). Never the
    symbols' own content: punctuation symbols carry no text and are not read;
@@ -1063,7 +1104,7 @@ function serialize() {
 }
 function load(obj) {
   if (!obj || !Array.isArray(obj.slides) || !obj.slides.length) throw new Error('bad');
-  show = Object.assign({ v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, imgPct: 62, speakAuto: false, custom: [] }, obj);
+  show = Object.assign({ v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, imgPct: 62, speakAuto: false, bg: '#ffffff', custom: [] }, obj);
   show.slides = show.slides.map(s => Object.assign(newSlide(), s));
   if (![160, 120, 90, 65].includes(show.size)) show.size = 120;
   if (show.custom.length) useCustom(show.custom);
@@ -1231,8 +1272,8 @@ function dataURLBytes(url) {
 function blockPNG(L) {
   const pxW = 2400, pxH = Math.min(4000, Math.round(pxW * L.vb.h / L.vb.w));
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${pxW}" height="${pxH}"
-    viewBox="${L.vb.x} ${L.vb.y} ${L.vb.w} ${L.vb.h}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:#000}</style>
-    <g stroke="#000" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
+    viewBox="${L.vb.x} ${L.vb.y} ${L.vb.w} ${L.vb.h}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:${inkFor(show.bg)}}</style>
+    <g stroke="${inkFor(show.bg)}" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
@@ -1278,6 +1319,9 @@ async function exportPptx() {
   btn.disabled = true; btn.textContent = tr('Making PowerPoint…', 'Skapar PowerPoint…');
   try {
     const files = [], slideIds = [], media = new Set();
+    // the show's background colour on every slide (the Bliss picture is transparent over it)
+    const bgHex = (/^#?([0-9a-f]{6})$/i.exec(show.bg || '') || [, 'FFFFFF'])[1].toUpperCase();
+    const slideBgXml = `<p:bg><p:bgPr><a:solidFill><a:srgbClr val="${bgHex}"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>`;
     for (let i = 0; i < show.slides.length; i++) {
       const s = show.slides[i], L = layoutOf(s), n = i + 1;
       const rl = [['rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml']];
@@ -1297,7 +1341,7 @@ async function exportPptx() {
         tree += pic(shapeId++, 'Bliss', s.text, 'rId3', fit(L.vb.w / L.vb.h, L.txt));
       }
       files.push({ name: `ppt/slides/slide${n}.xml`, data: XML +
-        `<p:sld ${NSP}><p:cSld><p:spTree>${GRP}${tree}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>` });
+        `<p:sld ${NSP}><p:cSld>${slideBgXml}<p:spTree>${GRP}${tree}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>` });
       files.push({ name: `ppt/slides/_rels/slide${n}.xml.rels`, data: rels(rl) });
       slideIds.push(n);
     }
