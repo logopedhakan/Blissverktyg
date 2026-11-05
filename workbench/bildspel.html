@@ -116,10 +116,13 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 /* background colour of the slides: swatches + a free colour */
 .bgRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
 .bgRow > span:first-child{flex:1 0 100%}
-#bgSwatches{display:flex;gap:5px;flex-wrap:wrap}
-#bgSwatches button{width:26px;height:26px;padding:0;border-radius:7px;border:2px solid var(--rule)}
-#bgSwatches button.on,#bgSwatches button:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
-#optBg{width:34px;height:28px;padding:0 2px;border:1px solid var(--rule);border-radius:7px;background:var(--panel);cursor:pointer}
+#bgSwatches,#tbgSwatches{display:flex;gap:5px;flex-wrap:wrap}
+#bgSwatches button,#tbgSwatches button{width:26px;height:26px;padding:0;border-radius:7px;border:2px solid var(--rule)}
+#bgSwatches button.on,#bgSwatches button:focus-visible,
+#tbgSwatches button.on,#tbgSwatches button:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+/* "no text background": a white tile struck through */
+#tbgSwatches button.none{background:linear-gradient(to top right,transparent 44%,#c33 44%,#c33 56%,transparent 56%),#fff !important}
+#optBg,#optTextBg{width:34px;height:28px;padding:0 2px;border:1px solid var(--rule);border-radius:7px;background:var(--panel);cursor:pointer}
 /* zoomed in or a small window: the slides become a strip on top, and the
    slide and the panel (picture folder included) stay side by side on screen */
 @media (max-width:900px) and (min-width:601px){
@@ -201,6 +204,9 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
       <div class="bgRow"><span data-en="Background colour">Bakgrundsfärg</span>
         <span id="bgSwatches"></span>
         <input id="optBg" type="color" value="#ffffff" title="Välj en egen färg" data-en-title="Choose your own colour"></div>
+      <div class="bgRow"><span data-en="Background behind the Bliss text">Bakgrund bakom blisstexten</span>
+        <span id="tbgSwatches"></span>
+        <input id="optTextBg" type="color" value="#ffffff" title="Välj en egen färg" data-en-title="Choose your own colour"></div>
       <label><span data-en="Read each slide aloud when showing">Läs upp sidorna vid visning</span> <input id="optSpeak" type="checkbox"></label>
       <button id="btnList" data-en="Open your own word list (.wbs)…">Öppna egen ordlista (.wbs)…</button>
       <div id="saveNote"></div>
@@ -702,9 +708,13 @@ function layoutOf(s) {
 }
 function slideSVG(s, placeholder) {
   const L = layoutOf(s);
-  const bg = show.bg || '#ffffff', ink = inkFor(bg);
+  const bg = show.bg || '#ffffff', ink = inkFor(show.textBg || bg);
   let inner = `<rect width="${SW}" height="${SH}" fill="${bg}"/>`;
   if (L.img) inner += `<image href="${s.img}" x="${L.img.x}" y="${L.img.y}" width="${L.img.w}" height="${L.img.h}" preserveAspectRatio="xMidYMid meet"/>`;
+  if (L.blk && show.textBg) {
+    const b = textBand(L);
+    inner += `<rect x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" width="${b.w.toFixed(1)}" height="${b.h.toFixed(1)}" rx="22" fill="${show.textBg}"/>`;
+  }
   if (L.blk) inner += `<svg x="${L.txt.x}" y="${L.txt.y}" width="${L.txt.w}" height="${L.txt.h}"
       viewBox="${L.vb.x.toFixed(1)} ${L.vb.y.toFixed(1)} ${L.vb.w.toFixed(1)} ${L.vb.h.toFixed(1)}" preserveAspectRatio="xMidYMid meet">
       <g stroke="${ink}" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
@@ -713,8 +723,18 @@ function slideSVG(s, placeholder) {
       font-family="Atkinson Hyperlegible Next, Atkinson Hyperlegible, sans-serif">${escXml(placeholder)}</text>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SW} ${SH}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:${ink}}</style>${inner}</svg>`;
 }
+/* the coloured tile behind the Bliss text (Håkan, 2026-11-05): the text area's
+   full width, and as high as the symbols and words actually are, with a margin
+   — never reaching up into the picture */
+function textBand(L) {
+  const k = L.txt.w / L.vb.w;                       // slide units per block unit (meet: same both ways)
+  const top = L.txt.y + (0 - L.vb.y) * k, h = L.blk.H * k, pad = 18;
+  const y = Math.max(L.txt.y - 10, top - pad);
+  return { x: L.txt.x - 10, y, w: L.txt.w + 20, h: Math.min(SH - 6 - y, top + h + pad - y) };
+}
 /* the slide's ink follows its background (Håkan, 2026-11-05): black symbols on
-   a light colour, white on a dark one — whichever reads best (WCAG luminance) */
+   a light colour, white on a dark one — whichever reads best (WCAG luminance).
+   With a tile behind the text, the tile's colour decides. */
 function inkFor(bg) {
   const m = /^#?([0-9a-f]{6})$/i.exec(bg || '');
   if (!m) return '#000';
@@ -726,7 +746,7 @@ function inkFor(bg) {
 
 /* ================= the show ================= */
 const newSlide = () => ({ text: '', words: [], img: null, imgW: 0, imgH: 0 });
-let show = { v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, imgPct: 62, speakAuto: false, bg: '#ffffff', slides: [newSlide()], custom: [] };
+let show = { v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, slides: [newSlide()], custom: [] };
 let cur = 0;          // current slide
 let open = -1;        // word whose chooser is open
 
@@ -849,6 +869,8 @@ function renderOptions() {
   $('optSpeak').checked = !!show.speakAuto;
   $('optBg').value = show.bg || '#ffffff';
   for (const b of $('bgSwatches').children) b.classList.toggle('on', b.dataset.bg.toLowerCase() === (show.bg || '#ffffff').toLowerCase());
+  $('optTextBg').value = show.textBg || '#ffffff';
+  for (const b of $('tbgSwatches').children) b.classList.toggle('on', b.dataset.bg.toLowerCase() === (show.textBg || '').toLowerCase());
 }
 function renderAll() { renderSlides(); renderStage(); renderImgRow(); renderChips(); renderChooser(); }
 function go(i) {
@@ -1046,6 +1068,17 @@ for (const [c, sv, en] of BG_SWATCHES) {
 }
 function setBg(c) { show.bg = c; renderOptions(); renderSlides(); renderStage(); autosave(); }
 $('optBg').addEventListener('input', () => setBg($('optBg').value));
+/* the tile behind the Bliss text: "none" first (the default), then the same colours */
+for (const [c, sv, en] of [['', 'Ingen', 'None'], ...BG_SWATCHES]) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.dataset.bg = c;
+  if (c) b.style.background = c; else b.className = 'none';
+  b.title = tr(en, sv); b.setAttribute('aria-label', tr(en, sv));
+  b.onclick = () => setTextBg(c || null);
+  $('tbgSwatches').appendChild(b);
+}
+function setTextBg(c) { show.textBg = c; renderOptions(); renderSlides(); renderStage(); autosave(); }
+$('optTextBg').addEventListener('input', () => setTextBg($('optTextBg').value));
 
 /* ---- read aloud (Håkan, 2026-11-04): ONLY the text under the symbols — the
    same words the slide prints under them ("gick" for gå + dåtid). Never the
@@ -1104,7 +1137,7 @@ function serialize() {
 }
 function load(obj) {
   if (!obj || !Array.isArray(obj.slides) || !obj.slides.length) throw new Error('bad');
-  show = Object.assign({ v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, imgPct: 62, speakAuto: false, bg: '#ffffff', custom: [] }, obj);
+  show = Object.assign({ v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, custom: [] }, obj);
   show.slides = show.slides.map(s => Object.assign(newSlide(), s));
   if (![160, 120, 90, 65].includes(show.size)) show.size = 120;
   if (show.custom.length) useCustom(show.custom);
@@ -1272,8 +1305,8 @@ function dataURLBytes(url) {
 function blockPNG(L) {
   const pxW = 2400, pxH = Math.min(4000, Math.round(pxW * L.vb.h / L.vb.w));
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${pxW}" height="${pxH}"
-    viewBox="${L.vb.x} ${L.vb.y} ${L.vb.w} ${L.vb.h}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:${inkFor(show.bg)}}</style>
-    <g stroke="${inkFor(show.bg)}" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
+    viewBox="${L.vb.x} ${L.vb.y} ${L.vb.w} ${L.vb.h}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:${inkFor(show.textBg || show.bg)}}</style>
+    <g stroke="${inkFor(show.textBg || show.bg)}" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
@@ -1333,6 +1366,15 @@ async function exportPptx() {
         files.push({ name: `ppt/media/bild${n}.${ext}`, data: bytes });
         rl.push(['rId2', 'image', `../media/bild${n}.${ext}`]);
         tree += pic(shapeId++, tr('Picture', 'Bild'), s.imgName || '', 'rId2', fit((s.imgW || 4) / (s.imgH || 3), L.img));
+      }
+      if (L.blk && show.textBg) {
+        // the tile behind the Bliss text: a rounded rectangle, then the picture on top of it
+        const b = textBand(L), e = (v) => Math.round(v * EMU);
+        const hex = (/^#?([0-9a-f]{6})$/i.exec(show.textBg) || [, 'FFFFFF'])[1].toUpperCase();
+        tree += `<p:sp><p:nvSpPr><p:cNvPr id="${shapeId++}" name="${escXml(tr('Text background', 'Textbakgrund'))}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
+          `<p:spPr><a:xfrm><a:off x="${e(b.x)}" y="${e(b.y)}"/><a:ext cx="${e(b.w)}" cy="${e(b.h)}"/></a:xfrm>` +
+          `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 8000"/></a:avLst></a:prstGeom>` +
+          `<a:solidFill><a:srgbClr val="${hex}"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr></p:sp>`;
       }
       if (L.blk) {
         media.add('png');
