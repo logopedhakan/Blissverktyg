@@ -109,10 +109,11 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
       <span><b>Läs upp ordet när jag klickar</b><br>
       <span style="color:var(--dim)">varje förslag du klickar på läses upp med talsyntes</span></span></label>
     <div class="mode">
-      <label><input type="radio" name="mode" value="only" checked>
+      <label><input type="radio" name="mode" value="only">
         <span><b>Bara valda former</b><br>
         <span style="color:var(--dim)">ord som kan byggas helt av de valda formerna</span></span></label>
-      <label><input type="radio" name="mode" value="all">
+      <!-- Håkan, 2026-11-05: "Innehåller alla valda" är grundinställningen -->
+      <label><input type="radio" name="mode" value="all" checked>
         <span><b>Innehåller alla valda</b><br>
         <span style="color:var(--dim)">ord där varje vald form ingår (även andra former)</span></span></label>
       <label><input type="radio" name="mode" value="any">
