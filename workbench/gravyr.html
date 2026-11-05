@@ -43,6 +43,7 @@ button:hover{border-color:var(--accent)}
 #controls label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px}
 #controls input[type=number]{width:74px;font:inherit;padding:4px 7px;border:1px solid var(--rule);
   border-radius:7px;background:var(--panel);color:var(--ink)}
+#controls select{font:inherit;padding:4px 6px;border:1px solid var(--rule);border-radius:7px;background:var(--panel);color:var(--ink)}
 #controls .posRow{display:flex;gap:4px;align-items:center}
 #controls .posRow button{padding:3px 9px;font-size:15px;line-height:1.2}
 #controls .posRow input{width:58px}
@@ -80,6 +81,15 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
   <aside class="col" aria-label="Inställningar">
     <div id="controls">
       <h3>Kort</h3>
+      <!-- Håkan, 2026-11-05: färdiga pappersformat — fyller i bredd och höjd -->
+      <label>Format
+        <select id="cardFmt">
+          <option value="">Egen storlek</option>
+          <option value="210x297">A4 stående</option>
+          <option value="297x210">A4 liggande</option>
+          <option value="148x210">A5 stående</option>
+          <option value="210x148">A5 liggande</option>
+        </select></label>
       <label>Bredd (mm) <input id="cardW" type="number" min="20" max="600" value="85"></label>
       <label>Höjd (mm) <input id="cardH" type="number" min="15" max="600" value="55"></label>
       <label>Skärram <input id="cutFrame" type="checkbox" checked></label>
@@ -166,6 +176,8 @@ if (LNG === 'en') {
   H3[0].textContent = 'Tag'; H3[1].textContent = 'Symbols'; H3[2].textContent = 'Text';
   const L = (id, txt) => { const el = $(id).closest('label') || $(id).parentElement; el.firstChild.nodeValue = txt + ' '; };
   L('cardW', 'Width (mm)'); L('cardH', 'Height (mm)'); L('cutFrame', 'Cut frame');
+  L('cardFmt', 'Format');
+  [...$('cardFmt').options].forEach((o, i) => { o.textContent = ['Custom size', 'A4 portrait', 'A4 landscape', 'A5 portrait', 'A5 landscape'][i]; });
   L('cornerR', 'Corner radius (mm)'); L('holeD', 'Hole diameter (mm)');
   L('symH', 'Symbol height (mm)'); L('gap', 'Word spacing (mm)'); L('penW', 'Line width (mm)');
   L('txtH', 'Text height (mm)');
@@ -446,6 +458,20 @@ function renderAll() { renderChosen(); renderStage(); }
 
 for (const id of ['cardW', 'cardH', 'symH', 'gap', 'penW', 'caption', 'txtH', 'cornerR', 'holeD', 'bgLight', 'posY'])
   $(id).addEventListener('input', renderStage);
+/* paper formats (Håkan, 2026-11-05): a choice fills in width and height; typing
+   another size by hand shows "Egen storlek" again — the list always tells the truth */
+function syncFmt() {
+  const v = `${num('cardW', 0)}x${num('cardH', 0)}`;
+  $('cardFmt').value = [...$('cardFmt').options].some(o => o.value === v) ? v : '';
+}
+$('cardFmt').addEventListener('change', () => {
+  const v = $('cardFmt').value; if (!v) return;
+  const [w, h] = v.split('x');
+  $('cardW').value = w; $('cardH').value = h;
+  renderStage();
+});
+$('cardW').addEventListener('input', syncFmt);
+$('cardH').addEventListener('input', syncFmt);
 const nudge = (mm) => { $('posY').value = String(Math.round((num('posY', 0) + mm) * 10) / 10); renderStage(); };
 $('posUp').onclick = () => nudge(1);
 $('posDown').onclick = () => nudge(-1);
