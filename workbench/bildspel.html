@@ -201,6 +201,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
         </select></label>
       <label><span data-en="Picture height">Bildens höjd</span> <input id="optImg" type="range" min="30" max="85" step="1"></label>
       <label><span data-en="Space between symbols">Avstånd mellan symbolerna</span> <input id="optGap" type="range" min="1" max="24" step="1"></label>
+      <label><span data-en="Line width">Linjebredd</span> <input id="optPen" type="range" min="15" max="100" step="5"></label>
       <div class="bgRow"><span data-en="Background colour">Bakgrundsfärg</span>
         <span id="bgSwatches"></span>
         <input id="optBg" type="color" value="#ffffff" title="Välj en egen färg" data-en-title="Choose your own colour"></div>
@@ -716,8 +717,8 @@ function slideSVG(s, placeholder) {
     inner += `<rect x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" width="${b.w.toFixed(1)}" height="${b.h.toFixed(1)}" rx="22" fill="${show.textBg}"/>`;
   }
   if (L.blk) inner += `<svg x="${L.txt.x}" y="${L.txt.y}" width="${L.txt.w}" height="${L.txt.h}"
-      viewBox="${L.vb.x.toFixed(1)} ${L.vb.y.toFixed(1)} ${L.vb.w.toFixed(1)} ${L.vb.h.toFixed(1)}" preserveAspectRatio="xMidYMid meet">
-      <g stroke="${ink}" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
+      viewBox="${L.vb.x.toFixed(1)} ${L.vb.y.toFixed(1)} ${L.vb.w.toFixed(1)} ${L.vb.h.toFixed(1)}" preserveAspectRatio="xMidYMid meet" overflow="visible">
+      <g stroke="${ink}" stroke-width="${show.pen || 35}" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
   if (!L.img && !L.blk && placeholder)
     inner += `<text x="${SW / 2}" y="${SH / 2}" text-anchor="middle" font-size="44" fill="#9A9AA2"
       font-family="Atkinson Hyperlegible Next, Atkinson Hyperlegible, sans-serif">${escXml(placeholder)}</text>`;
@@ -746,7 +747,7 @@ function inkFor(bg) {
 
 /* ================= the show ================= */
 const newSlide = () => ({ text: '', words: [], img: null, imgW: 0, imgH: 0 });
-let show = { v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, slides: [newSlide()], custom: [] };
+let show = { v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, pen: 35, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, slides: [newSlide()], custom: [] };
 let cur = 0;          // current slide
 let open = -1;        // word whose chooser is open
 
@@ -866,6 +867,7 @@ function renderOptions() {
   $('optSize').value = String(show.size);
   $('optImg').value = String(show.imgPct);
   $('optGap').value = String(show.gap);
+  $('optPen').value = String(show.pen || 35);
   $('optSpeak').checked = !!show.speakAuto;
   $('optBg').value = show.bg || '#ffffff';
   for (const b of $('bgSwatches').children) b.classList.toggle('on', b.dataset.bg.toLowerCase() === (show.bg || '#ffffff').toLowerCase());
@@ -1049,6 +1051,9 @@ $('optLabels').addEventListener('change', () => { show.labels = $('optLabels').c
 $('optSize').addEventListener('change', () => { show.size = +$('optSize').value; renderSlides(); renderStage(); autosave(); });
 $('optImg').addEventListener('input', () => { show.imgPct = +$('optImg').value; renderSlides(); renderStage(); autosave(); });
 $('optGap').addEventListener('input', () => { show.gap = +$('optGap').value; renderSlides(); renderStage(); autosave(); });
+/* line width of the symbols, as on Gravyrkort (Håkan, 2026-11-05): engine units,
+   35 = the standard pen (about 1/23 of a square), up to a bold 100 */
+$('optPen').addEventListener('input', () => { show.pen = +$('optPen').value; renderSlides(); renderStage(); autosave(); });
 $('optSpeak').addEventListener('change', () => { show.speakAuto = $('optSpeak').checked; autosave(); });
 
 /* ---- background colour for the whole show (Håkan, 2026-11-05): a few calm
@@ -1137,7 +1142,7 @@ function serialize() {
 }
 function load(obj) {
   if (!obj || !Array.isArray(obj.slides) || !obj.slides.length) throw new Error('bad');
-  show = Object.assign({ v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, custom: [] }, obj);
+  show = Object.assign({ v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, pen: 35, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, custom: [] }, obj);
   show.slides = show.slides.map(s => Object.assign(newSlide(), s));
   if (![160, 120, 90, 65].includes(show.size)) show.size = 120;
   if (show.custom.length) useCustom(show.custom);
@@ -1306,7 +1311,7 @@ function blockPNG(L) {
   const pxW = 2400, pxH = Math.min(4000, Math.round(pxW * L.vb.h / L.vb.w));
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${pxW}" height="${pxH}"
     viewBox="${L.vb.x} ${L.vb.y} ${L.vb.w} ${L.vb.h}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:${inkFor(show.textBg || show.bg)}}</style>
-    <g stroke="${inkFor(show.textBg || show.bg)}" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
+    <g stroke="${inkFor(show.textBg || show.bg)}" stroke-width="${show.pen || 35}" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
