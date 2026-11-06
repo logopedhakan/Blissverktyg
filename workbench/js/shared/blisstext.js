@@ -145,7 +145,7 @@ const BT = (() => {
   }
   function autoLabel(w) {
     if (w.label && !w.autoLabel) return;
-    const inf = svInflect(w.token, indKeys(w.ind), symById(w.ids[w.pick]));
+    const inf = svInflect(w.lemma || w.token, indKeys(w.ind), symById(w.ids[w.pick]));
     w.label = inf || null;
     w.autoLabel = !!inf;
   }
@@ -233,6 +233,13 @@ const BT = (() => {
     PICKS[pickKey(w.token)] = w.asText ? 'text' : w.ids[w.pick];
     try { localStorage.setItem('wb-picks', JSON.stringify(PICKS)); } catch (_) {}
   }
+  /* an inflected word resolved by the morphology (js/shared/sv-morph.js):
+     the picked symbol's base form and its starting form */
+  function applyAnalysis(w) {
+    const a = w.an && w.an[w.ids[w.pick]];
+    if (!a) return;
+    w.lemma = a.lemma; w.ind = a.ind;
+  }
   function editDist(a, b) {
     const m = a.length, n = b.length;
     if (Math.abs(m - n) > 4) return 99;
@@ -300,7 +307,14 @@ const BT = (() => {
         else {
           const lower = word.toLowerCase();
           let ids = (INDEX.get(lower) || []).slice();
-          let fuzzy = false, keyOf = null;
+          let fuzzy = false, keyOf = null, an = null;
+          // an inflected form whose base form IS a Swedish BCI-AV gloss (with
+          // the right word class) is not a guess: it gets that symbol
+          if (!ids.length && GL === 'sv' && typeof SvMorph !== 'undefined') {
+            const before = W.length && !W[W.length - 1].br && !W[W.length - 1].punct ? W[W.length - 1].token : '';
+            const res = SvMorph.resolve(lower, before);
+            if (res.length) { ids = res.map(r => r.id); an = {}; for (const r of res) an[r.id] = r; }
+          }
           if (!ids.length && lower.length >= 3) {
             // inflected forms are a GUESS: offered in the chooser, shown as text
             const pre3 = lower.slice(0, 3), pre2 = lower.slice(0, 2);
@@ -322,7 +336,9 @@ const BT = (() => {
           const mem = PICKS[pickKey(word)];
           if (mem === 'text' && ids.length) asText = true;
           else if (typeof mem === 'number' && ids.includes(mem)) { pick = ids.indexOf(mem); asText = false; }
-          W.push({ token: word, ids, pick, ind: '', asText, fuzzy: fuzzy && asText, keyOf });
+          const nw = { token: word, ids, pick, ind: '', asText, fuzzy: fuzzy && asText, keyOf, an };
+          applyAnalysis(nw);
+          W.push(nw);
         }
       }
       pushPunct(punct);
@@ -385,7 +401,7 @@ const BT = (() => {
         const cap = (w.keyOf && w.keyOf[id]) || (sy ? glossOf(sy) : String(id));
         b.innerHTML = `${chipSVG({ ids: [id], pick: 0, ind: w.punct ? '' : w.ind, asText: false })}<span class="cap">${escXml(cap)}</span>`;
         b.title = sy ? sy.n + ' · ' + sy.id : '';
-        b.onclick = () => { w.pick = k; w.asText = false; w.fuzzy = false; autoLabel(w); rememberPick(w); on.change(); };
+        b.onclick = () => { w.pick = k; w.asText = false; w.fuzzy = false; applyAnalysis(w); autoLabel(w); rememberPick(w); on.change(); };
         r.appendChild(b);
       });
     }

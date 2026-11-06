@@ -1505,7 +1505,7 @@ function svInflect(base, keys, sym) {
    the label field is theirs. */
 function wAutoLabel(w) {
   if (w.label && !w.autoLabel) return;
-  const inf = svInflect(w.token, wIndKeys(w.ind), wSymById(w.ids[w.pick]));
+  const inf = svInflect(w.lemma || w.token, wIndKeys(w.ind), wSymById(w.ids[w.pick]));
   w.label = inf || null;
   w.autoLabel = !!inf;
 }
@@ -1633,6 +1633,13 @@ function wRememberPick(w) {
   W_PICKS[wPickKey(w.token)] = w.asText ? 'text' : w.ids[w.pick];
   try { localStorage.setItem('wb-picks', JSON.stringify(W_PICKS)); } catch (_) {}
 }
+/* an inflected word resolved by the morphology (js/shared/sv-morph.js): the
+   picked symbol's base form and its starting form */
+function wApplyAnalysis(w) {
+  const a = w.an && w.an[w.ids[w.pick]];
+  if (!a) return;
+  w.lemma = a.lemma; w.ind = a.ind;
+}
 function wEditDist(a, b) {
   const m = a.length, n = b.length;
   if (Math.abs(m - n) > 4) return 99;
@@ -1703,7 +1710,14 @@ function wParse() {
       const old = prev[W.length];
       const lower = word.toLowerCase();
       let ids = W_INDEX.get(lower) || [];
-      let fuzzy = false, keyOf = null;
+      let fuzzy = false, keyOf = null, an = null;
+      // an inflected form whose base form IS a Swedish BCI-AV gloss (with the
+      // right word class) is not a guess: it gets that symbol (same as blisstext.js)
+      if (!ids.length && wWriteLang() === 'sv' && typeof SvMorph !== 'undefined') {
+        const last = W[W.length - 1];
+        const res = SvMorph.resolve(lower, last && !last.br && !last.punct ? last.token : '');
+        if (res.length) { ids = res.map(r => r.id); an = {}; for (const r of res) an[r.id] = r; }
+      }
       if (!ids.length && lower.length >= 3) {
         // Inflected forms (vill -> vilja): candidates share a 3+ letter stem,
         // ranked by edit distance. This is a GUESS and shows as one — real
@@ -1736,7 +1750,9 @@ function wParse() {
         const mem = wPickOf(word);
         if (mem === 'text' && ids.length) asText = true;
         else if (typeof mem === 'number' && ids.includes(mem)) { pick = ids.indexOf(mem); asText = false; }
-        W.push({ token: word, ids, pick, ind: '', asText, fuzzy: fuzzy && asText, keyOf, off });
+        const nw = { token: word, ids, pick, ind: '', asText, fuzzy: fuzzy && asText, keyOf, off, an };
+        wApplyAnalysis(nw);
+        W.push(nw);
       }
     }
     for (const p of punct) if (W_PUNCT[p]) W.push({ token: p, ids: [W_PUNCT[p]], pick: 0, ind: '', asText: false, punct: true });
@@ -1831,7 +1847,7 @@ function wRenderChooser() {
     const capTxt = (w.keyOf && w.keyOf.get(id)) || ((wSymById(id) || {}).n || String(id)).split(',')[0];
     b.innerHTML = `${wChipSVG({ ids: [id], pick: 0, ind: w.ind, asText: false })}<span class="cap">${escXml(capTxt)}</span>`;
     b.title = sy ? sy.n : '';
-    b.onclick = () => { w.pick = k; w.asText = false; w.fuzzy = false; wRememberPick(w); wRender(); };
+    b.onclick = () => { w.pick = k; w.asText = false; w.fuzzy = false; wApplyAnalysis(w); wAutoLabel(w); wRememberPick(w); wRender(); };
     cands.appendChild(b);
   });
   const tb = document.createElement('button');
