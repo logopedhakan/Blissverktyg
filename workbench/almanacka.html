@@ -260,9 +260,13 @@ function cleanLink(s) {
 }
 function meetKind(link) {
   if (/teams\.(microsoft|live)\.com|^msteams:/i.test(link)) return 'Teams';
-  if (/jit\.si|jitsi/i.test(link)) return 'Jitsi';
+  if (/jit\.si|jitsi|\/\/8x8\.vc\//i.test(link)) return 'Jitsi';
   return '';
 }
+// a Jitsi meeting opens in Bliss Möte (mote.html) with its big buttons
+const meetHref = (link) => meetKind(link) === 'Jitsi' ? `mote.html?rum=${encodeURIComponent(link)}&join=1` : link;
+// the meeting server set in Bliss Möte: JaaS when it has an App ID, else meet.jit.si
+function moteAppId() { try { return (JSON.parse(localStorage.getItem('wb-mote') || 'null') || {}).appId || ''; } catch (_) { return ''; } }
 const MEET_SYM = (typeof BLISS_DATA !== 'undefined' && BLISS_DATA.find(s => s.e && s.e.length && s.n === 'meeting,assembly,conference')) || null;
 const meetIcon = () => { try { return MEET_SYM ? blissSVG(MEET_SYM, { unit: 3, color: 'currentColor' }) : ''; } catch (_) { return ''; } };
 const minutes = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
@@ -314,7 +318,7 @@ function render() {
       if (b.link) {
         const a = document.createElement('a');
         a.className = 'meet' + (meetSoon(b) ? ' soon' : '');
-        a.href = b.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        a.href = meetHref(b.link); a.target = '_blank'; a.rel = 'noopener noreferrer';
         a.dataset.id = b.id;
         const kind = meetKind(b.link);
         a.title = (kind ? `${tr('Start the meeting in', 'Starta mötet i')} ${kind}` : tr('Start the meeting', 'Starta mötet'));
@@ -459,7 +463,8 @@ $('btnDelete').onclick = () => {
    as soon as someone opens the link */
 $('btnJitsi').onclick = () => {
   const rnd = Array.from(crypto.getRandomValues(new Uint8Array(6)), x => x.toString(36).padStart(2, '0')).join('');
-  $('bLink').value = `https://meet.jit.si/Bliss-${rnd}`;
+  const app = moteAppId();
+  $('bLink').value = app ? `https://8x8.vc/${app}/Bliss-${rnd}` : `https://meet.jit.si/Bliss-${rnd}`;
   say(tr('Jitsi room created — share the link with those who will join', 'Jitsi-rum skapat — dela länken med dem som ska vara med'));
 };
 
