@@ -47,26 +47,29 @@
                 'Webbläsaren stoppade fönstret — tillåt popup-fönster för Blissverktyget, eller installera det som app.'));
   }
 
+  /* in the top bar, right after the title — no row of its own (Håkan, 2026-11-08),
+     and small enough to stay in a window a third of the screen wide */
   const CSS = `
-#wbWin{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;flex:none;
-  padding:2px 10px 6px;font-family:inherit;font-size:13px;color:var(--dim)}
-#wbWin .grp{display:inline-flex;border:1px solid var(--rule);border-radius:9px;overflow:hidden;background:var(--panel)}
-#wbWin button{font:inherit;font-size:13px;line-height:1.2;padding:4px 10px;border:none;border-right:1px solid var(--rule);
-  background:var(--panel);color:var(--ink);cursor:pointer;border-radius:0;min-height:0}
+#wbWin{display:inline-flex;align-items:center;gap:4px;flex:none;font-family:inherit;font-size:13px;
+  vertical-align:middle;margin:0 2px}
+#wbWin.float{position:absolute;top:14px;left:16px}
+#wbWin .grp{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--panel)}
+#wbWin button{font:inherit;font-size:13px;line-height:1.15;padding:3px 7px;border:none;border-right:1px solid var(--rule);
+  background:var(--panel);color:var(--ink);cursor:pointer;border-radius:0;min-height:0;min-width:0;margin:0}
 #wbWin button:last-child{border-right:none}
 #wbWin button:hover{background:var(--accent-soft)}
 #wbWin button[aria-pressed="true"]{background:var(--accent);color:#fff}
-#wbWin .lbl{font-weight:600}
-#wbWin .note{flex-basis:100%;text-align:center;font-size:12.5px;color:var(--ink)}
-#wbWin .note[hidden]{display:none}
-@media (max-width:640px), (pointer:coarse) and (hover:none), (display-mode: fullscreen){ #wbWin{display:none} }
-@media print{ #wbWin{display:none} }`;
+#wbWinNote{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:999;max-width:92vw;
+  background:var(--ink);color:var(--bg);padding:7px 14px;border-radius:10px;font-size:13px;font-family:inherit}
+#wbWinNote[hidden]{display:none}
+@media (pointer:coarse) and (hover:none), (display-mode: fullscreen){ #wbWin{display:none} }
+@media print{ #wbWin,#wbWinNote{display:none} }`;
 
-  const SIZES = [['third', '⅓', tr('A third of the screen', 'En tredjedel av skärmen')],
-                 ['twothirds', '⅔', tr('Two thirds of the screen', 'Två tredjedelar av skärmen')],
-                 ['full', tr('Full', 'Hela'), tr('The whole screen', 'Hela skärmen')]];
-  const SIDES = [['left', tr('◀ Left', '◀ Vänster'), tr('At the left of the screen', 'Till vänster på skärmen')],
-                 ['right', tr('Right ▶', 'Höger ▶'), tr('At the right of the screen', 'Till höger på skärmen')]];
+  const SIZES = [['third', '⅓', tr('A third of the screen, full height', 'En tredjedel av skärmen, full höjd')],
+                 ['twothirds', '⅔', tr('Two thirds of the screen, full height', 'Två tredjedelar av skärmen, full höjd')],
+                 ['full', '▣', tr('The whole screen', 'Hela skärmen')]];
+  const SIDES = [['left', '◀', tr('At the left of the screen', 'Till vänster på skärmen')],
+                 ['right', '▶', tr('At the right of the screen', 'Till höger på skärmen')]];
   let bar = null;
   function mark() {
     if (!bar) return;
@@ -77,16 +80,22 @@
     const style = document.createElement('style'); style.textContent = CSS; document.head.appendChild(style);
     bar = document.createElement('div');
     bar.id = 'wbWin'; bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', tr('Window size and place', 'Fönsterstorlek och placering'));
-    const btn = (attr, [v, label, title]) => `<button type="button" data-${attr}="${v}" title="${title}">${label}</button>`;
-    bar.innerHTML = `<span class="lbl">${tr('Window:', 'Fönster:')}</span>
-      <span class="grp">${SIZES.map(s => btn('w', s)).join('')}</span>
-      <span class="grp">${SIDES.map(s => btn('side', s)).join('')}</span>
-      <span class="note" hidden></span>`;
-    note = bar.querySelector('.note');
+    const btn = (attr, [v, label, title]) => `<button type="button" data-${attr}="${v}" title="${title}" aria-label="${title}">${label}</button>`;
+    bar.innerHTML = `<span class="grp">${SIZES.map(s => btn('w', s)).join('')}</span>
+      <span class="grp">${SIDES.map(s => btn('side', s)).join('')}</span>`;
+    note = document.createElement('div'); note.id = 'wbWinNote'; note.setAttribute('role', 'status'); note.hidden = true;
+    document.body.appendChild(note);
     for (const b of bar.querySelectorAll('[data-w]')) b.onclick = () => choose({ w: b.dataset.w });
     for (const b of bar.querySelectorAll('[data-side]')) b.onclick = () => choose({ side: b.dataset.side });
+    // right after the part's name in the top bar ("Bildspel · Bliss" ▣ ◀ ▶)
     const head = document.querySelector('body > header');
-    if (head) head.after(bar); else document.body.prepend(bar);
+    const title = head && head.querySelector('h1');
+    if (head && title && getComputedStyle(head).display.includes('flex')) title.after(bar);
+    else if (head) {
+      // the start page: a centred title — the buttons sit in the top left corner
+      if (getComputedStyle(head).position === 'static') head.style.position = 'relative';
+      bar.classList.add('float'); head.prepend(bar);
+    } else document.body.prepend(bar);
     mark();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
