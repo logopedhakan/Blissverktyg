@@ -18,7 +18,6 @@
     { "name": "Skriv", "url": "index.html?vy=skriv", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Bildspel", "url": "bildspel.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Almanacka", "url": "almanacka.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Möte", "url": "mote.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Editera", "url": "index.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }
