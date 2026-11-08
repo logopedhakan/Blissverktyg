@@ -45,14 +45,15 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1f
 .books{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:6px;padding:8px}
 .book{flex:none}
 .dayHead,.add{flex:none}
-.book{display:flex;flex-direction:column;gap:6px;text-align:left;padding:7px 8px;border-radius:10px;
+/* tight rows (Håkan, 2026-11-08): time, symbols and the meeting button close together */
+.book{display:flex;flex-direction:column;gap:3px;text-align:left;padding:4px 7px 5px;border-radius:10px;
   border:1px solid var(--rule);background:var(--panel);width:100%}
 .book:hover,.book:focus-within{border-color:var(--accent);background:var(--accent-soft)}
-.bookMain{display:flex;flex-direction:column;gap:4px;text-align:left;padding:0;border:none;background:none;
+.bookMain{display:flex;flex-direction:column;gap:1px;text-align:left;padding:0;border:none;background:none;
   width:100%;border-radius:6px}
 /* a meeting link (Håkan, 2026-11-08): a third row, one click starts Teams or Jitsi.
    It glows from 10 minutes before the start until the end. */
-.meet{display:flex;align-items:center;justify-content:center;gap:4px;padding:4px;border-radius:9px;
+.meet{display:flex;align-items:center;justify-content:center;gap:4px;padding:2px 4px;border-radius:9px;
   border:1px solid var(--accent);background:var(--panel);color:var(--accent);font-weight:700;
   font-size:clamp(10.5px, 1vw, 14px);text-decoration:none;white-space:nowrap;overflow:hidden;min-width:0}
 .meet svg{flex:none;width:auto;height:1.6em}
@@ -67,7 +68,8 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1f
 .linkRow label{flex:1;min-width:220px;display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--dim)}
 .linkRow input{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--rule);border-radius:8px;
   background:var(--panel);color:var(--ink)}
-.book .time{font-size:clamp(11px, 1.15vw, 15px);font-weight:700;white-space:nowrap}
+.book .time{font-size:clamp(11px, 1.15vw, 15px);font-weight:700;white-space:nowrap;line-height:1.2}
+.row2 input.hm{width:17ch}
 /* a booking is two rows (Håkan, 2026-11-08): start–end, then the Bliss text
    as ONE row — at the chosen size, shrunk to the column when it is long */
 .book .line{display:block;max-width:100%}
@@ -101,7 +103,7 @@ dialog h2{font-size:17px;margin-bottom:10px}
   header{padding:8px 10px;gap:8px}
   .dayHead svg{width:28px}
   .dayName{font-size:13.5px} .dayDate{font-size:12px}
-  .books{padding:5px} .book{padding:5px} .add{margin:0 5px 5px;font-size:12.5px;padding:5px 6px}
+  .books{padding:5px} .book{padding:3px 5px 4px} .add{margin:0 5px 5px;font-size:12.5px;padding:5px 6px}
 }
 /* phones: one day under the other, and the page scrolls */
 @media (max-width:640px){
@@ -133,8 +135,8 @@ dialog h2{font-size:17px;margin-bottom:10px}
   <h2 id="bookHead">Ny bokning</h2>
   <div class="row2">
     <label><span data-en="Day">Dag</span> <input id="bDate" type="date"></label>
-    <label><span data-en="Time">Tid</span> <input id="bTime" type="time"></label>
-    <label><span data-en="Until">Till</span> <input id="bEnd" type="time"></label>
+    <label><span data-en="Time">Tid</span> <input id="bTime" class="hm" type="text" inputmode="decimal" autocomplete="off" placeholder="t.ex. 10 eller 10:30" data-en-ph="e.g. 10 or 10:30"></label>
+    <label><span data-en="Until">Till</span> <input id="bEnd" class="hm" type="text" inputmode="decimal" autocomplete="off" placeholder="t.ex. 11" data-en-ph="e.g. 11"></label>
   </div>
   <textarea id="txt" placeholder="Skriv vad som ska hända, t.ex. jag ska till tandläkaren" data-en-ph="Write what will happen, e.g. I am going to the dentist" spellcheck="false"></textarea>
   <div id="chips"></div>
@@ -400,10 +402,27 @@ function openBook(b, date) {
 }
 function closeBook() { wbStopSpeaking(); $('bookDlg').close(); }
 $('btnCancel').onclick = closeBook;
+/* times typed the way people write them (Håkan, 2026-11-08: a browser time field
+   kept "10" as no time at all): 10 · 9.30 · 0930 · 10:30 · 10 30 → "10:30".
+   '' when empty, null when it cannot be a time. */
+function parseHM(s) {
+  s = String(s || '').trim();
+  if (!s) return '';
+  let m = s.match(/^(\d{1,2})(?:[:.,\s]+(\d{1,2}))?$/) || s.match(/^(\d{1,2})(\d{2})$/);
+  if (!m) return null;
+  const h = +m[1], mi = m[2] === undefined ? 0 : +m[2];
+  const min = m[2] !== undefined && m[2].length === 1 ? mi * 10 : mi;   // "9.3" = half past nine
+  if (h > 23 || min > 59) return null;
+  return `${pad2(h)}:${pad2(min)}`;
+}
+// tidy the field when leaving it, so what is saved is what is shown
+for (const id of ['bTime', 'bEnd']) $(id).addEventListener('blur', () => { const v = parseHM($(id).value); if (v) $(id).value = v; });
 /* the end follows the start: an hour later, unless an end after the start is already set */
 $('bTime').addEventListener('change', () => {
-  const s = $('bTime').value; if (!s) return;
-  if ($('bEnd').value && $('bEnd').value > s) return;
+  const s = parseHM($('bTime').value); if (!s) return;
+  $('bTime').value = s;
+  const e = parseHM($('bEnd').value);
+  if (e && e > s) return;
   const [h, m] = s.split(':').map(Number);
   $('bEnd').value = `${pad2(Math.min(23, h + 1))}:${pad2(h >= 23 ? 59 : m)}`;
 });
@@ -411,12 +430,16 @@ $('bookDlg').addEventListener('cancel', (e) => { e.preventDefault(); closeBook()
 $('btnSave').onclick = () => {
   if (!$('bDate').value) { say(tr('Choose a day', 'Välj en dag')); return; }
   if (!draft.words.some(w => !w.br)) { say(tr('Write what will happen', 'Skriv vad som ska hända')); $('txt').focus(); return; }
+  const time = parseHM($('bTime').value), end = parseHM($('bEnd').value);
+  if (time === null) { say(tr('Write the time like 10 or 10:30', 'Skriv tiden som 10 eller 10:30')); $('bTime').focus(); return; }
+  if (end === null) { say(tr('Write the end like 11 or 11:30', 'Skriv sluttiden som 11 eller 11:30')); $('bEnd').focus(); return; }
+  if (time && end && end <= time) { say(tr('The end must be after the start', 'Sluttiden måste vara efter starttiden')); $('bEnd').focus(); return; }
   const link = cleanLink($('bLink').value);
   if (link === null) { say(tr('The meeting link must be a web address (https://…)', 'Möteslänken måste vara en webbadress (https://…)')); $('bLink').focus(); return; }
   const custom = [];
   for (const w of draft.words) if (!w.br && !w.asText) { const s = BT.symById(w.ids[w.pick]); if (s && BT.custom.get(s.id) === s) custom.push(s); }
   const rec = { id: editing ? editing.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    date: $('bDate').value, time: $('bTime').value, end: $('bEnd').value, link,
+    date: $('bDate').value, time, end: time ? end : '', link,
     text: draft.text, words: draft.words.map(w => { const c = Object.assign({}, w); delete c.keyOf; return c; }), custom };
   if (editing) alm.bookings[alm.bookings.indexOf(editing)] = rec; else alm.bookings.push(rec);
   persist();
@@ -466,7 +489,7 @@ function tickMeetings() {
 setInterval(tickMeetings, 20000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tickMeetings(); });
 
-wbSpeakButton($('btnSpeakBook'), () => spokenOf({ time: $('bTime').value, words: draft.words }), say);
+wbSpeakButton($('btnSpeakBook'), () => { const t = parseHM($('bTime').value) || '', e = parseHM($('bEnd').value) || ''; return spokenOf({ time: t, end: t ? e : '', words: draft.words }); }, say);
 
 /* ---- settings ---- */
 $('btnSettings').onclick = () => {
