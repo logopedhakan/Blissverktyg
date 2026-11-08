@@ -84,11 +84,34 @@
 @media (pointer:coarse) and (hover:none), (display-mode: fullscreen){ #wbWin{display:none} }
 @media print{ #wbWin,#wbWinNote{display:none} }`;
 
-  const SIZES = [['third', '⅓', tr('A third of the screen, full height', 'En tredjedel av skärmen, full höjd')],
-                 ['twothirds', '⅔', tr('Two thirds of the screen, full height', 'Två tredjedelar av skärmen, full höjd')],
-                 ['full', '▣', tr('The whole screen', 'Hela skärmen')]];
-  const SIDES = [['left', '◀', tr('At the left of the screen', 'Till vänster på skärmen')],
-                 ['right', '▶', tr('At the right of the screen', 'Till höger på skärmen')]];
+  const SIZES = [['third', '⅓', tr('A third of the screen, full height', 'En tredjedel av skärmen, full höjd') + ' (Alt+1)'],
+                 ['twothirds', '⅔', tr('Two thirds of the screen, full height', 'Två tredjedelar av skärmen, full höjd') + ' (Alt+2)'],
+                 ['full', '▣', tr('The whole screen', 'Hela skärmen') + ' (Alt+3)']];
+  const SIDES = [['left', '◀', tr('At the left of the screen', 'Till vänster på skärmen') + ' (Alt+V)'],
+                 ['right', '▶', tr('At the right of the screen', 'Till höger på skärmen') + ' (Alt+H)']];
+
+  /* keyboard (Håkan, 2026-11-08): Alt+1 ⅓ · Alt+2 ⅔ · Alt+3 the whole screen ·
+     Alt+V left (vänster) · Alt+H right (höger). Free in Chrome, Edge and Firefox;
+     AltGr (Ctrl+Alt, e.g. AltGr+2 = @) and the number pad (Alt codes) are left alone. */
+  const KEYS = { Digit1: { w: 'third' }, Digit2: { w: 'twothirds' }, Digit3: { w: 'full' },
+                 KeyV: { side: 'left' }, KeyH: { side: 'right' } };
+  const said = () => {
+    const w = { third: '⅓', twothirds: '⅔', full: tr('the whole screen', 'hela skärmen') }[st.w];
+    return st.w === 'full' ? tr('Window: ', 'Fönster: ') + w
+      : tr('Window: ', 'Fönster: ') + w + ' ' + (st.side === 'right' ? tr('at the right', 'till höger') : tr('at the left', 'till vänster'));
+  };
+  document.addEventListener('keydown', (e) => {
+    if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.repeat) return;
+    const k = KEYS[e.code]; if (!k) return;
+    e.preventDefault();
+    choose(k);
+    if (own()) tell(said());
+  }, true);
+  // the rows for the shortcut list ($ ?) in every part
+  window.wbWindowKeyRows = () => [
+    ['Alt+1 · Alt+2 · Alt+3', tr('window: a third · two thirds · the whole screen (full height)', 'fönster: en tredjedel · två tredjedelar · hela skärmen (full höjd)')],
+    ['Alt+V · Alt+H', tr('window at the left · at the right', 'fönstret till vänster · till höger')],
+  ];
   let bar = null;
   function mark() {
     if (!bar) return;

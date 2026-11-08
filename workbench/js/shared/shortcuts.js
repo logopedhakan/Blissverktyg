@@ -39,6 +39,8 @@ function wbShortcuts(cfg) {
     for (const k of FN_KEYS) if (cfg.actions[k]) rows.push(['$ ' + k, cfg.actions[k].desc()]);
     rows.push(['$ ?', T('show this list', 'visa den här listan')]);
     for (const r of (cfg.extra ? cfg.extra() : [])) rows.push(r);
+    // the window size and place (js/shared/window.js), the same in every part
+    if (typeof window.wbWindowKeyRows === 'function') for (const r of window.wbWindowKeyRows()) rows.push(r);
     dlg.innerHTML = '<h2 style="margin:0 0 4px;font-size:16px">' + T('Keyboard shortcuts', 'Kortkommandon') + '</h2>' +
       '<p style="margin:0 0 10px;color:var(--dim,#666)">' + (cfg.title ? cfg.title() : '') +
       T(' — press the character, release, then press the key (nothing is held down)', ' — tryck tecknet, släpp, tryck sedan tangenten (inget behöver hållas ner)') + '</p>' +
