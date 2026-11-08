@@ -41,10 +41,29 @@
     if (own()) { apply(); return; }
     const g = geometry();
     const w = window.open(location.href, NAME, `popup=yes,left=${g[0]},top=${g[1]},width=${g[2]},height=${g[3]}`);
-    tell(w ? tr('Blissverktyget opened in a window of its own — the buttons size that window.',
-                 'Blissverktyget öppnades i ett eget fönster — där ändrar knapparna fönstret.')
-           : tr('The browser stopped the window — allow pop-ups for Blissverktyget, or install it as an app.',
-                'Webbläsaren stoppade fönstret — tillåt popup-fönster för Blissverktyget, eller installera det som app.'));
+    if (!w) {
+      tell(tr('The browser stopped the window — allow pop-ups for Blissverktyget, or install it as an app.',
+              'Webbläsaren stoppade fönstret — tillåt popup-fönster för Blissverktyget, eller installera det som app.'));
+      return;
+    }
+    // the first one closes (Håkan, 2026-11-08): only one Blissverktyget open.
+    // A browser lets a page close its tab only now and then — otherwise the tab
+    // says where Blissverktyget went, so nothing is worked on in two places.
+    setTimeout(() => {
+      try { window.close(); } catch (_) {}
+      setTimeout(() => { if (!window.closed) movedAway(); }, 250);
+    }, 400);
+  }
+  function movedAway() {
+    // this tab rests: no timer here may write over what the new window saves
+    let id = setTimeout(() => {}, 0);
+    while (id > 0) { clearTimeout(id); clearInterval(id); id--; }
+    try { if (typeof wbStopSpeaking === 'function') wbStopSpeaking(); } catch (_) {}
+    document.title = tr('Blissverktyget — moved', 'Blissverktyget — flyttat');
+    document.body.innerHTML = `<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+      font-family:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',system-ui,sans-serif;background:var(--bg);color:var(--ink);text-align:center;padding:20px">
+      <p style="font-size:20px;font-weight:700">${tr('Blissverktyget is now open in a window of its own.', 'Blissverktyget är nu öppet i ett eget fönster.')}</p>
+      <p style="font-size:15px;color:var(--dim)">${tr('You can close this tab.', 'Du kan stänga den här fliken.')}</p></div>`;
   }
 
   /* in the top bar, right after the title — no row of its own (Håkan, 2026-11-08),
@@ -98,7 +117,50 @@
     } else document.body.prepend(bar);
     mark();
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
+  /* ---- the whole program in a narrow window (Håkan, 2026-11-08): below the
+     width a part is laid out for, everything is drawn smaller (CSS zoom) — the
+     same picture as in a big window, not columns squeezed or cut off. The
+     part's own narrow-screen rules are judged by the width it is drawn at. ---- */
+  const BASE = { 'index.html': 1100, 'bildspel.html': 1000, 'almanacka.html': 900, 'gissa.html': 960,
+    'former.html': 1000, 'gravyr.html': 960 };
+  const page = (location.pathname.split('/').pop() || 'start.html').toLowerCase();
+  const base = BASE[page] || 0;
+  let rules = null;                     // [CSSMediaRule, original media text]
+  function mediaRules() {
+    if (rules) return rules;
+    rules = [];
+    const walk = (list) => { for (const r of list) {
+      if (r.media && r.cssRules && /(max|min)-width/.test(r.media.mediaText)) rules.push([r, r.media.mediaText]);
+      if (r.cssRules) walk(r.cssRules);
+    } };
+    for (const s of document.styleSheets) { try { walk(s.cssRules); } catch (_) {} }
+    return rules;
+  }
+  function judgeAt(width) {
+    for (const [r, text] of mediaRules()) {
+      const t = width ? text.replace(/\((max|min)-width:\s*(\d+(?:\.\d+)?)px\)/g, (_, k, n) =>
+        (k === 'max' ? width <= +n : width >= +n) ? '(min-width:0px)' : '(max-width:0px)') : text;
+      if (r.media.mediaText !== t) r.media.mediaText = t;
+    }
+  }
+  let fitted = false;
+  function fit() {
+    if (!base || matchMedia('(pointer:coarse) and (hover:none)').matches) return;
+    const z = Math.min(1, window.innerWidth / base);
+    const root = document.documentElement, body = document.body;
+    if (z >= 0.999) {
+      if (!fitted) return;
+      root.style.zoom = ''; root.style.height = ''; body.style.height = ''; judgeAt(0); fitted = false; return;
+    }
+    fitted = true;
+    root.style.zoom = String(z);
+    judgeAt(base);
+    // the parts that fill the window keep filling it at the smaller size
+    const h = (window.innerHeight / z) + 'px';
+    root.style.height = h; body.style.height = h;
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { build(); fit(); }); else { build(); fit(); }
+  window.addEventListener('resize', () => { fit(); });
   // the app starts in the size last chosen
   if (own() && st.chosen) { if (document.readyState === 'complete') apply(); else window.addEventListener('load', apply); }
 })();
