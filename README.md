@@ -30,8 +30,11 @@ winbliss-web-beta/
 │     ├─ engine/            ritmotorn, porterad från WinBliss (bliss-shapes, bliss-engine)
 │     ├─ data/              BCI-AV: symbolerna (bliss-data) och översättningarna (glosses)
 │     ├─ shared/            delas av alla delar: lang (språkval), wbs (.wbs-formatet),
-│     │                     shortcuts ($-genvägar), pwa (installera appen)
+│     │                     shortcuts ($-genvägar), pwa (installera appen),
+│     │                     blisstext (text → bliss i Bildspel och Gravyrkort),
+│     │                     sv-morph (svensk böjning: barnen → barn + plural)
 │     └─ editor/            editorns kod (app, i18n)
+├─ tests/run.js             tester för text → bliss (node tests/run.js) — publiceras inte
 ├─ tools/                   utvecklingsverktyg — publiceras inte
 │  ├─ serve.ps1             lokal testserver (behöver varken Python eller Node)
 │  ├─ check-pwa.ps1         testar appen online och utan nät i en dold Edge
@@ -59,6 +62,19 @@ Testa appen online och utan nät (med servern igång):
 ```bash
 powershell -ExecutionPolicy Bypass -File tools\check-pwa.ps1
 ```
+
+## Tester
+
+Tolkningen av text till bliss (svensk böjning, Skriv, Bildspel och Gravyrkort)
+har tester med handskrivet facit. De kör sidornas riktiga skript och data och
+behöver bara Node:
+
+```bash
+node tests/run.js
+```
+
+Kör dem efter ändringar i `js/shared/sv-morph.js`, `js/shared/blisstext.js`
+eller Skriv i `js/editor/app.js`.
 
 ## Lägga till en ny del
 

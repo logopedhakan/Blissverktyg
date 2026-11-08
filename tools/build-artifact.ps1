@@ -6,6 +6,7 @@
 # stylesheet is inlined. Publish the page with these files beside it, at the
 # same relative paths as in workbench\:
 #   js/shared/lang.js  js/shared/wbs.js  js/shared/shortcuts.js  js/shared/speak.js  js/shared/blisstext.js
+#   js/shared/sv-morph.js
 #   js/engine/bliss-shapes.js  js/engine/bliss-engine.js
 #   js/data/bliss-data.js  js/data/glosses.js
 $app = Join-Path $PSScriptRoot '..\workbench'
