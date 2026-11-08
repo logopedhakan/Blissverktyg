@@ -20,6 +20,15 @@ const firstGloss = (s) => (s.n || '').split(',')[0] || '(unnamed)';
    '' = the .wbs source glosses (English); otherwise a code from GLOSS_LANGS. */
 let glossLang = localStorage.getItem('wb-gloss') || '';
 if (glossLang && !(glossLang in BLISS_GLOSSES)) glossLang = '';
+/* The language words are WRITTEN in (Skriv's lookup, remembered picks,
+   Swedish inflection). The list's gloss language when one is chosen; with
+   the English source glosses on display, the interface language — a Swedish
+   user writes Swedish even when the list shows the BCI names (issue #1:
+   "barn" became the barn, "i" the pronoun I). Same rule as Bildspel's GL. */
+function wWriteLang() {
+  if (glossLang) return glossLang;
+  return lang !== 'en' && BLISS_GLOSSES[lang] ? lang : 'en';
+}
 function translatedGloss(s) {
   return glossLang ? (BLISS_GLOSSES[glossLang][s.id] || '') : '';
 }
@@ -1475,7 +1484,7 @@ const W_SV_VERBS = {   // base: [presens, dåtid, uppmaning]
   'stryka': ['stryker', 'strök', 'stryk'], 'hänga': ['hänger', 'hängde', 'häng'],
 };
 function svInflect(base, keys, sym) {
-  if (glossLang !== 'sv') return null;
+  if (wWriteLang() !== 'sv') return null;
   const tense = keys.includes('past_action') ? 1 : keys.includes('present_action') ? 0
               : keys.includes('future_action') ? 2 : keys.includes('imperative_form') ? 3 : -1;
   if (tense < 0) return null;
@@ -1496,7 +1505,7 @@ function svInflect(base, keys, sym) {
    the label field is theirs. */
 function wAutoLabel(w) {
   if (w.label && !w.autoLabel) return;
-  const inf = svInflect(w.token, wIndKeys(w.ind), wSymById(w.ids[w.pick]));
+  const inf = svInflect(w.lemma || w.token, wIndKeys(w.ind), wSymById(w.ids[w.pick]));
   w.label = inf || null;
   w.autoLabel = !!inf;
 }
@@ -1572,14 +1581,15 @@ function wBuildIndex() {
     const k = w + '|' + id;
     if (!tierOf.has(k) || tier < tierOf.get(k)) tierOf.set(k, tier);
   };
+  const wl = wWriteLang();
   const langs = [];
-  if (glossLang) langs.push([glossLang, 1]);
-  if (lang !== 'en' && BLISS_GLOSSES[lang] && lang !== glossLang) langs.push([lang, 2]);
+  if (wl !== 'en') langs.push([wl, 1]);
+  if (lang !== 'en' && BLISS_GLOSSES[lang] && lang !== wl) langs.push([lang, 2]);
   for (const [lg, tier] of langs) {
     for (const [id, g] of Object.entries(BLISS_GLOSSES[lg]))
       for (const syn of g.split(',')) { put(syn, +id, tier); put(syn.replace(/\s*\([^)]*\)/g, ''), +id, tier); }
   }
-  const enTier = (!glossLang || glossLang === 'en') ? 1 : 3;
+  const enTier = wl === 'en' ? 1 : 3;
   for (const sy of BLISS_DATA)
     for (const syn of (sy.n || '').split(',')) {
       put(syn, sy.id, enTier);
@@ -1613,11 +1623,22 @@ function wBuildIndex() {
 // user's own picks (chooser, list click) — never on the AI's.
 let W_PICKS = {};
 try { W_PICKS = JSON.parse(localStorage.getItem('wb-picks') || '{}') || {}; } catch (_) {}
-const wPickKey = tok => (glossLang || 'en') + '|' + tok.toLowerCase();
+const wPickKey = tok => wWriteLang() + '|' + tok.toLowerCase();
+// picks saved before issue #1 sit under 'en|' when no gloss language was
+// chosen: still honoured until the word is picked again
+const wPickOf = tok => W_PICKS[wPickKey(tok)] ??
+  (!glossLang && wWriteLang() !== 'en' ? W_PICKS['en|' + tok.toLowerCase()] : undefined);
 function wRememberPick(w) {
   if (!w || w.br || w.punct || !w.token) return;
   W_PICKS[wPickKey(w.token)] = w.asText ? 'text' : w.ids[w.pick];
   try { localStorage.setItem('wb-picks', JSON.stringify(W_PICKS)); } catch (_) {}
+}
+/* an inflected word resolved by the morphology (js/shared/sv-morph.js): the
+   picked symbol's base form and its starting form */
+function wApplyAnalysis(w) {
+  const a = w.an && w.an[w.ids[w.pick]];
+  if (!a) return;
+  w.lemma = a.lemma; w.ind = a.ind;
 }
 function wEditDist(a, b) {
   const m = a.length, n = b.length;
@@ -1689,7 +1710,14 @@ function wParse() {
       const old = prev[W.length];
       const lower = word.toLowerCase();
       let ids = W_INDEX.get(lower) || [];
-      let fuzzy = false, keyOf = null;
+      let fuzzy = false, keyOf = null, an = null;
+      // an inflected form whose base form IS a Swedish BCI-AV gloss (with the
+      // right word class) is not a guess: it gets that symbol (same as blisstext.js)
+      if (!ids.length && wWriteLang() === 'sv' && typeof SvMorph !== 'undefined') {
+        const last = W[W.length - 1];
+        const res = SvMorph.resolve(lower, last && !last.br && !last.punct ? last.token : '');
+        if (res.length) { ids = res.map(r => r.id); an = {}; for (const r of res) an[r.id] = r; }
+      }
       if (!ids.length && lower.length >= 3) {
         // Inflected forms (vill -> vilja): candidates share a 3+ letter stem,
         // ranked by edit distance. This is a GUESS and shows as one — real
@@ -1719,10 +1747,12 @@ function wParse() {
       // pick: the same word chosen before resolves the same way again.
       else {
         let pick = 0, asText = ids.length === 0 || fuzzy;
-        const mem = W_PICKS[wPickKey(word)];
+        const mem = wPickOf(word);
         if (mem === 'text' && ids.length) asText = true;
         else if (typeof mem === 'number' && ids.includes(mem)) { pick = ids.indexOf(mem); asText = false; }
-        W.push({ token: word, ids, pick, ind: '', asText, fuzzy: fuzzy && asText, keyOf, off });
+        const nw = { token: word, ids, pick, ind: '', asText, fuzzy: fuzzy && asText, keyOf, off, an };
+        wApplyAnalysis(nw);
+        W.push(nw);
       }
     }
     for (const p of punct) if (W_PUNCT[p]) W.push({ token: p, ids: [W_PUNCT[p]], pick: 0, ind: '', asText: false, punct: true });
@@ -1817,7 +1847,7 @@ function wRenderChooser() {
     const capTxt = (w.keyOf && w.keyOf.get(id)) || ((wSymById(id) || {}).n || String(id)).split(',')[0];
     b.innerHTML = `${wChipSVG({ ids: [id], pick: 0, ind: w.ind, asText: false })}<span class="cap">${escXml(capTxt)}</span>`;
     b.title = sy ? sy.n : '';
-    b.onclick = () => { w.pick = k; w.asText = false; w.fuzzy = false; wRememberPick(w); wRender(); };
+    b.onclick = () => { w.pick = k; w.asText = false; w.fuzzy = false; wApplyAnalysis(w); wAutoLabel(w); wRememberPick(w); wRender(); };
     cands.appendChild(b);
   });
   const tb = document.createElement('button');
