@@ -363,6 +363,38 @@ const BT = (() => {
   }
   function chipSVG(w) { try { return blissSVG({ e: wordEls(w) }, { unit: 3.2, color: 'currentColor' }); } catch (_) { return '?'; } }
 
+  /* the words as ONE row: symbols side by side, the word under each — like
+     Skriv's preview line. `unit` = px per half-unit at full size; the svg has
+     that natural size, and CSS max-width:100% shrinks a long row to fit
+     (Håkan, 2026-11-08: the almanac's bookings). */
+  function lineSVG(words, { unit = 4, labels = true, pen = 35 } = {}) {
+    let cursor = 0, minY = 1e9, maxY = -1e9, maxX = 0;
+    const parts = [], labs = [];
+    for (const w of words || []) {
+      if (w.br) continue;
+      const els = wordEls(w); if (!els.length) continue;
+      const b = svgBox(els);
+      const gap = parts.length ? (w.punct ? 4 : 8) : 0;
+      const dx = cursor * 100 + gap * 100 - b.vx;
+      const body = (b.svg.match(/<\/style>([\s\S]*)<\/svg>/) || [, ''])[1];
+      parts.push(`<g transform="translate(${dx.toFixed(1)} 0)">${body}</g>`);
+      if (labels && !w.punct && !w.asText) labs.push({ x: dx + b.vx + b.vw / 2, t: w.label || w.token });
+      minY = Math.min(minY, b.vy); maxY = Math.max(maxY, b.vy + b.vh);
+      cursor = (dx + b.vx + b.vw) / 100;
+      maxX = dx + b.vx + b.vw;
+    }
+    if (!parts.length) return '';
+    const FS = 300, pad = 60, textY = Math.max(maxY, 1600) + 400;
+    const texts = labs.map(l => `<text x="${l.x.toFixed(1)}" y="${textY}" text-anchor="middle" font-size="${FS}" ` +
+      `font-family="Atkinson Hyperlegible Next, Atkinson Hyperlegible, Helvetica, Arial, sans-serif" stroke="none" class="bfill">${escXml(l.t)}</text>`).join('');
+    const vy = Math.min(minY, 300) - pad, vh = (labs.length ? textY + FS * 0.3 : maxY) - vy + pad;
+    const vx = -pad, vw = maxX + 2 * pad, k = unit / 100;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${(vw * k).toFixed(1)}" height="${(vh * k).toFixed(1)}" ` +
+      `viewBox="${vx} ${vy.toFixed(1)} ${vw.toFixed(1)} ${vh.toFixed(1)}" stroke="currentColor" stroke-width="${pen}" ` +
+      `stroke-linecap="round" stroke-linejoin="round" fill="none" style="color:currentColor">` +
+      `<style>.bfill{fill:currentColor}</style>${parts.join('')}${texts}</svg>`;
+  }
+
   /* ---- the word chips under the text box; click opens the chooser ---- */
   function renderChips(box, s, open, onToggle) {
     box.innerHTML = '';
@@ -444,6 +476,6 @@ const BT = (() => {
   return {
     GL, symById, glossOf, useCustom, get custom() { return custom; },
     IND_CHOICES, indKeys, indToggle, autoLabel, svInflect, composeEls, svgBox,
-    rememberPick, parse, wordEls, chipSVG, renderChips, renderChooser,
+    rememberPick, parse, wordEls, chipSVG, lineSVG, renderChips, renderChooser,
   };
 })();
