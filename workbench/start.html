@@ -9,6 +9,23 @@
 <title>WinBliss² — start</title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+// Started again (Håkan, 2026-11-08): the first page of a new run of
+// Blissverktyget goes back to the part that was open last. Inside a run (the
+// home link, the back button) the start page stays. "?start" always stays.
+(() => {
+  try {
+    if (sessionStorage.getItem('wb-igang')) return;
+    sessionStorage.setItem('wb-igang', '1');
+    if (/[?&]start\b/.test(location.search)) return;
+    const last = localStorage.getItem('wb-senast') || '';
+    if (/^(index|bildspel|almanacka|gissa|former|gravyr)\.html(\?[\w=&%-]*)?$/.test(last)) {
+      window.wbGoingBack = true;
+      location.replace(last);
+    }
+  } catch (_) {}
+})();
+</script>
 <link rel="stylesheet" href="css/wb-base.css">
 <style>
 body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;

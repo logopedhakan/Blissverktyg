@@ -11,6 +11,13 @@
   let inFrame = true;
   try { inFrame = window.self !== window.top; } catch (_) {}
   if (inFrame) return;                         // e.g. Skriv inside another part
+  // The part last open (Håkan, 2026-11-08): when Blissverktyget starts again it
+  // goes back there — start.html reads this in its <head>. The start page itself
+  // is remembered too, so a program closed from the start page starts there.
+  if (!window.wbGoingBack) try {
+    sessionStorage.setItem('wb-igang', '1');   // this run has begun: "home" stays home
+    localStorage.setItem('wb-senast', (location.pathname.split('/').pop() || 'start.html') + location.search);
+  } catch (_) {}
   const KEY = 'wb-fonster';
   const st = { w: 'full', side: 'left', chosen: false };
   try { Object.assign(st, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (_) {}
