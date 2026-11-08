@@ -7,10 +7,10 @@
    When you add a file the app needs, add it to CORE and bump VERSION — the
    new version then replaces the old cache on the next visit. */
 'use strict';
-const VERSION = '2026-11-06.1';
+const VERSION = '2026-11-08.6';
 const CACHE = 'blissverktyget-' + VERSION;
 const CORE = [
-  'start.html', 'index.html', 'skriv.html', 'bildspel.html', 'gissa.html', 'former.html', 'gravyr.html',
+  'start.html', 'index.html', 'skriv.html', 'bildspel.html', 'gissa.html', 'former.html', 'gravyr.html', 'almanacka.html',
   'manifest.webmanifest', 'css/wb-base.css',
   'js/shared/lang.js', 'js/shared/wbs.js', 'js/shared/shortcuts.js', 'js/shared/pwa.js', 'js/shared/speak.js',
   'js/shared/blisstext.js', 'css/wb-blisstext.css',
