@@ -45,9 +45,28 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1f
 .books{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:6px;padding:8px}
 .book{flex:none}
 .dayHead,.add{flex:none}
-.book{display:flex;flex-direction:column;gap:4px;text-align:left;padding:7px 8px;border-radius:10px;
+.book{display:flex;flex-direction:column;gap:6px;text-align:left;padding:7px 8px;border-radius:10px;
   border:1px solid var(--rule);background:var(--panel);width:100%}
-.book:hover,.book:focus-visible{border-color:var(--accent);background:var(--accent-soft)}
+.book:hover,.book:focus-within{border-color:var(--accent);background:var(--accent-soft)}
+.bookMain{display:flex;flex-direction:column;gap:4px;text-align:left;padding:0;border:none;background:none;
+  width:100%;border-radius:6px}
+/* a meeting link (Håkan, 2026-11-08): a third row, one click starts Teams or Jitsi.
+   It glows from 10 minutes before the start until the end. */
+.meet{display:flex;align-items:center;justify-content:center;gap:4px;padding:4px;border-radius:9px;
+  border:1px solid var(--accent);background:var(--panel);color:var(--accent);font-weight:700;
+  font-size:clamp(10.5px, 1vw, 14px);text-decoration:none;white-space:nowrap;overflow:hidden;min-width:0}
+.meet svg{flex:none;width:auto;height:1.6em}
+.meet span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* too narrow for both: the words win, the symbol goes */
+@media (max-width:1250px) and (min-width:641px){.meet svg{display:none}}
+.meet:hover,.meet:focus-visible{background:var(--accent);color:#fff}
+.meet.soon{background:var(--accent);color:#fff;animation:meetGlow 1.2s ease-in-out infinite}
+@keyframes meetGlow{50%{box-shadow:0 0 0 5px var(--accent-soft)}}
+@media (prefers-reduced-motion:reduce){.meet.soon{animation:none;box-shadow:0 0 0 4px var(--accent-soft)}}
+.linkRow{display:flex;gap:8px;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap}
+.linkRow label{flex:1;min-width:220px;display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--dim)}
+.linkRow input{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--rule);border-radius:8px;
+  background:var(--panel);color:var(--ink)}
 .book .time{font-size:clamp(11px, 1.15vw, 15px);font-weight:700;white-space:nowrap}
 /* a booking is two rows (Håkan, 2026-11-08): start–end, then the Bliss text
    as ONE row — at the chosen size, shrunk to the column when it is long */
@@ -120,6 +139,12 @@ dialog h2{font-size:17px;margin-bottom:10px}
   <textarea id="txt" placeholder="Skriv vad som ska hända, t.ex. jag ska till tandläkaren" data-en-ph="Write what will happen, e.g. I am going to the dentist" spellcheck="false"></textarea>
   <div id="chips"></div>
   <div id="chooser" hidden></div>
+  <div class="linkRow">
+    <label><span data-en="Meeting link (Teams or Jitsi) — optional">Möteslänk (Teams eller Jitsi) — om du vill</span>
+      <input id="bLink" type="url" inputmode="url" spellcheck="false" autocomplete="off"
+        placeholder="https://teams.microsoft.com/… eller https://meet.jit.si/…" data-en-ph="https://teams.microsoft.com/… or https://meet.jit.si/…"></label>
+    <button id="btnJitsi" type="button" title="Hittar på ett eget Jitsi-rum — inget konto behövs" data-en-title="Makes up a Jitsi room of its own — no account needed" data-en="Create Jitsi room">Skapa Jitsi-rum</button>
+  </div>
   <div class="dlgBtns">
     <button id="btnDelete" type="button" hidden data-en="Delete">Ta bort</button>
     <span class="grow"></span>
@@ -222,6 +247,29 @@ function spokenOf(b) {
   const t = !b.time ? '' : b.end ? tr(`from ${b.time} to ${b.end}`, `klockan ${b.time} till ${b.end}`) : tr(`at ${b.time}`, `klockan ${b.time}`);
   return [t, words].filter(Boolean).join(', ');
 }
+/* ---- meeting links: Teams and Jitsi (or any https link) ---- */
+// only web links (and Teams' own msteams:) — never javascript: or file:
+function cleanLink(s) {
+  s = String(s || '').trim();
+  if (!s) return '';
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(s) && /^[\w-]+(\.[\w-]+)+(\/|$)/.test(s)) s = 'https://' + s;
+  try { const u = new URL(s); return /^(https?:|msteams:)$/.test(u.protocol) ? u.href : null; } catch (_) { return null; }
+}
+function meetKind(link) {
+  if (/teams\.(microsoft|live)\.com|^msteams:/i.test(link)) return 'Teams';
+  if (/jit\.si|jitsi/i.test(link)) return 'Jitsi';
+  return '';
+}
+const MEET_SYM = (typeof BLISS_DATA !== 'undefined' && BLISS_DATA.find(s => s.e && s.e.length && s.n === 'meeting,assembly,conference')) || null;
+const meetIcon = () => { try { return MEET_SYM ? blissSVG(MEET_SYM, { unit: 3, color: 'currentColor' }) : ''; } catch (_) { return ''; } };
+const minutes = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+// from 10 minutes before the start until the end (an hour when no end is set)
+function meetSoon(b, now = new Date()) {
+  if (!b.link || !b.time || b.date !== isoDay(now)) return false;
+  const t = now.getHours() * 60 + now.getMinutes(), s = minutes(b.time);
+  const e = b.end && minutes(b.end) > s ? minutes(b.end) : s + 60;
+  return t >= s - 10 && t < e;
+}
 const dayIcon = (i) => { try { return blissSVG(BT.symById(DAY_BCI[i]), { unit: 4, color: 'currentColor' }); } catch (_) { return ''; } };
 
 /* ---- the week ---- */
@@ -248,15 +296,31 @@ function render() {
     const list = alm.bookings.filter(b => b.date === iso).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
     if (!list.length) books.innerHTML = `<span class="empty">${tr('Nothing booked', 'Inget bokat')}</span>`;
     for (const b of list) {
-      const el = document.createElement('button');
-      el.className = 'book'; el.type = 'button';
-      el.innerHTML = `<span class="time">${escXml(timeText(b))}</span>${lineHTML(b.words)}`;
-      el.title = tr('Click to change', 'Klicka för att ändra');
-      el.onclick = () => openBook(b);
-      el.addEventListener('mouseenter', () => hoverSpeak(b));
-      el.addEventListener('focus', () => hoverSpeak(b));
-      el.addEventListener('mouseleave', hoverLeave);
-      el.addEventListener('blur', hoverLeave);
+      const el = document.createElement('div');
+      el.className = 'book';
+      const main = document.createElement('button');
+      main.className = 'bookMain'; main.type = 'button';
+      main.innerHTML = `<span class="time">${escXml(timeText(b))}</span>${lineHTML(b.words)}`;
+      main.title = tr('Click to change', 'Klicka för att ändra');
+      main.onclick = () => openBook(b);
+      main.addEventListener('mouseenter', () => hoverSpeak(b));
+      main.addEventListener('focus', () => hoverSpeak(b));
+      main.addEventListener('mouseleave', hoverLeave);
+      main.addEventListener('blur', hoverLeave);
+      el.appendChild(main);
+      if (b.link) {
+        const a = document.createElement('a');
+        a.className = 'meet' + (meetSoon(b) ? ' soon' : '');
+        a.href = b.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        a.dataset.id = b.id;
+        const kind = meetKind(b.link);
+        a.title = (kind ? `${tr('Start the meeting in', 'Starta mötet i')} ${kind}` : tr('Start the meeting', 'Starta mötet'));
+        a.innerHTML = `${meetIcon()}<span>${tr('Start meeting', 'Starta mötet')}</span>`;
+        a.addEventListener('mouseenter', () => hoverSpeakText(tr('Start the meeting', 'Starta mötet')));
+        a.addEventListener('focus', () => hoverSpeakText(tr('Start the meeting', 'Starta mötet')));
+        a.addEventListener('mouseleave', hoverLeave);
+        el.appendChild(a);
+      }
       books.appendChild(el);
     }
     const add = document.createElement('button');
@@ -326,6 +390,7 @@ function openBook(b, date) {
   $('bDate').value = b ? b.date : date;
   $('bTime').value = b ? b.time || '' : '';
   $('bEnd').value = b ? b.end || '' : '';
+  $('bLink').value = b ? b.link || '' : '';
   $('txt').value = draft.text;
   if (draft.text) BT.parse(draft, $('txt'));
   $('btnDelete').hidden = !b;
@@ -346,10 +411,12 @@ $('bookDlg').addEventListener('cancel', (e) => { e.preventDefault(); closeBook()
 $('btnSave').onclick = () => {
   if (!$('bDate').value) { say(tr('Choose a day', 'Välj en dag')); return; }
   if (!draft.words.some(w => !w.br)) { say(tr('Write what will happen', 'Skriv vad som ska hända')); $('txt').focus(); return; }
+  const link = cleanLink($('bLink').value);
+  if (link === null) { say(tr('The meeting link must be a web address (https://…)', 'Möteslänken måste vara en webbadress (https://…)')); $('bLink').focus(); return; }
   const custom = [];
   for (const w of draft.words) if (!w.br && !w.asText) { const s = BT.symById(w.ids[w.pick]); if (s && BT.custom.get(s.id) === s) custom.push(s); }
   const rec = { id: editing ? editing.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    date: $('bDate').value, time: $('bTime').value, end: $('bEnd').value,
+    date: $('bDate').value, time: $('bTime').value, end: $('bEnd').value, link,
     text: draft.text, words: draft.words.map(w => { const c = Object.assign({}, w); delete c.keyOf; return c; }), custom };
   if (editing) alm.bookings[alm.bookings.indexOf(editing)] = rec; else alm.bookings.push(rec);
   persist();
@@ -364,6 +431,41 @@ $('btnDelete').onclick = () => {
   persist(); closeBook(); render();
   say(tr('Booking deleted', 'Bokningen är borttagen'));
 };
+/* a Jitsi room of its own: a name nobody guesses — no account, the room exists
+   as soon as someone opens the link */
+$('btnJitsi').onclick = () => {
+  const rnd = Array.from(crypto.getRandomValues(new Uint8Array(6)), x => x.toString(36).padStart(2, '0')).join('');
+  $('bLink').value = `https://meet.jit.si/Bliss-${rnd}`;
+  say(tr('Jitsi room created — share the link with those who will join', 'Jitsi-rum skapat — dela länken med dem som ska vara med'));
+};
+
+/* ---- the meeting reminder: while the almanac is open, the meeting button glows
+   from 10 minutes before, and at the start the almanac says so (once) ---- */
+const remindedKey = 'wb-almanacka-paminda';
+let reminded = {};
+try { reminded = JSON.parse(sessionStorage.getItem(remindedKey) || '{}') || {}; } catch (_) {}
+function tickMeetings() {
+  const now = new Date(), today = isoDay(now), t = now.getHours() * 60 + now.getMinutes();
+  for (const a of document.querySelectorAll('.meet[data-id]')) {
+    const b = alm.bookings.find(x => x.id === a.dataset.id);
+    a.classList.toggle('soon', !!b && meetSoon(b, now));
+  }
+  for (const b of alm.bookings) {
+    if (!b.link || !b.time || b.date !== today) continue;
+    const s = minutes(b.time), k = `${b.id}@${b.date}T${b.time}`;
+    if (t >= s && t < s + 5 && !reminded[k]) {
+      reminded[k] = 1;
+      try { sessionStorage.setItem(remindedKey, JSON.stringify(reminded)); } catch (_) {}
+      if (weekStart.getTime() !== mondayOf(now).getTime()) { weekStart = mondayOf(now); render(); }
+      const words = spokenOf({ words: b.words });
+      say(tr('The meeting starts now', 'Nu börjar mötet') + (words ? ': ' + words : ''));
+      if (WB_SPEECH) wbSpeak(tr('The meeting starts now. ', 'Nu börjar mötet. ') + words);
+    }
+  }
+}
+setInterval(tickMeetings, 20000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tickMeetings(); });
+
 wbSpeakButton($('btnSpeakBook'), () => spokenOf({ time: $('bTime').value, words: draft.words }), say);
 
 /* ---- settings ---- */
@@ -418,13 +520,17 @@ $('btnIcs').onclick = () => {
       const nx = fromIso(b.date); nx.setDate(nx.getDate() + 1);
       lines.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${isoDay(nx).replace(/-/g, '')}`);
     }
-    lines.push(`SUMMARY:${esc(title)}`, `DESCRIPTION:${esc(tr('Written in Bliss in WinBliss²', 'Skrivet med Bliss i WinBliss²'))}`, 'END:VEVENT');
+    const desc = tr('Written in Bliss in WinBliss²', 'Skrivet med Bliss i WinBliss²') + (b.link ? '\n' + tr('Meeting: ', 'Möte: ') + b.link : '');
+    lines.push(`SUMMARY:${esc(title)}`, `DESCRIPTION:${esc(desc)}`);
+    if (b.link) lines.push(`LOCATION:${esc(b.link)}`, `URL:${b.link}`);
+    lines.push('END:VEVENT');
   }
   lines.push('END:VCALENDAR');
   download(new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/calendar' }), tr('almanac', 'almanacka') + '.ics');
 };
 
 render();
+tickMeetings();
 
 /* delade $-genvägar (shortcuts.js) */
 wbShortcuts({
