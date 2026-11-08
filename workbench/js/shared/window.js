@@ -159,8 +159,59 @@
     const h = (window.innerHeight / z) + 'px';
     root.style.height = h; body.style.height = h;
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { build(); fit(); }); else { build(); fit(); }
-  window.addEventListener('resize', () => { fit(); });
+  /* ---- the start page: every choice on the screen, whatever its size
+     (Håkan, 2026-11-08). The cards go in 2, 3 or 4 columns — whichever lets
+     them be drawn largest — and the page is drawn just small enough to fit. ---- */
+  function fitStart() {
+    const cards = document.getElementById('cards');
+    const head = document.querySelector('body > header'), foot = document.querySelector('body > footer');
+    if (!cards || !head) return;
+    const root = document.documentElement, body = document.body;
+    // the visible page area (on phones innerWidth/innerHeight follow the zoom)
+    const H = Math.min(window.innerHeight, root.clientHeight || 1e9), W = Math.min(window.innerWidth, root.clientWidth || 1e9);
+    body.style.minHeight = '0px';                  // measure the content itself
+    // measured where the page really ends: the bottom of the footer (or the cards)
+    const fits = (z) => {
+      root.style.zoom = String(z);
+      const end = (foot || cards).getBoundingClientRect().bottom + window.scrollY;
+      return end <= H && cards.getBoundingClientRect().width + 36 * z <= W;
+    };
+    const best = (cols) => {
+      cards.style.maxWidth = 'none';
+      cards.style.gridTemplateColumns = `repeat(${cols}, minmax(200px, 260px))`;
+      if (fits(1)) return 1;
+      let lo = 0.2, hi = 1;
+      for (let i = 0; i < 9; i++) { const m = (lo + hi) / 2; if (fits(m)) lo = m; else hi = m; }
+      return lo;
+    };
+    const n = cards.children.length;
+    let pick = null;
+    for (const cols of [3, 4, 2]) {               // 3 first: the usual look wins a tie
+      if (cols > n) continue;
+      const z = best(cols);
+      if (!pick || z > pick.z + 0.02) pick = { cols, z };
+    }
+    if (!pick) return;
+    cards.style.gridTemplateColumns = `repeat(${pick.cols}, minmax(200px, 260px))`;
+    if (pick.z >= 0.999) { root.style.zoom = ''; body.style.minHeight = ''; return; }
+    root.style.zoom = String(pick.z);
+    // then fill the window again (the cards centred, the footer at the bottom):
+    // a height in page units, corrected by what it really measures on the screen
+    let mh = H / pick.z;
+    for (let i = 0; i < 3; i++) {
+      body.style.minHeight = mh + 'px';
+      const seen = body.getBoundingClientRect().height;
+      if (Math.abs(seen - H) < 1) break;
+      mh = mh * H / seen;
+    }
+    if (body.getBoundingClientRect().height > H + 1) body.style.minHeight = '0px';
+  }
+  const refit = () => { if (page === 'start.html' || page === '') fitStart(); else fit(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { build(); refit(); }); else { build(); refit(); }
+  window.addEventListener('load', refit);           // the card symbols and fonts are in place
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(refit);
+  let rT = null;
+  window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(refit, 60); });
   // the app starts in the size last chosen
   if (own() && st.chosen) { if (document.readyState === 'complete') apply(); else window.addEventListener('load', apply); }
 })();
