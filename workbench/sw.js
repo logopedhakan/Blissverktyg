@@ -7,11 +7,13 @@
    When you add a file the app needs, add it to CORE and bump VERSION — the
    new version then replaces the old cache on the next visit. */
 'use strict';
-const VERSION = '2026-11-08.16';
+const VERSION = '2026-11-08.17';
 const CACHE = 'blissverktyget-' + VERSION;
 const CORE = [
   'start.html', 'index.html', 'skriv.html', 'bildspel.html', 'gissa.html', 'former.html', 'gravyr.html', 'almanacka.html',
-  'manifest.webmanifest', 'css/wb-base.css',
+  'manifest.webmanifest', 'css/wb-base.css', 'css/wb-fonts.css',
+  'fonts/atkinson-hyperlegible-next-latin.woff2', 'fonts/atkinson-hyperlegible-next-latin-ext.woff2',
+  'fonts/atkinson-hyperlegible-mono-latin.woff2', 'fonts/atkinson-hyperlegible-mono-latin-ext.woff2',
   'js/shared/lang.js', 'js/shared/wbs.js', 'js/shared/shortcuts.js', 'js/shared/pwa.js', 'js/shared/window.js', 'js/shared/speak.js',
   'js/shared/blisstext.js', 'js/shared/sv-morph.js', 'css/wb-blisstext.css',
   'js/engine/bliss-shapes.js', 'js/engine/bliss-engine.js',
@@ -39,9 +41,8 @@ self.addEventListener('fetch', (ev) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   const sameOrigin = url.origin === self.location.origin;
-  // the editor's typeface comes from Google Fonts: keep it too, so offline looks the same
-  const font = /^https:\/\/fonts\.(googleapis|gstatic)\.com$/.test(url.origin);
-  if (!sameOrigin && !font) return;
+  // only the app's own files (the typeface is one of them since 2026-11-08)
+  if (!sameOrigin) return;
   ev.respondWith((async () => {
     const cache = await caches.open(CACHE);
     try {
@@ -50,12 +51,12 @@ self.addEventListener('fetch', (ev) => {
       // HTTP cache served a published update for up to 10 minutes — GitHub Pages
       // sends max-age=600 (Håkan, 2026-11-05). A navigation Request cannot be
       // re-made with options, so the URL is fetched instead.
-      const res = sameOrigin ? await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }) : await fetch(req);
-      if (res.ok || res.type === 'opaque') cache.put(req, res.clone());
+      const res = await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' });
+      if (res.ok) cache.put(req, res.clone());
       return res;
     } catch (err) {
       // offline: the kept copy; "?vy=skriv" and other parameters share one copy of their page
-      const hit = await cache.match(req, { ignoreSearch: sameOrigin });
+      const hit = await cache.match(req, { ignoreSearch: true });
       if (hit) return hit;
       if (req.mode === 'navigate') return (await cache.match('start.html')) || Response.error();
       throw err;

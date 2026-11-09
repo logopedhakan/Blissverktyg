@@ -259,9 +259,11 @@ function cleanLink(s) {
   if (!/^[a-z][a-z0-9+.-]*:/i.test(s) && /^[\w-]+(\.[\w-]+)+(\/|$)/.test(s)) s = 'https://' + s;
   try { const u = new URL(s); return /^(https?:|msteams:)$/.test(u.protocol) ? u.href : null; } catch (_) { return null; }
 }
+// by the link's host, not by a word anywhere in it ("…/jitsi" on another site is not Jitsi)
 function meetKind(link) {
-  if (/teams\.(microsoft|live)\.com|^msteams:/i.test(link)) return 'Teams';
-  if (/jit\.si|jitsi/i.test(link)) return 'Jitsi';
+  let u = null; try { u = new URL(link); } catch (_) { return ''; }
+  if (u.protocol === 'msteams:' || /(^|\.)teams\.(microsoft|live)\.com$/i.test(u.hostname)) return 'Teams';
+  if (/(^|\.)(jit\.si|8x8\.vc)$/i.test(u.hostname)) return 'Jitsi';
   return '';
 }
 const MEET_SYM = (typeof BLISS_DATA !== 'undefined' && BLISS_DATA.find(s => s.e && s.e.length && s.n === 'meeting,assembly,conference')) || null;
@@ -312,12 +314,13 @@ function render() {
       main.addEventListener('mouseleave', hoverLeave);
       main.addEventListener('blur', hoverLeave);
       el.appendChild(main);
-      if (b.link) {
+      const link = cleanLink(b.link);     // again here: a link kept from before this check, too
+      if (link) {
         const a = document.createElement('a');
         a.className = 'meet' + (meetSoon(b) ? ' soon' : '');
-        a.href = b.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        a.href = link; a.target = '_blank'; a.rel = 'noopener noreferrer';
         a.dataset.id = b.id;
-        const kind = meetKind(b.link);
+        const kind = meetKind(link);
         a.title = (kind ? `${tr('Start the meeting in', 'Starta mötet i')} ${kind}` : tr('Start the meeting', 'Starta mötet'));
         a.innerHTML = `${meetIcon()}<span>${tr('Start meeting', 'Starta mötet')}</span>`;
         a.addEventListener('mouseenter', () => hoverSpeakText(tr('Start the meeting', 'Starta mötet')));
@@ -507,6 +510,24 @@ function download(blob, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 $('btnSaveFile').onclick = () => download(new Blob([JSON.stringify(alm)], { type: 'application/json' }), tr('almanac', 'almanacka') + '.json');
+/* An almanac file can come from anyone. Keep only bookings the app itself could
+   have written: a real date, times as hh:mm, and a meeting link that passes the
+   same check as one typed in (cleanLink: web links only, never javascript:). */
+function cleanBookings(list) {
+  const out = [];
+  for (const b of list) {
+    if (!b || typeof b !== 'object' || !/^\d{4}-\d{2}-\d{2}$/.test(b.date)) continue;
+    const hhmm = (t) => typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t) ? t : '';
+    b.time = hhmm(b.time);
+    b.end = b.time ? hhmm(b.end) : '';
+    b.link = cleanLink(b.link) || '';
+    b.id = String(b.id ?? '').replace(/[^\w-]/g, '').slice(0, 40) || Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    b.text = typeof b.text === 'string' ? b.text : '';
+    if (!Array.isArray(b.words)) b.words = [];
+    out.push(b);
+  }
+  return out;
+}
 $('btnOpenFile').onclick = () => {
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = '.json';
@@ -517,6 +538,7 @@ $('btnOpenFile').onclick = () => {
         const o = JSON.parse(t);
         if (!o || !Array.isArray(o.bookings)) throw new Error('bad');
         alm = Object.assign({ v: 1, bookings: [], labels: true, size: 3.5, hover: false }, o);
+        alm.bookings = cleanBookings(alm.bookings);
         if (!SIZES.includes(alm.size)) alm.size = 3.5;
         for (const b of alm.bookings) if (Array.isArray(b.custom) && b.custom.length) BT.useCustom(b.custom);
         persist(); render(); say(tr('Almanac opened', 'Almanackan öppnades'));

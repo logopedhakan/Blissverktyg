@@ -25,6 +25,8 @@ winbliss-web-beta/
 │  ├─ manifest.webmanifest  appens namn, ikoner och genvägar
 │  ├─ sw.js                 service worker: nätet först, cachen när nätet saknas
 │  ├─ css/wb-base.css       gemensam palett (ljus/mörk) och ⌂ Start-länken
+│  ├─ css/wb-fonts.css      typsnittet Atkinson Hyperlegible, från appen själv (inte Google Fonts)
+│  ├─ fonts/                typsnittsfilerna (woff2) och deras licens (SIL OFL 1.1)
 │  ├─ icons/                appikoner (gjorda med tools/make-icons.html)
 │  └─ js/
 │     ├─ engine/            ritmotorn, porterad från WinBliss (bliss-shapes, bliss-engine)

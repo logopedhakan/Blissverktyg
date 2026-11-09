@@ -115,8 +115,8 @@ function renderListPane(key) {
     let thumb = '';
     try { thumb = thumbSVG(s); } catch (_) {}
     d.innerHTML = `<span class="thumb">${thumb}</span>
-      <span class="g">${displayGloss(s)}<br><span class="id mono">${s.id}</span></span>
-      <button class="editG" title="${tr('Edit gloss & synonyms (F2)', 'Redigera benämning & synonymer (F2)')}" aria-label="${tr('Edit gloss for', 'Redigera benämning för')} ${firstGloss(s)}">✎</button>`;
+      <span class="g">${escXml(displayGloss(s))}<br><span class="id mono">${escXml(String(s.id))}</span></span>
+      <button class="editG" title="${tr('Edit gloss & synonyms (F2)', 'Redigera benämning & synonymer (F2)')}" aria-label="${tr('Edit gloss for', 'Redigera benämning för')} ${escXml(firstGloss(s))}">✎</button>`;
     rows.appendChild(d);
   }
   $(key === 'A' ? 'countA' : 'countB').textContent =
@@ -1229,6 +1229,9 @@ $('btnResetStd').onclick = async () => {
 
 /* colour controls */
 ed.ink = null; ed.bg = 'transparent'; ed.unit = 24; ed.textPlace = 'none';
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+const okInk = (c) => HEX_COLOR.test(c) ? c : null;
+const okBg = (c) => ['transparent', 'white', 'class'].includes(c) || HEX_COLOR.test(c) ? c : 'transparent';
 function resolvedBg(wclass) {
   if (ed.bg === 'transparent') return null;
   if (ed.bg === 'white') return '#ffffff';
@@ -1317,9 +1320,11 @@ function collectWbx() {
 }
 function applyWbx(o) {
   if (!o || o.format !== 'winbliss-web-export-settings') { toast(tr('Not a WinBliss settings file', 'Inte en inställningsfil för WinBliss')); return; }
-  ed.ink = o.ink || null;
+  // a settings file can come from anyone: colours go into the stage's SVG markup,
+  // so only #rrggbb (and the named background modes) are taken
+  ed.ink = okInk(o.ink);
   if (ed.ink) $('inkColor').value = ed.ink;
-  if (o.bg) ed.bg = o.bg;                                   // v2+
+  if (o.bg) ed.bg = okBg(o.bg);                             // v2+
   else ed.bg = o.transparent === false ? (o.classBg ? 'class' : 'white') : 'transparent';  // v1 files
   syncBgControls();
   ed.unit = Math.min(96, Math.max(4, +o.unit || 24)); $('expUnit').value = ed.unit;
@@ -2613,8 +2618,8 @@ renderVariantRow();
       lists.B.name = st.b.name; lists.B.syms = st.b.syms; lists.B.mod = !!st.b.mod;
       restored = true;
       renderListPane('A');
-      if (st.ink) { ed.ink = st.ink; $('inkColor').value = st.ink; }
-      if (st.bg) ed.bg = st.bg;
+      if (okInk(st.ink)) { ed.ink = st.ink; $('inkColor').value = st.ink; }
+      if (st.bg) ed.bg = okBg(st.bg);
       else if (st.transparent === false) ed.bg = st.classBg ? 'class' : 'white';
       else if (st.classBg) ed.bg = 'class';
       syncBgControls();

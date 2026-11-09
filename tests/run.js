@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Blissverktyget — tests for writing text as Bliss. No dependencies:
+/* Blissverktyget — tests for writing text as Bliss, and for opening shared files safely. No dependencies:
      node tests/run.js
    Loads the real page scripts (data, sv-morph.js, blisstext.js and Skriv's
    lookup from app.js) into a sandbox, the way the pages load them, and checks
@@ -136,6 +136,58 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     for (const k of Object.keys(want)) got[k] = ctx.W_INDEX.get(k)[0];
     check(`Skriv lookup, interface ${lang}, list gloss '${gloss}'`, got, want);
   }
+}
+
+/* ---------- 4. files from elsewhere: nothing in them may become markup or a script link ----------
+   Shows, symbol lists, settings and almanacs are shared by mail and USB sticks.
+   The checks run on the real functions, cut out of the pages. */
+{
+  const cut = (file, start, end) => {
+    const t = read(file), i = t.indexOf(start);
+    if (i < 0) throw new Error(`${file}: not found: ${start}`);
+    const j = t.indexOf(end, i);
+    if (j < 0) throw new Error(`${file}: not found: ${end}`);
+    return t.slice(i, j);
+  };
+  const run = (src, file, names) => {
+    const ctx = vm.createContext({ console, URL });
+    vm.runInContext(globalize(src, names), ctx, { filename: file });
+    return ctx;
+  };
+  const X = '"/><img src=x onerror=alert(1)>';
+
+  // Bildspel: colours, numbers and pictures in an opened show
+  const bs = run(cut('bildspel.html', 'const HEX_COLOR', 'function load('), 'bildspel.html (cleanShow)', ['HEX_COLOR', 'IMG_DATA', 'clampNum']);
+  const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+  const bad = bs.cleanShow({ bg: '#fff' + X, textBg: X, pen: '35' + X, gap: 'x', imgPct: 999, title: {}, slides: [{ img: 'x" onload="alert(1)', text: 5, words: 'x' }] });
+  check('Bildspel: bad values fall back', [bad.bg, bad.textBg, bad.pen, bad.gap, bad.imgPct, bad.title, bad.slides[0].img, bad.slides[0].text, bad.slides[0].words],
+    ['#ffffff', null, 35, 8, 85, '', null, '', []]);
+  const good = bs.cleanShow({ bg: '#12233d', textBg: '#fff6c2', pen: 50, gap: 12, imgPct: 40, title: 'Glass', slides: [{ img: PNG, text: 'hej', words: [] }] });
+  check('Bildspel: good values stay', [good.bg, good.textBg, good.pen, good.gap, good.imgPct, good.title, good.slides[0].img],
+    ['#12233d', '#fff6c2', 50, 12, 40, 'Glass', PNG]);
+
+  // Editera: ink and background from a settings file (.wbx) or the saved settings
+  const ed = run(cut('js/editor/app.js', 'const HEX_COLOR', 'function resolvedBg'), 'app.js (okInk, okBg)', ['HEX_COLOR', 'okInk', 'okBg']);
+  check('Editera: settings colours', [ed.okInk('#aa0000'), ed.okInk('#000' + X), ed.okBg('class'), ed.okBg('#ffeecc'), ed.okBg('red' + X)],
+    ['#aa0000', null, 'class', '#ffeecc', 'transparent']);
+  const app = read('js/editor/app.js');
+  check('Editera: list rows escape the symbol name', /<span class="g">\$\{escXml\(displayGloss\(s\)\)\}/.test(app), true);
+
+  // Almanacka: bookings in an opened almanac, and what a link counts as
+  const al = run(cut('almanacka.html', 'function cleanLink', 'const MEET_SYM') + cut('almanacka.html', 'function cleanBookings', "$('btnOpenFile')"),
+    'almanacka.html (cleanLink, meetKind, cleanBookings)', []);
+  const list = al.cleanBookings([
+    { id: 'a', date: '2026-11-09', time: '10:00', end: '11:00', link: 'javascript:alert(1)' },
+    { id: 'b', date: '2026-11-09', time: '12:00' + X, link: 'https://meet.jit.si/Bliss-abc' },
+    { id: 'c"><img', date: '2026-11-09', link: 'msteams:/l/meetup-join/x' },
+    { id: 'd', date: 'not a date' },
+    null,
+  ]);
+  check('Almanacka: opened bookings', list.map(b => [b.id, b.time, b.end, b.link]),
+    [['a', '10:00', '11:00', ''], ['b', '', '', 'https://meet.jit.si/Bliss-abc'], ['cimg', '', '', 'msteams:/l/meetup-join/x']]);
+  check('Almanacka: meeting kind by host', ['https://meet.jit.si/x', 'https://8x8.vc/a/b', 'https://teams.microsoft.com/l/x', 'msteams:/l/x',
+    'https://evil.example/jitsi', 'https://jit.si.evil.example/x', 'not a link'].map(al.meetKind),
+    ['Jitsi', 'Jitsi', 'Teams', 'Teams', '', '', '']);
 }
 
 console.log(`${pass} passed, ${fail} failed`);

@@ -373,15 +373,15 @@ function layoutOf(s) {
 function slideSVG(s, placeholder) {
   const L = layoutOf(s);
   const bg = show.bg || '#ffffff', ink = inkFor(show.textBg || bg);
-  let inner = `<rect width="${SW}" height="${SH}" fill="${bg}"/>`;
-  if (L.img) inner += `<image href="${s.img}" x="${L.img.x}" y="${L.img.y}" width="${L.img.w}" height="${L.img.h}" preserveAspectRatio="xMidYMid meet"/>`;
+  let inner = `<rect width="${SW}" height="${SH}" fill="${escXml(bg)}"/>`;
+  if (L.img) inner += `<image href="${escXml(s.img)}" x="${L.img.x}" y="${L.img.y}" width="${L.img.w}" height="${L.img.h}" preserveAspectRatio="xMidYMid meet"/>`;
   if (L.blk && show.textBg) {
     const b = textBand(L);
-    inner += `<rect x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" width="${b.w.toFixed(1)}" height="${b.h.toFixed(1)}" rx="22" fill="${show.textBg}"/>`;
+    inner += `<rect x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" width="${b.w.toFixed(1)}" height="${b.h.toFixed(1)}" rx="22" fill="${escXml(show.textBg)}"/>`;
   }
   if (L.blk) inner += `<svg x="${L.txt.x}" y="${L.txt.y}" width="${L.txt.w}" height="${L.txt.h}"
       viewBox="${L.vb.x.toFixed(1)} ${L.vb.y.toFixed(1)} ${L.vb.w.toFixed(1)} ${L.vb.h.toFixed(1)}" preserveAspectRatio="xMidYMid meet" overflow="visible">
-      <g stroke="${ink}" stroke-width="${show.pen || 35}" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
+      <g stroke="${ink}" stroke-width="${+show.pen || 35}" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
   if (!L.img && !L.blk && placeholder)
     inner += `<text x="${SW / 2}" y="${SH / 2}" text-anchor="middle" font-size="44" fill="#9A9AA2"
       font-family="Atkinson Hyperlegible Next, Atkinson Hyperlegible, sans-serif">${escXml(placeholder)}</text>`;
@@ -737,10 +737,35 @@ function serialize() {
   show.custom = [...used].map(id => BT.custom.get(id));
   return JSON.stringify(show);
 }
+/* A show file can come from anyone (mail, USB stick, a shared folder), and its
+   values end up inside the slides' SVG markup. Keep only what the app itself
+   writes: colours as #rrggbb, pictures as base64 data: images, plain numbers.
+   Anything else falls back to the default, so a bad value never becomes markup. */
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+const IMG_DATA = /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+$/i;
+const clampNum = (v, lo, hi, def) => { v = +v; return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def; };
+function cleanShow(o) {
+  o.bg = HEX_COLOR.test(o.bg) ? o.bg : '#ffffff';
+  o.textBg = HEX_COLOR.test(o.textBg) ? o.textBg : null;
+  o.pen = clampNum(o.pen, 15, 100, 35);
+  o.gap = clampNum(o.gap, 1, 24, 8);
+  o.imgPct = clampNum(o.imgPct, 30, 85, 62);
+  o.title = typeof o.title === 'string' ? o.title : '';
+  if (!Array.isArray(o.custom)) o.custom = [];
+  for (const s of o.slides) {
+    s.img = typeof s.img === 'string' && IMG_DATA.test(s.img) ? s.img : null;
+    s.imgW = clampNum(s.imgW, 0, 100000, 0);
+    s.imgH = clampNum(s.imgH, 0, 100000, 0);
+    s.text = typeof s.text === 'string' ? s.text : '';
+    if (!Array.isArray(s.words)) s.words = [];
+  }
+  return o;
+}
 function load(obj) {
   if (!obj || !Array.isArray(obj.slides) || !obj.slides.length) throw new Error('bad');
   show = Object.assign({ v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, pen: 35, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, custom: [] }, obj);
-  show.slides = show.slides.map(s => Object.assign(newSlide(), s));
+  show.slides = show.slides.map(s => Object.assign(newSlide(), s && typeof s === 'object' ? s : {}));
+  cleanShow(show);
   if (![160, 120, 90, 65].includes(show.size)) show.size = 120;
   if (show.custom.length) useCustom(show.custom);
   for (const s of show.slides) parseSlide(s);
@@ -908,7 +933,7 @@ function blockPNG(L) {
   const pxW = 2400, pxH = Math.min(4000, Math.round(pxW * L.vb.h / L.vb.w));
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${pxW}" height="${pxH}"
     viewBox="${L.vb.x} ${L.vb.y} ${L.vb.w} ${L.vb.h}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:${inkFor(show.textBg || show.bg)}}</style>
-    <g stroke="${inkFor(show.textBg || show.bg)}" stroke-width="${show.pen || 35}" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
+    <g stroke="${inkFor(show.textBg || show.bg)}" stroke-width="${+show.pen || 35}" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
