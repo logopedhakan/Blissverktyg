@@ -101,6 +101,23 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
     <div id="words"></div>
   </section>
   <aside class="col" id="side" aria-label="Läge och detaljer">
+    <!-- Håkan, 2026-11-10: the chosen word first, so its buttons are easy to reach -->
+    <div id="detail">
+      <div id="dSym"></div>
+      <div id="dName"></div>
+      <button id="dSpeak">🔊 Läs upp ordet</button>
+      <div id="dEn"></div>
+      <h3>Ordets former</h3>
+      <div id="dForms"></div>
+      <label class="famopt" style="padding:6px 8px"><input type="checkbox" id="copyText" checked>
+        <span>Ta med ordet under symbolen</span></label>
+      <button id="dCopy">Kopiera bild till klippbordet</button>
+      <button id="dCopyTxt">Kopiera text till klippbordet</button>
+      <div id="dCopyMsg" style="font-size:12px;color:var(--dim)"></div>
+      <button id="dSkriv">Skicka till Skriv →</button>
+      <div id="dSkrivMsg" style="font-size:12px;color:var(--dim)"></div>
+      <button id="dGravyr">Öppna på gravyrkort →</button>
+    </div>
     <h3>Läge</h3>
     <label class="famopt"><input type="checkbox" id="famMode">
       <span><b>Familj räcker</b><br>
@@ -122,21 +139,6 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
       <label><input type="radio" name="mode" value="any">
         <span><b>Innehåller någon vald</b><br>
         <span style="color:var(--dim)">ord där minst en vald form ingår</span></span></label>
-    </div>
-    <div id="detail">
-      <div id="dSym"></div>
-      <div id="dName"></div>
-      <button id="dSpeak">🔊 Läs upp ordet</button>
-      <div id="dEn"></div>
-      <h3>Ordets former</h3>
-      <div id="dForms"></div>
-      <label class="famopt" style="padding:6px 8px"><input type="checkbox" id="copyText" checked>
-        <span>Ta med ordet under symbolen</span></label>
-      <button id="dCopy">Kopiera bild till klippbordet</button>
-      <div id="dCopyMsg" style="font-size:12px;color:var(--dim)"></div>
-      <button id="dSkriv">Skicka till Skriv →</button>
-      <div id="dSkrivMsg" style="font-size:12px;color:var(--dim)"></div>
-      <button id="dGravyr">Öppna på gravyrkort →</button>
     </div>
   </aside>
 </main>
@@ -185,6 +187,7 @@ if (LNG === 'en') {
   document.querySelectorAll('#detail h3')[0].textContent = "The word's shapes";
   document.querySelector('#detail .famopt span').textContent = 'Include the word under the symbol';
   $('dCopy').textContent = 'Copy image to the clipboard';
+  $('dCopyTxt').textContent = 'Copy text to the clipboard';
   $('dGravyr').textContent = 'Open on an engraving tag →';
   $('dSkriv').textContent = 'Send to Write →';
   $('dSpeak').textContent = '🔊 Read the word aloud';
@@ -362,12 +365,20 @@ function showMore() {
 }
 
 /* ---- detail panel ---- */
+// Håkan, 2026-11-10: the right panel always starts scrolled to the top, where the
+// chosen word and its buttons are — on opening the page and on every new word
+function sideToTop() { $('side').scrollTop = 0; }
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+sideToTop();
+addEventListener('load', sideToTop);
+addEventListener('pageshow', sideToTop);
 function showDetail(s, btn) {
   document.querySelectorAll('.word.cur').forEach(x => x.classList.remove('cur'));
   if (btn) btn.classList.add('cur');
   current = s;
   $('dSkrivMsg').textContent = '';
   $('detail').classList.add('show');
+  sideToTop();
   $('dSym').innerHTML = blissSVG(s, { unit: 7, color: 'currentColor' });
   $('dName').textContent = (LNG === 'sv' ? (SV[s.id] || svName(s)) : (s.n || svName(s)))
     .replace(/_/g, ' ').split(',').join(', ');
@@ -514,6 +525,27 @@ async function copySymbol() {
   }
 }
 $('dCopy').onclick = copySymbol;
+// Håkan, 2026-11-10: the word as plain text, to paste into a document
+async function copyWordText() {
+  if (!current) return;
+  const msg = $('dCopyMsg'); msg.textContent = '';
+  // a space after the word, so several pasted words stand apart (Håkan, 2026-11-10)
+  const word = $('dName').textContent.split(', ')[0].trim();
+  const text = word + ' ';
+  try {
+    if (!navigator.clipboard) throw new Error('no-clipboard');
+    await navigator.clipboard.writeText(text);
+  } catch (_) {
+    // no clipboard API (e.g. http over LAN): the old way through a hidden field
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove();
+    if (!ok) { msg.textContent = tr('The clipboard is not reachable here.', 'Klippbordet nås inte här.'); return; }
+  }
+  msg.textContent = tr('Copied “' + word + '” with a space after — paste with Ctrl+V (⌘V).', 'Kopierade ”' + word + '” med mellanslag efter — klistra in med Ctrl+V (⌘V).');
+}
+$('dCopyTxt').onclick = copyWordText;
 
 $('btnClear').onclick = () => {
   selected.clear(); selFams.clear();
