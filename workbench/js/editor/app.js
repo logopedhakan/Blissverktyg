@@ -731,7 +731,7 @@ function softClassColor(cls, mix = 0.28) {
   return `rgb(${to(c[0])},${to(c[1])},${to(c[2])})`;
 }
 function exportInk() { return ed.ink || '#111'; }
-const escXml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const escXml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 /* Composite the caption into an export SVG per ed.textPlace (tpNone/tpTop/tpBottom). */
 function withText(svg, caption) {
   if (ed.textPlace === 'none' || !caption) return svg;
@@ -1799,16 +1799,78 @@ function wRenderChips() {
       : w.ids.length
       ? tr('Click to choose symbol, tense or text form', 'Klicka för att välja symbol, tempus eller textform')
       : tr('No symbol matched — stays as text, or create your own', 'Ingen symbol matchade — förblir text, eller skapa en egen');
-    c.onclick = () => { wOpen = wOpen === i ? -1 : i; wRender(); };
+    // what a screen reader says: the word, then the symbol and form chosen for it
+    c.setAttribute('aria-label', wChipName(w));
+    c.setAttribute('aria-expanded', String(i === wOpen));
+    c.setAttribute('aria-controls', 'wChooser');
+    c.onclick = () => { wOpen = wOpen === i ? -1 : i; wFocusNext = wOpen === i ? 'chooser' : null; wRender(); };
     box.appendChild(c);
   });
 }
 function wRender() {
+  const spot = wFocusSpot();
   wRenderChips();
   wRenderChooser();
   wRenderPreview();
   wSaveDraft();
+  wFocusBack(spot);
 }
+
+/* Keyboard focus survives a redraw (2026-11-12). The chips and the chooser are
+   rebuilt on every choice, which dropped focus to <body>: the next Tab then
+   jumped past the chooser that had just opened. Now the focused button is
+   remembered by its place and focused again after the redraw; opening a word
+   moves focus into its chooser (the chosen alternative), and Esc there closes
+   it and goes back to the word. */
+let wFocusNext = null;
+function wFocusables(box) { return [...box.querySelectorAll('button,input')]; }
+function wFocusSpot() {
+  const a = document.activeElement;
+  if (!a || a === document.body) return null;
+  for (const id of ['wChips', 'wChooser']) {
+    const box = $(id);
+    if (box && box.contains(a)) return { id, i: wFocusables(box).indexOf(a) };
+  }
+  return null;
+}
+function wFocusBack(spot) {
+  const go = (el) => { if (el) try { el.focus({ preventScroll: true }); } catch (_) {} };
+  const next = wFocusNext; wFocusNext = null;
+  if (next === 'chooser' && !$('wChooser').hidden) {
+    go($('wChooser').querySelector('.varBtn.sel') || wFocusables($('wChooser'))[0]);
+    return;
+  }
+  if (next === 'chip') { go(wChipEl(wOpenWas)); return; }
+  if (!spot || spot.i < 0) return;
+  const box = $(spot.id);
+  if (box.hidden) { go(wChipEl(wOpenWas)); return; }
+  const all = wFocusables(box);
+  go(all[Math.min(spot.i, all.length - 1)]);
+}
+let wOpenWas = -1;
+// the chip button for word i (line breaks have no chip, so count only chips)
+function wChipEl(i) {
+  if (i < 0) return null;
+  let k = -1;
+  for (let j = 0; j <= i && j < W.length; j++) if (!W[j].br) k++;
+  return $('wChips').querySelectorAll('button.wChip')[k] || null;
+}
+function wChipName(w) {
+  const word = w.label || w.token;
+  if (w.asText || !w.ids.length) return word + ' – ' + tr('as text', 'som text');
+  const id = w.ids[w.pick] ?? w.ids[0];
+  // the symbol in the language of the page when there is a name for it, else the BCI name
+  const own = typeof BLISS_GLOSSES !== 'undefined' && BLISS_GLOSSES[lang] ? (BLISS_GLOSSES[lang][id] || '') : '';
+  const sym = own.split(',')[0].trim() || (w.keyOf && w.keyOf.get && w.keyOf.get(id)) || ((wSymById(id) || {}).n || String(id)).split(',')[0];
+  const forms = wIndKeys(w.ind).map(k => (W_IND_CHOICES.find(c => c[0] === k) || [, () => ''])[1]()).filter(Boolean);
+  return word + ' – ' + sym.replace(/_/g, ' ') + (forms.length ? ', ' + forms.join(', ') : '');
+}
+$('wChooser').addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape' || wOpen < 0) return;
+  ev.preventDefault(); ev.stopPropagation();
+  wOpenWas = wOpen; wOpen = -1; wFocusNext = 'chip';
+  wRender();
+});
 
 /* Skriv keeps its text (Håkan, 2026-10-30): the text and every word's choices
    (symbol, form, as text) are kept in this browser, so Skriv opened again —
@@ -1843,12 +1905,16 @@ function wRenderChooser() {
   const ch = $('wChooser');
   if (!WS.chooser || wOpen < 0 || !W[wOpen]) { ch.hidden = true; return; }
   const w = W[wOpen];
+  wOpenWas = wOpen;
   ch.hidden = false; ch.innerHTML = '';
+  ch.setAttribute('role', 'group');
+  ch.setAttribute('aria-label', tr('Choices for the word ', 'Val för ordet ') + (w.label || w.token));
   const cands = document.createElement('div'); cands.className = 'wCands';
   w.ids.forEach((id, k) => {
     const sy = wSymById(id);
     const b = document.createElement('button');
     b.className = 'varBtn' + (!w.asText && k === w.pick ? ' sel' : '');
+    b.setAttribute('aria-pressed', String(!w.asText && k === w.pick));
     const capTxt = (w.keyOf && w.keyOf.get(id)) || ((wSymById(id) || {}).n || String(id)).split(',')[0];
     b.innerHTML = `${wChipSVG({ ids: [id], pick: 0, ind: w.ind, asText: false })}<span class="cap">${escXml(capTxt)}</span>`;
     b.title = sy ? sy.n : '';
@@ -1857,6 +1923,7 @@ function wRenderChooser() {
   });
   const tb = document.createElement('button');
   tb.className = 'varBtn' + (w.asText ? ' sel' : '');
+  tb.setAttribute('aria-pressed', String(!!w.asText));
   tb.textContent = tr('as text', 'som text');
   tb.onclick = () => { w.asText = true; wRememberPick(w); wRender(); };
   cands.appendChild(tb);
@@ -1881,6 +1948,7 @@ function wRenderChooser() {
     const lr = document.createElement('div'); lr.className = 'wInds';
     const ll = document.createElement('span'); ll.textContent = tr('Word under the symbol:', 'Ordet under symbolen:');
     const li = document.createElement('input');
+    li.setAttribute('aria-label', ll.textContent);
     li.value = w.label || w.token; li.size = Math.max(8, (w.label || w.token).length + 2);
     li.addEventListener('input', () => { w.label = li.value.trim() || null; w.autoLabel = false; wRenderChips(); wRenderPreview(); });
     lr.appendChild(ll); lr.appendChild(li); ch.appendChild(lr);
@@ -1893,6 +1961,7 @@ function wRenderChooser() {
       const b = document.createElement('button');
       b.title = '#' + di;                       // the # + digit shortcut
       b.className = (key ? wIndKeys(w.ind).includes(key) : !w.ind) ? 'sel' : '';
+      b.setAttribute('aria-pressed', String(b.className === 'sel'));
       // The indicator CHARACTER itself leads the label — a Bliss reader reads
       // the glyph, not the English/Swedish word. Drawn by the engine from the
       // real BCI indicator record, pen boldened like the other small glyphs.
@@ -2059,8 +2128,10 @@ function wRenderPreview() {
     pv.innerHTML = `<span style="color:var(--dim);font-size:13px">${tr('The text appears here', 'Texten visas här')}</span>`;
     return;
   }
+  // each line is an image whose text alternative is the sentence (2026-11-12)
+  const said = (l) => escXml(l.map(w => w.label || w.token).join(' ').replace(/ ([.,!?:;])/g, '$1'));
   pv.innerHTML = items.map(x =>
-    `<div>${x.r.svg.replace(/stroke="[^"]*"/, 'stroke="currentColor"').replace(/style="color:[^"]*"/, '').replace(/\.bfill\{fill:[^}]*\}/, '.bfill{fill:currentColor}')}</div>`).join('');
+    `<div role="img" aria-label="${said(x.l)}">${x.r.svg.replace(/stroke="[^"]*"/, 'stroke="currentColor"').replace(/style="color:[^"]*"/, '').replace(/\.bfill\{fill:[^}]*\}/, '.bfill{fill:currentColor}')}</div>`).join('');
   wScrollToCaret();
 }
 /* the preview follows the pen: scroll to the rendered line that holds the

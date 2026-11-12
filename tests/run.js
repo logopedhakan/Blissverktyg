@@ -188,6 +188,61 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Almanacka: meeting kind by host', ['https://meet.jit.si/x', 'https://8x8.vc/a/b', 'https://teams.microsoft.com/l/x', 'msteams:/l/x',
     'https://evil.example/jitsi', 'https://jit.si.evil.example/x', 'not a link'].map(al.meetKind),
     ['Jitsi', 'Jitsi', 'Teams', 'Teams', '', '', '']);
+
+  // the editor's escXml goes into attributes (aria-label) too: quotes must not end the attribute
+  const esc = run(cut('js/editor/app.js', 'const escXml', '/* Composite the caption'), 'app.js (escXml)', ['escXml']);
+  check('Editera: escXml escapes quotes', esc.escXml('x" onfocus="alert(1)'), 'x&quot; onfocus=&quot;alert(1)');
+}
+
+// 5. Accessibility (2026-11-12)
+{
+  const win = read('js/shared/window.js');
+  const ty = vm.createContext({});
+  vm.runInContext(win.slice(win.indexOf('const typing'), win.indexOf('  document.addEventListener', win.indexOf('const typing'))).replace(/^\s*const typing/, 'var typing'), ty);
+  const el = (tagName, type, isContentEditable = false) => ({ tagName, type, isContentEditable });
+  check('Fönster: Alt keys leave text fields alone (⌥2 = @ on a Swedish Mac)',
+    [el('TEXTAREA'), el('INPUT', 'text'), el('INPUT', 'search'), el('INPUT', 'url'), el('DIV', '', true), el('SELECT'),
+     el('INPUT', 'checkbox'), el('BUTTON', 'button'), el('BODY'), null].map(ty.typing),
+    [true, true, true, true, true, true, false, false, false, false]);
+  check('Fönster: the key handler asks typing() first', /if \(typing\(e\.target\)\) return;/.test(win), true);
+
+  // contrast of the shared palette (WCAG 2.2 AA: 4.5:1 for text)
+  const css = read('css/wb-base.css');
+  const block = (re) => css.match(re)[1];
+  const v = (b, n) => b.match(new RegExp('--' + n + ':(#[0-9A-Fa-f]{6})'))[1];
+  const lum = (h) => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(x => x <= .03928 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; };
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+  const light = block(/:root\{([^}]*)\}/), dark = block(/:root\[data-theme="dark"\]\{([^}]*)\}/);
+  check('Palett: grey text on the background, light and dark (≥ 4.5)',
+    [ratio(v(light, 'dim'), v(light, 'bg')) >= 4.5, ratio(v(light, 'dim'), v(light, 'panel-2')) >= 4.5, ratio(v(dark, 'dim'), v(dark, 'bg')) >= 4.5], [true, true, true]);
+  check('Palett: text on an accent button, light and dark (≥ 4.5)',
+    [ratio(v(light, 'on-accent'), v(light, 'accent')) >= 4.5, ratio(v(dark, 'on-accent'), v(dark, 'accent')) >= 4.5], [true, true]);
+  const whiteOnAccent = ['start.html', 'bildspel.html', 'almanacka.html', 'gissa.html', 'former.html', 'gravyr.html', 'css/wb-blisstext.css', 'js/shared/window.js']
+    .filter(f => /var\(--accent\)[^}]*?color:#fff/i.test(read(f)));
+  check('Palett: no white text on the accent colour', whiteOnAccent, []);
+  check('Palett: a visible focus ring for every part', /:focus-visible\{outline:3px solid var\(--accent\)/.test(css), true);
+
+  // Skriv: what a screen reader says for a word chip
+  const app = read('js/editor/app.js');
+  const chip = vm.createContext({});
+  vm.runInContext(`var tr = (en, sv) => sv; var wIndKeys = (ind) => (ind || '').split('+').filter(Boolean);
+    var W_IND_CHOICES = [['', () => 'ingen'], ['past_action', () => 'dåtid'], ['plural', () => 'plural']];
+    var lang = 'sv', BLISS_GLOSSES = { sv: { 1: 'vilja,önska' } };
+    var wSymById = (id) => ({ 1: { n: 'want,wish' }, 2: { n: 'ice_cream' } })[id];` +
+    app.slice(app.indexOf('function wChipName'), app.indexOf("$('wChooser').addEventListener")), chip);
+  check('Skriv: chip names say the symbol and the form', [
+    chip.wChipName({ token: 'ville', ids: [1], pick: 0, ind: 'past_action' }),
+    chip.wChipName({ token: 'glassar', label: 'glass', ids: [2], pick: 0, ind: 'plural' }),
+    chip.wChipName({ token: 'Lisa', ids: [], pick: 0 }),
+    chip.wChipName({ token: 'vill', ids: [1], pick: 0, asText: true }),
+  ], ['ville – vilja, dåtid', 'glass – ice cream, plural', 'Lisa – som text', 'vill – som text']);
+  check('Skriv: focus is put back after a redraw', /const spot = wFocusSpot\(\);[\s\S]*?wFocusBack\(spot\);/.test(app), true);
+  check('Skriv: preview lines are images with the sentence as text', /role="img" aria-label="\$\{said\(x\.l\)\}"/.test(app), true);
+
+  // Formfamiljer: a form is named by its key and count, and says whether it is chosen
+  const fm = read('former.html');
+  check('Formfamiljer: forms have a name and a pressed state',
+    [/chip\.setAttribute\('aria-label', key \+/.test(fm), /chip\.setAttribute\('aria-pressed', String\(on\)\)/.test(fm)], [true, true]);
 }
 
 console.log(`${pass} passed, ${fail} failed`);

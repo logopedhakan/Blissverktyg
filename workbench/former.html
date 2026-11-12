@@ -68,12 +68,12 @@ body.fam .famhead.on{color:var(--sel)}
 #dForms{display:flex;flex-wrap:wrap;gap:6px}
 #dForms .form{width:46px;height:46px;cursor:default}
 #dForms .form svg{max-width:36px;max-height:32px}
-#dSkriv{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+#dSkriv{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);font-weight:600}
 header[hidden],footer[hidden],#dGravyr[hidden]{display:none}
 #statsRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 #statsRow #stats{flex:1}
 #speakAll[hidden],#dSpeak[hidden],#speakPickRow[hidden],#speakHoverRow[hidden]{display:none}
-#speakAll.speaking,#dSpeak.speaking{background:var(--accent);border-color:var(--accent);color:#fff}
+#speakAll.speaking,#dSpeak.speaking{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
 body:has(header[hidden]) main{padding-top:12px}
 button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--rule);
   border-radius:10px;padding:6px 10px;cursor:pointer}
@@ -244,6 +244,7 @@ function buildPalette() {
     head.className = 'famhead';
     head.textContent = tr('Family ', 'Familj ') + fam + (fam === 'Z' ? tr(' (letters)', ' (bokstäver)') : '');
     head.onclick = () => { if (famMode()) toggleFam(fam); };
+    head.onkeydown = (ev) => { if (famMode() && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); toggleFam(fam); } };
     famHeads.set(fam, head);
     pal.appendChild(head);
     const row = document.createElement('div');
@@ -253,12 +254,16 @@ function buildPalette() {
       const chip = document.createElement('div');
       chip.className = 'form'; chip.setAttribute('role', 'button'); chip.tabIndex = 0;
       chip.title = key + tr(' — used in ', ' — används i ') + useCount.get(key) + tr(' words', ' ord');
+      // the name a screen reader says: the form and its count, not the count alone
+      chip.setAttribute('aria-label', key + ', ' + useCount.get(key) + tr(' words', ' ord'));
+      chip.setAttribute('aria-pressed', 'false');
       chip.innerHTML = elementSVG(fam, sub) +
         '<span class="n">' + useCount.get(key) + '</span>';
       const toggle = () => {
         if (famMode()) { toggleFam(fam); return; }
         if (selected.has(key)) { selected.delete(key); chip.classList.remove('on'); }
         else { selected.add(key); chip.classList.add('on'); }
+        chip.setAttribute('aria-pressed', String(selected.has(key)));
         renderWords();
       };
       chip.onclick = toggle;
@@ -276,10 +281,22 @@ function toggleFam(fam) {
   paintFams(); renderWords();
 }
 function paintFams() {
-  for (const [k, chip] of chipByKey)
-    chip.classList.toggle('on', famMode() ? selFams.has(k[0]) : selected.has(k));
-  for (const [fam, head] of famHeads)
+  for (const [k, chip] of chipByKey) {
+    const on = famMode() ? selFams.has(k[0]) : selected.has(k);
+    chip.classList.toggle('on', on);
+    chip.setAttribute('aria-pressed', String(on));
+  }
+  // a family heading is a button only in family mode, where a click chooses it
+  // (2026-11-12: it could be clicked but not reached with the keyboard)
+  for (const [fam, head] of famHeads) {
     head.classList.toggle('on', famMode() && selFams.has(fam));
+    if (famMode()) {
+      head.setAttribute('role', 'button'); head.tabIndex = 0;
+      head.setAttribute('aria-pressed', String(selFams.has(fam)));
+    } else {
+      head.removeAttribute('role'); head.removeAttribute('tabindex'); head.removeAttribute('aria-pressed');
+    }
+  }
 }
 function chosenCount() { return famMode() ? selFams.size : selected.size; }
 
@@ -586,6 +603,7 @@ try { $('famMode').checked = localStorage.getItem('former-fam') !== '0'; } catch
 document.body.classList.toggle('fam', famMode());
 
 buildPalette();
+paintFams();
 renderWords();
 
 /* delade $-genvägar (shortcuts.js) */

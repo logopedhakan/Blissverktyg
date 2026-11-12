@@ -54,11 +54,11 @@ footer a:hover{color:var(--accent)}
   border-radius:9px;overflow:hidden}
 #langRow button{font:inherit;font-size:12.5px;padding:5px 11px;border:none;cursor:pointer;
   background:var(--panel);color:var(--dim)}
-#langRow button.on{background:var(--accent);color:#fff}
+#langRow button.on{background:var(--accent);color:var(--on-accent,#fff)}
 header{position:relative}
 /* shown by js/shared/pwa.js only while the browser offers to install */
 #installApp{margin-top:12px;font:inherit;font-size:14px;font-weight:600;padding:8px 16px;border-radius:10px;
-  border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+  border:1px solid var(--accent);background:var(--accent);color:var(--on-accent,#fff);cursor:pointer}
 #installApp[hidden]{display:none}
 </style>
 </head>
@@ -75,43 +75,43 @@ header{position:relative}
 <main>
   <div id="cards">
     <a class="card" href="index.html">
-      <span class="icon" data-gloss="symbol,language,word"></span>
+      <span class="icon" aria-hidden="true" data-gloss="symbol,language,word"></span>
       <h2 data-sv="Editera" data-en="Edit">Editera</h2>
       <p data-sv="editorn och listhanteringen — skapa symboler, kurera ordlistor, exportera"
          data-en="the editor and the list manager — create symbols, curate vocabularies, export">editorn och listhanteringen — skapa symboler, kurera ordlistor, exportera</p>
     </a>
     <a class="card" href="index.html?vy=skriv">
-      <span class="icon" data-gloss="write-(to),pen,writing"></span>
+      <span class="icon" aria-hidden="true" data-gloss="write-(to),pen,writing"></span>
       <h2 data-sv="Skriv" data-en="Write">Skriv</h2>
       <p data-sv="skrivytan — text blir bliss, med ordval, böjningsformer och dokument"
          data-en="the writing surface — text becomes Bliss, with word choices, forms and documents">skrivytan — text blir bliss, med ordval, böjningsformer och dokument</p>
     </a>
     <a class="card" href="bildspel.html">
-      <span class="icon" data-gloss="picture,image,photograph"></span>
+      <span class="icon" aria-hidden="true" data-gloss="picture,image,photograph"></span>
       <h2 data-sv="Bildspel" data-en="Slideshow">Bildspel</h2>
       <p data-sv="en bild överst och blisstext under — visa i helskärm eller spara som PowerPoint"
          data-en="a picture on top and Bliss text below — show full screen or save as PowerPoint">en bild överst och blisstext under — visa i helskärm eller spara som PowerPoint</p>
     </a>
     <a class="card" href="almanacka.html">
-      <span class="icon" data-gloss="calendar,week,today"></span>
+      <span class="icon" aria-hidden="true" data-gloss="calendar,week,today"></span>
       <h2 data-sv="Almanacka" data-en="Almanac">Almanacka</h2>
       <p data-sv="veckan med blissymboler — bokningar skrivs med Bliss och kan läsas upp"
          data-en="the week in Bliss — bookings are written in Bliss and can be read aloud">veckan med blissymboler — bokningar skrivs med Bliss och kan läsas upp</p>
     </a>
     <a class="card" href="gissa.html">
-      <span class="icon" data-gloss="question,riddle,game"></span>
+      <span class="icon" aria-hidden="true" data-gloss="question,riddle,game"></span>
       <h2 data-sv="Hänga gubbe" data-en="Hangman">Hänga gubbe</h2>
       <p data-sv="övningen — gissa vilka former som bygger symbolen och sätt dem på plats"
          data-en="the exercise — guess which shapes build the symbol and put them in place">övningen — gissa vilka former som bygger symbolen och sätt dem på plats</p>
     </a>
     <a class="card" href="former.html">
-      <span class="icon" data-elements="1"></span>
+      <span class="icon" aria-hidden="true" data-elements="1"></span>
       <h2 data-sv="Formfamiljer" data-en="Form families">Formfamiljer</h2>
       <p data-sv="välj former och se vilka blissord de bygger — och kopiera till Word"
          data-en="pick shapes and see which Bliss-words they build — and copy into Word">välj former och se vilka blissord de bygger — och kopiera till Word</p>
     </a>
     <a class="card" href="gravyr.html">
-      <span class="icon" data-gloss="gift,jewellery,name"></span>
+      <span class="icon" aria-hidden="true" data-gloss="gift,jewellery,name"></span>
       <h2 data-sv="Gravyrkort" data-en="Engraving tags">Gravyrkort</h2>
       <p data-sv="laserfärdiga brickor — symboler, text och hål för ring"
          data-en="laser-ready tags — symbols, text and holes for a ring">laserfärdiga brickor — symboler, text och hål för ring</p>
@@ -145,7 +145,7 @@ function applyStartLang() {
   document.documentElement.lang = lang;
   for (const el of document.querySelectorAll('[data-sv]')) el.textContent = el.dataset[lang] || el.dataset.sv;
   for (const b of document.querySelectorAll('#langRow button'))
-    b.classList.toggle('on', b.dataset.lang === lang);
+    { b.classList.toggle('on', b.dataset.lang === lang); b.setAttribute('aria-pressed', String(b.dataset.lang === lang)); }
 }
 for (const b of document.querySelectorAll('#langRow button'))
   b.onclick = () => { lang = b.dataset.lang; wbSetLang(lang); applyStartLang(); };
