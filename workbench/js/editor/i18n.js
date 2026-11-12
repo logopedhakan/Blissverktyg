@@ -229,6 +229,21 @@ function applyLang() {
   $('wtChips').title = sv ? 'Visa eller dölj ordalternativen' : 'Show or hide the word alternatives';
   $('wtChooser').title = sv ? 'Visa eller dölj böjningsraden' : 'Show or hide the form row';
   $('homeLink').title = sv ? 'Till startsidan' : 'To the start page';
+  // names for screen readers (2026-11-12): fields that only had a placeholder,
+  // and the regions, which were named in English in the Swedish view too
+  for (const [id, en, svL] of [
+    ['search', 'Search the symbol list', 'Sök i symbollistan'],
+    ['wInput', 'Text to write in Bliss', 'Text att skriva i Bliss'],
+    ['wMic', 'Dictate', 'Diktera'],
+    ['wChips', 'The words of the sentence', 'Meningens ord'],
+    ['listPanel', 'Symbol list', 'Symbollista'],
+    ['writeView', 'Write in Bliss', 'Skriv i Bliss'],
+    ['paneB', 'Second list', 'Andra listan'],
+    ['editor', 'Symbol editor', 'Symboleditor'],
+    ['stage', 'Editing canvas', 'Ritytan'],
+    ['famRow', 'Shape families', 'Formfamiljer'],
+  ]) { const el = $(id); if (el) el.setAttribute('aria-label', sv ? svL : en); }
+  if ($('wMic')) $('wMic').title = sv ? 'Diktera' : 'Dictate';
   const helpL = sv ? 'Hjälp & tangentbordsgenvägar (?)' : 'Help & keyboard shortcuts (?)';
   $('btnHelp').title = helpL;
   $('btnHelp').setAttribute('aria-label', sv ? 'Hjälp och tangentbordsgenvägar' : 'Help and keyboard shortcuts');

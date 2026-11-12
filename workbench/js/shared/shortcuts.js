@@ -21,6 +21,7 @@ function wbShortcuts(cfg) {
   toastEl.style.cssText = 'position:fixed;left:50%;bottom:26px;transform:translateX(-50%);' +
     'background:var(--ink,#1b1b1d);color:var(--bg,#fff);padding:8px 16px;border-radius:10px;' +
     'font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:80';
+  toastEl.setAttribute('role', 'status');      // read out by screen readers too
   document.body.appendChild(toastEl);
   let toastT = null;
   function toast(msg) {

@@ -84,7 +84,7 @@
   background:var(--panel);color:var(--ink);cursor:pointer;border-radius:0;min-height:0;min-width:0;margin:0}
 #wbWin button:last-child{border-right:none}
 #wbWin button:hover{background:var(--accent-soft)}
-#wbWin button[aria-pressed="true"]{background:var(--accent);color:#fff}
+#wbWin button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent,#fff)}
 #wbWinNote{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:999;max-width:92vw;
   background:var(--ink);color:var(--bg);padding:7px 14px;border-radius:10px;font-size:13px;font-family:inherit}
 #wbWinNote[hidden]{display:none}
@@ -107,8 +107,14 @@
     return st.w === 'full' ? tr('Window: ', 'Fönster: ') + w
       : tr('Window: ', 'Fönster: ') + w + ' ' + (st.side === 'right' ? tr('at the right', 'till höger') : tr('at the left', 'till vänster'));
   };
+  /* Not while writing (2026-11-12): on a Mac, Option+digit types a character
+     (Swedish layout: ⌥2 = @, ⌥3 = £, ⌥1 = ©), so in a text field the keys are
+     left to the field. Outside a field they still size the window. */
+  const typing = (t) => !!t && (t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' ||
+    (t.tagName === 'INPUT' && !/^(button|submit|reset|checkbox|radio|range|color|file|image)$/i.test(t.type)));
   document.addEventListener('keydown', (e) => {
     if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.repeat) return;
+    if (typing(e.target)) return;
     const k = KEYS[e.code]; if (!k) return;
     e.preventDefault();
     choose(k);
@@ -244,4 +250,41 @@
   window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(refit, 60); });
   // the app starts in the size last chosen
   if (own() && st.chosen) { if (document.readyState === 'complete') apply(); else window.addEventListener('load', apply); }
+})();
+
+/* Names for screen readers, the same in every part (2026-11-12). A field that
+   has only a placeholder or a tooltip, and a button that shows only a sign
+   (↑ ↓ ⧉ ✕ ⊙), get that text as their name; it follows the tooltip when a
+   page changes language. Anything with a <label> or its own aria-label is
+   left alone. */
+(() => {
+  const SIGN_ONLY = /^[^\p{L}\p{N}]*$/u;
+  const needs = (el) => {
+    if (el.dataset.wbNamed) return true;
+    if (el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby')) return false;
+    if (el.tagName === 'BUTTON') return SIGN_ONLY.test(el.textContent.trim());
+    return !(el.labels && el.labels.length);
+  };
+  const name = (el) => {
+    if (!needs(el)) return;
+    const t = (el.getAttribute('placeholder') || el.getAttribute('title') || '').trim();
+    if (!t) return;
+    el.dataset.wbNamed = '1';
+    if (el.getAttribute('aria-label') !== t) el.setAttribute('aria-label', t);
+  };
+  const SEL = 'input:not([type=hidden]),textarea,select,button';
+  const all = () => document.querySelectorAll(SEL).forEach(name);
+  const watch = () => {
+    all();
+    new MutationObserver((list) => {
+      for (const m of list) {
+        if (m.type === 'attributes') { if (m.target.matches && m.target.matches(SEL)) name(m.target); }
+        else for (const n of m.addedNodes) if (n.nodeType === 1) {
+          if (n.matches(SEL)) name(n);
+          n.querySelectorAll && n.querySelectorAll(SEL).forEach(name);
+        }
+      }
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['title', 'placeholder'] });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch); else watch();
 })();
