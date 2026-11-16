@@ -80,6 +80,9 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
       <textarea id="txt" placeholder="Skriv texten här, t.ex. hej jag heter Lisa" spellcheck="false"></textarea>
       <div id="chips"></div>
       <div id="chooser" hidden></div>
+      <!-- Håkan, 2026-11-16: samma två val som i Bildspel, på samma plats under texten -->
+      <label>Blissymboler <input id="optSymbols" type="checkbox" checked></label>
+      <label>Ord under symbolerna <input id="optLabels" type="checkbox"></label>
       <h3>Kort</h3>
       <!-- Håkan, 2026-11-05: färdiga pappersformat — fyller i bredd och höjd -->
       <label>Format
@@ -180,6 +183,7 @@ if (LNG === 'en') {
   const L = (id, txt) => { const el = $(id).closest('label') || $(id).parentElement; el.firstChild.nodeValue = txt + ' '; };
   L('cardW', 'Width (mm)'); L('cardH', 'Height (mm)'); L('cutFrame', 'Cut frame');
   L('cardFmt', 'Format');
+  L('optSymbols', 'Bliss symbols'); L('optLabels', 'Words under the symbols');
   [...$('cardFmt').options].forEach((o, i) => { o.textContent = ['Custom size', 'A4 portrait', 'A4 landscape', 'A5 portrait', 'A5 landscape'][i]; });
   L('cornerR', 'Corner radius (mm)'); L('holeD', 'Hole diameter (mm)');
   L('symH', 'Symbol height (mm)'); L('gap', 'Word spacing (mm)'); L('penW', 'Line width (mm)');
@@ -261,14 +265,30 @@ function textSym(txt) {
 }
 function membersFromWords() {
   const out = [];
+  // "Blissymboler" off (as in Bildspel): every word is its text, one row of words
+  const symbols = $('optSymbols').checked;
   for (const w of state.words) {
     if (w.br) continue;                         // the tag is one row
+    if (!symbols) { if (w.token || w.label) out.push(textSym(w.label || w.token)); continue; }
     if (w.asText) { out.push(textSym(w.label || w.token)); continue; }
     const id = w.ids[w.pick], s = BT.symById(id);
     const e = BT.composeEls(id, w.punct ? '' : w.ind);
-    if (s && e.length) out.push({ id: s.id, n: w.punct ? s.n : (w.label || w.token), c: s.c, e });
+    if (s && e.length) out.push({ id: s.id, n: w.punct ? s.n : (w.label || w.token), c: s.c, e,
+      lab: w.punct ? '' : (w.label || w.token) });
   }
   return out;
+}
+/* the two choices (Håkan, 2026-11-16): words under the symbols only mean
+   something while there are symbols — the same rule as in Bildspel */
+function syncOpts() { $('optLabels').disabled = !$('optSymbols').checked; }
+$('optSymbols').addEventListener('change', () => { syncOpts(); chosen = membersFromWords(); renderStage(); });
+$('optLabels').addEventListener('change', renderStage);
+syncOpts();
+/* a word's width in mm at the text height — for room under each symbol */
+const measureCtx = document.createElement('canvas').getContext('2d');
+function textWidthMM(t, h) {
+  measureCtx.font = `${h * 10}px "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", sans-serif`;
+  return measureCtx.measureText(t).width / 10;
 }
 function renderChips() {
   BT.renderChips($('chips'), state, open, (i) => { open = open === i ? -1 : i; renderChips(); renderChooser(); });
@@ -367,18 +387,26 @@ function buildSVG() {
   const txtH = num('txtH', 7);
   const scale = symH / STAFF;            // mm per engine unit, anchored to the staff
 
-  const parts = chosen.map(s => ({ s, bb: measure(s.e) }));
-  const widths = parts.map(p => p.bb.width * scale);
+  // "Ord under symbolerna": each word centred under its own symbol (as in Bildspel)
+  const labels = $('optSymbols').checked && $('optLabels').checked && chosen.some(s => s.lab);
+  // "Blissymboler" off: the words as one text row at the text height ("Texthöjd")
+  const wordLine = $('optSymbols').checked ? '' : chosen.map(s => s.n).join(' ');
+  const parts = wordLine ? [] : chosen.map(s => ({ s, bb: measure(s.e) }));
+  // a symbol's slot is as wide as the symbol or its word, whichever is wider
+  const widths = parts.map(p => Math.max(p.bb.width * scale,
+    labels && p.s.lab ? textWidthMM(p.s.lab, txtH) : 0));
   // a text run belongs to the symbol before it ("kvinna Lisa" is one word):
   // a fixed quarter-square between them, never the card's word gap (Håkan, 2026-09-24)
   const gapBefore = (i) => i === 0 ? 0 : (parts[i].s.text ? 2 * G * scale : gap);
-  const total = widths.reduce((a, b) => a + b, 0) + parts.reduce((a, _, i) => a + gapBefore(i), 0);
+  const total = wordLine ? textWidthMM(wordLine, txtH)
+    : widths.reduce((a, b) => a + b, 0) + parts.reduce((a, _, i) => a + gapBefore(i), 0);
 
   // vertical: symbols share ONE engine coordinate space (baseline alignment)
   let minY = Infinity, maxY = -Infinity;
   for (const p of parts) { minY = Math.min(minY, p.bb.y); maxY = Math.max(maxY, p.bb.y + p.bb.height); }
-  const contentH = parts.length ? (maxY - minY) * scale : 0;
-  const capBand = caption ? txtH * 1.7 : 0;
+  const contentH = wordLine ? txtH * 1.3 : parts.length ? (maxY - minY) * scale : 0;
+  const labBand = labels ? txtH * 1.5 : 0;
+  const capBand = (caption ? txtH * 1.7 : 0) + labBand;
 
   // ring holes (Håkan, 2026-09-24): 0/90/180/270°, any combination; the content
   // is centred in the area the holes leave free so nothing engraves over them
@@ -403,17 +431,26 @@ function buildSVG() {
               moved: posY !== 0, outside };
 
   let engrave = '';
+  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   let x = x0 + (x1 - x0 - total) / 2;
   parts.forEach((p, i) => {
     x += gapBefore(i);
-    const tx = x - p.bb.x * scale;
+    const tx = x + (widths[i] - p.bb.width * scale) / 2 - p.bb.x * scale;   // centred in its slot
     const ty = topY - minY * scale;
     engrave += `<g transform="translate(${tx.toFixed(3)} ${ty.toFixed(3)}) scale(${scale.toFixed(6)})">` +
                renderBliss({ e: p.s.e }).body + `</g>`;
+    if (labels && p.s.lab)
+      engrave += `<text x="${(x + widths[i] / 2).toFixed(2)}" y="${(topY + contentH + txtH * 1.1).toFixed(2)}"
+      text-anchor="middle" font-family="Atkinson Hyperlegible Next, Atkinson Hyperlegible, sans-serif"
+      font-size="${txtH}" stroke="none" fill="#000">${esc(p.s.lab)}</text>`;
     x += widths[i];
   });
+  if (wordLine)
+    engrave += `<text x="${((x0 + x1) / 2).toFixed(2)}" y="${(topY + txtH).toFixed(2)}"
+      text-anchor="middle" font-family="Atkinson Hyperlegible Next, Atkinson Hyperlegible, sans-serif"
+      font-size="${txtH}" stroke="none" fill="#000">${esc(wordLine)}</text>`;
   if (caption)
-    engrave += `<text x="${((x0 + x1) / 2).toFixed(2)}" y="${(topY + contentH + capBand * 0.75).toFixed(2)}"
+    engrave += `<text x="${((x0 + x1) / 2).toFixed(2)}" y="${(topY + contentH + labBand + (capBand - labBand) * 0.75).toFixed(2)}"
       text-anchor="middle" font-family="Atkinson Hyperlegible Next, Atkinson Hyperlegible, sans-serif"
       font-size="${txtH}" stroke="none" fill="#000">${caption
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>`;
