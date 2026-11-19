@@ -2560,19 +2560,18 @@ function wShowPayload() {
   const words = W.map(w => { const c = Object.assign({}, w); delete c.keyOf; delete c.off; delete c.futureOf; return c; });
   return { text: $('wInput').value, words, custom: wCustomSyms(W.filter(w => !w.br && !w.asText && !w.skip).flatMap(w => (w.parts ? w.ids : [w.ids[w.pick]]))) };
 }
-/* Skriv -> a slideshow, as a new slide (2026-11-19: to Bildspel or to Nya bildspelet).
-   An open slideshow of that kind gets it over the 'wb-bildspel' channel; else
-   the page opens with the text left in localStorage. Both pages listen on the
-   same channel, so a page says which one it is in its answer — Bildspel's
-   answer has no page, Nya bildspelet's says 'bildspel-ny'. */
-function wSendToShow(page) {
+/* Skriv -> Bildspel, as a new slide. An open Bildspel tab gets it over the
+   'wb-bildspel' channel; else the page opens with the text left in
+   localStorage. (2026-11-19: one Bildspel again — the new one replaced the old,
+   so any answer on the channel will do.) */
+function wSendToShow() {
   if (!W.some(w => !w.br)) return toast(tr('Write something first', 'Skriv något först'));
   const data = wShowPayload();
-  const name = page === 'bildspel-ny' ? tr('the new slideshow', 'Nya bildspelet') : tr('Slideshow', 'Bildspel');
+  const name = tr('Slideshow', 'Bildspel');
   const open = () => {
     try { localStorage.setItem('wb-bildspel-fran-skriv', JSON.stringify(data)); }
     catch (_) { return toast(tr('The text could not be handed over (browser storage is full or blocked)', 'Texten kunde inte lämnas över (webbläsarens lagring är full eller spärrad)')); }
-    if (!window.open(page + '.html?from=skriv', 'wb-' + page))
+    if (!window.open('bildspel.html?from=skriv', 'wb-bildspel'))
       toast(tr('The browser blocked the new tab — allow pop-ups for this page', 'Webbläsaren stoppade den nya fliken — tillåt popup-fönster för sidan'));
   };
   if (!('BroadcastChannel' in window)) return open();
@@ -2580,7 +2579,7 @@ function wSendToShow(page) {
   let target = null;
   ch.onmessage = (ev) => {
     const m = ev.data;
-    if (m && m.type === 'pong' && !target && (m.page || 'bildspel') === page) target = m.tab;
+    if (m && m.type === 'pong' && !target) target = m.tab;
   };
   ch.postMessage({ type: 'ping' });
   setTimeout(() => {                                   // well inside the click's pop-up allowance
@@ -2591,8 +2590,7 @@ function wSendToShow(page) {
     setTimeout(() => ch.close(), 500);
   }, 250);
 }
-$('wToShow').onclick = () => wSendToShow('bildspel');
-$('wToShowNy').onclick = () => wSendToShow('bildspel-ny');
+$('wToShow').onclick = () => wSendToShow();
 $('wToTag').onclick = () => {
   // the same hand-over as Bildspel: the text with every word's choice — Gravyrkort
   // writes it into its own Bliss text (Håkan, 2026-11-05)
@@ -2603,7 +2601,6 @@ $('wToTag').onclick = () => {
     toast(tr('The browser blocked the new tab — allow pop-ups for this page', 'Webbläsaren stoppade den nya fliken — tillåt popup-fönster för sidan'));
 };
 $('wToShow').title = tr('The text as a new slide in Slideshow', 'Texten som en ny sida i Bildspel');
-$('wToShowNy').title = tr('The text as a new slide in the new slideshow', 'Texten som en ny sida i Nya bildspelet');
 $('wToTag').title = tr('The symbols onto an engraving tag', 'Symbolerna på ett gravyrkort');
 const W_ATTRIBUTION = 'Blissymbolics © C.K. Bliss 1949, 1965 · Parts herein © Blissymbolics Communication International (BCI), CC BY-SA 4.0 · WinBliss² (AnyCom AB)';
 $('wDoc').onclick = async () => {
@@ -2880,7 +2877,6 @@ if (typeof wbShortcuts === 'function') {
     { id: 'wPrint', key: 'Ctrl+P', name: () => tr('print, or save as PDF', 'skriv ut eller spara som PDF') },
     { id: 'wClip', key: 'Alt+C', name: () => tr('copy the text to the clipboard', 'kopiera texten till urklipp') },
     { id: 'wToShow', key: 'Alt+B', name: () => tr('the text as a new slide in Slideshow', 'texten som en ny sida i Bildspel') },
-    { id: 'wToShowNy', key: 'Alt+Shift+B', name: () => tr('the text as a new slide in the new slideshow', 'texten som en ny sida i Nya bildspelet') },
     { id: 'wToTag', key: 'Alt+G', name: () => tr('the symbols onto an engraving tag', 'symbolerna på ett gravyrkort') },
     { id: 'btnHelp', key: '?', shown: true, name: () => tr('all keyboard shortcuts (this list)', 'alla kortkommandon (den här listan)') },
     { id: 'wHelp', key: '?', shown: true, inList: false, name: () => '' },

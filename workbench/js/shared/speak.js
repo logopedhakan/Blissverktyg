@@ -60,7 +60,7 @@ function wbSpeakButton(btn, getText, onProblem) {
   if (!WB_SPEECH) { btn.hidden = true; return; }
   let warned = false, idle = '';
   // the label is read at click time: a page may translate the button after setup.
-  // A button with a symbol and a word (.lbl, Nya bildspelet) only has its word changed.
+  // A button with a symbol and a word (.lbl, Bildspel) only has its word changed.
   const lbl = () => btn.querySelector('.lbl') || btn;
   const done = () => { if (btn.classList.contains('speaking')) lbl().textContent = idle; btn.classList.remove('speaking'); };
   if (!btn.title.includes('Alt+P'))
