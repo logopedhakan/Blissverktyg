@@ -532,9 +532,53 @@ const BT = (() => {
     }
   }
 
+  /* ---- the word under a symbol, broken to fit its room (2026-11-19) ----
+     Bildspel draws each word under its symbol; with tight spacing a long word
+     would run into the next one. textWidth: the width in the slides' font
+     (a canvas measures it; outside a page an average letter width does).
+     labelLines: lines that fit `room` — broken at spaces first, then inside a
+     word with a hyphen, before a consonant that starts a syllable when it can
+     ("Blisshu-set"), never leaving less than three letters on a line. */
+  let measure;
+  function textWidth(t, fs) {
+    if (measure === undefined) {
+      try { measure = document.createElement('canvas').getContext('2d'); } catch { measure = null; }
+    }
+    if (measure) { measure.font = `${fs}px Helvetica, Arial, sans-serif`; return measure.measureText(t).width; }
+    return t.length * fs * 0.56;
+  }
+  const VOWEL = /[aeiouyåäöéü]/i, CONSONANT = /[bcdfghjklmnpqrstvwxz]/i;
+  function labelLines(text, room, fs) {
+    const fits = (t) => textWidth(t, fs) <= room;
+    if (!(room > 0) || fits(text)) return [text];
+    const out = [];
+    let line = '';
+    for (const word of String(text).split(/\s+/).filter(Boolean)) {
+      const both = line ? line + ' ' + word : word;
+      if (fits(both)) { line = both; continue; }
+      if (line) out.push(line);
+      let rest = word;
+      while (!fits(rest) && rest.length >= 6) {
+        let best = 0, syl = 0;
+        for (let i = 3; i <= rest.length - 3 && fits(rest.slice(0, i) + '-'); i++) {
+          best = i;
+          if (CONSONANT.test(rest[i]) && VOWEL.test(rest[i + 1] || '')) syl = i;
+        }
+        if (!best) break;                              // not even three letters fit: let it be
+        const cut = syl || best;
+        out.push(rest.slice(0, cut) + '-');
+        rest = rest.slice(cut);
+      }
+      line = rest;
+    }
+    if (line) out.push(line);
+    return out;
+  }
+
   return {
     GL, symById, glossOf, useCustom, get custom() { return custom; },
     IND_CHOICES, indKeys, indToggle, autoLabel, svInflect, composeEls, svgBox,
     rememberPick, parse, wordEls, chipSVG, lineSVG, renderChips, renderChooser,
+    textWidth, labelLines,
   };
 })();
