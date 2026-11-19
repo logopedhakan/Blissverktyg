@@ -1,0 +1,771 @@
+{
+ "om": "De godkända meningarna ur Bliss-glosor (johbom/blissmaiker, data/meningar.json): varje ord som BCI-AV-id och form. Facit för Skriv med artiklar och \"ska\" utelämnade, som i Bliss-glosors egna tester.",
+ "meningar": [
+  {
+   "nr": 1,
+   "sv": "Jag äter mat.",
+   "ord": [
+    {
+     "id": 14916,
+     "sv": "jag"
+    },
+    {
+     "id": 13906,
+     "sv": "äter"
+    },
+    {
+     "id": 14377,
+     "sv": "mat"
+    }
+   ]
+  },
+  {
+   "nr": 2,
+   "sv": "Jag dricker vatten.",
+   "ord": [
+    {
+     "id": 14916,
+     "sv": "jag"
+    },
+    {
+     "id": 13882,
+     "sv": "dricker"
+    },
+    {
+     "id": 18209,
+     "sv": "vatten"
+    }
+   ]
+  },
+  {
+   "nr": 3,
+   "sv": "Katten dricker mjölk.",
+   "ord": [
+    {
+     "id": 12383,
+     "sv": "katten"
+    },
+    {
+     "id": 13882,
+     "sv": "dricker"
+    },
+    {
+     "id": 15468,
+     "sv": "mjölk"
+    }
+   ]
+  },
+  {
+   "nr": 4,
+   "sv": "Hunden äter mat.",
+   "ord": [
+    {
+     "id": 12380,
+     "sv": "hunden"
+    },
+    {
+     "id": 13906,
+     "sv": "äter"
+    },
+    {
+     "id": 14377,
+     "sv": "mat"
+    }
+   ]
+  },
+  {
+   "nr": 5,
+   "sv": "Jag läser en bok.",
+   "ord": [
+    {
+     "id": 14916,
+     "sv": "jag"
+    },
+    {
+     "id": 16465,
+     "sv": "läser"
+    },
+    {
+     "id": 12875,
+     "sv": "bok"
+    }
+   ]
+  },
+  {
+   "nr": 6,
+   "sv": "Barnet leker med bollen.",
+   "ord": [
+    {
+     "id": 13166,
+     "sv": "barnet"
+    },
+    {
+     "id": 16200,
+     "sv": "leker"
+    },
+    {
+     "id": 18267,
+     "sv": "med"
+    },
+    {
+     "id": 12621,
+     "sv": "bollen"
+    }
+   ]
+  },
+  {
+   "nr": 7,
+   "sv": "Jag dricker mjölk.",
+   "ord": [
+    {
+     "id": 14916,
+     "sv": "jag"
+    },
+    {
+     "id": 13882,
+     "sv": "dricker"
+    },
+    {
+     "id": 15468,
+     "sv": "mjölk"
+    }
+   ]
+  },
+  {
+   "nr": 8,
+   "sv": "Mamma läser en bok.",
+   "ord": [
+    {
+     "id": 15662,
+     "sv": "mamma"
+    },
+    {
+     "id": 16465,
+     "sv": "läser"
+    },
+    {
+     "id": 12875,
+     "sv": "bok"
+    }
+   ]
+  },
+  {
+   "nr": 9,
+   "sv": "Pappa dricker vatten.",
+   "ord": [
+    {
+     "id": 14157,
+     "sv": "pappa"
+    },
+    {
+     "id": 13882,
+     "sv": "dricker"
+    },
+    {
+     "id": 18209,
+     "sv": "vatten"
+    }
+   ]
+  },
+  {
+   "nr": 10,
+   "sv": "Jag älskar dig.",
+   "ord": [
+    {
+     "id": 14916,
+     "sv": "jag"
+    },
+    {
+     "id": 15400,
+     "sv": "älskar"
+    },
+    {
+     "id": 18465,
+     "sv": "dig"
+    }
+   ]
+  },
+  {
+   "nr": 11,
+   "sv": "Vi tycker om katter.",
+   "ord": [
+    {
+     "id": 18212,
+     "sv": "vi"
+    },
+    {
+     "id": 15210,
+     "sv": "tycker om"
+    },
+    {
+     "id": 12383,
+     "sv": "katter",
+     "form": [
+      "plural"
+     ]
+    }
+   ]
+  },
+  {
+   "nr": 12,
+   "sv": "Jag åt ett äpple.",
+   "ord": [
+    {
+     "id": 14916,
+     "sv": "jag"
+    },
+    {
+     "id": 13906,
+     "sv": "åt",
+     "form": [
+      "past_action"
+     ]
+    },
+    {
+     "id": 12405,
+     "sv": "äpple"
+    }
+   ]
+  },
+  {
+   "nr": 13,
+   "sv": "Hunden såg en katt.",
+   "ord": [
+    {
+     "id": 12380,
+     "sv": "hunden"
+    },
+    {
+     "id": 16747,
+     "sv": "såg",
+     "form": [
+      "past_action"
+     ]
+    },
+    {
+     "id": 12383,
+     "sv": "katt"
+    }
+   ]
+  },
+  {
+   "nr": 14,
+   "sv": "Barnet ska läsa en bok.",
+   "ord": [
+    {
+     "id": 13166,
+     "sv": "barnet"
+    },
+    {
+     "id": 16465,
+     "sv": "ska läsa",
+     "form": [
+      "future_action"
+     ]
+    },
+    {
+     "id": 12875,
+     "sv": "bok"
+    }
+   ]
+  },
+  {
+   "nr": 15,
+   "sv": "Fågeln äter bröd.",
+   "ord": [
+    {
+     "id": 12837,
+     "sv": "fågeln"
+    },
+    {
+     "id": 13906,
+     "sv": "äter"
+    },
+    {
+     "id": 12895,
+     "sv": "bröd"
+    }
+   ]
+  },
+  {
+   "nr": 16,
+   "sv": "Jag ser solen.",
+   "ord": [
+    {
+     "id": 14916,
+     "sv": "jag"
+    },
+    {
+     "id": 16747,
+     "sv": "ser"
+    },
+    {
+     "id": 17462,
+     "sv": "solen"
+    }
+   ]
+  },
+  {
+   "nr": 17,
+   "sv": "Fisken simmar.",
+   "ord": [
+    {
+     "id": 14188,
+     "sv": "fisken"
+    },
+    {
+     "id": 17482,
+     "sv": "simmar"
+    }
+   ]
+  },
+  {
+   "nr": 18,
+   "sv": "Barnen leker.",
+   "ord": [
+    {
+     "id": 13166,
+     "sv": "barnen",
+     "form": [
+      "plural"
+     ]
+    },
+    {
+     "id": 16200,
+     "sv": "leker"
+    }
+   ]
+  },
+  {
+   "nr": 19,
+   "sv": "Hunden dricker vatten.",
+   "ord": [
+    {
+     "id": 12380,
+     "sv": "hunden"
+    },
+    {
+     "id": 13882,
+     "sv": "dricker"
+    },
+    {
+     "id": 18209,
+     "sv": "vatten"
+    }
+   ]
+  },
+  {
+   "nr": 20,
+   "sv": "Katten sover.",
+   "ord": [
+    {
+     "id": 12383,
+     "sv": "katten"
+    },
+    {
+     "id": 17009,
+     "sv": "sover"
+    }
+   ]
+  },
+  {
+   "nr": 21,
+   "sv": "Mamma älskar barnet.",
+   "ord": [
+    {
+     "id": 15662,
+     "sv": "mamma"
+    },
+    {
+     "id": 15400,
+     "sv": "älskar"
+    },
+    {
+     "id": 13166,
+     "sv": "barnet"
+    }
+   ]
+  },
+  {
+   "nr": 22,
+   "sv": "Jag åt bröd.",
+   "ord": [
+    {
+     "id": 14916,
+     "sv": "jag"
+    },
+    {
+     "id": 13906,
+     "sv": "åt",
+     "form": [
+      "past_action"
+     ]
+    },
+    {
+     "id": 12895,
+     "sv": "bröd"
+    }
+   ]
+  },
+  {
+   "nr": 23,
+   "sv": "Vi ska äta fisk.",
+   "ord": [
+    {
+     "id": 18212,
+     "sv": "vi"
+    },
+    {
+     "id": 13906,
+     "sv": "ska äta",
+     "form": [
+      "future_action"
+     ]
+    },
+    {
+     "id": 14189,
+     "sv": "fisk"
+    }
+   ]
+  },
+  {
+   "nr": 24,
+   "sv": "Du läser en bok.",
+   "ord": [
+    {
+     "id": 18465,
+     "sv": "du"
+    },
+    {
+     "id": 16465,
+     "sv": "läser"
+    },
+    {
+     "id": 12875,
+     "sv": "bok"
+    }
+   ]
+  },
+  {
+   "nr": 25,
+   "sv": "Fågeln flyger.",
+   "ord": [
+    {
+     "id": 12837,
+     "sv": "fågeln"
+    },
+    {
+     "id": 14372,
+     "sv": "flyger"
+    }
+   ]
+  },
+  {
+   "nr": 26,
+   "sv": "Hunden springer.",
+   "ord": [
+    {
+     "id": 12380,
+     "sv": "hunden"
+    },
+    {
+     "id": 16699,
+     "sv": "springer"
+    }
+   ]
+  },
+  {
+   "nr": 27,
+   "sv": "Kvinnan ser solen.",
+   "ord": [
+    {
+     "id": 18269,
+     "sv": "kvinnan"
+    },
+    {
+     "id": 16747,
+     "sv": "ser"
+    },
+    {
+     "id": 17462,
+     "sv": "solen"
+    }
+   ]
+  },
+  {
+   "nr": 28,
+   "sv": "Fisken lever i vattnet.",
+   "ord": [
+    {
+     "id": 14188,
+     "sv": "fisken"
+    },
+    {
+     "id": 15222,
+     "sv": "lever"
+    },
+    {
+     "id": 14932,
+     "sv": "i"
+    },
+    {
+     "id": 18209,
+     "sv": "vattnet"
+    }
+   ]
+  },
+  {
+   "nr": 29,
+   "sv": "Solen är på himlen.",
+   "ord": [
+    {
+     "id": 17462,
+     "sv": "solen"
+    },
+    {
+     "id": 12639,
+     "sv": "är"
+    },
+    {
+     "id": 15918,
+     "sv": "på"
+    },
+    {
+     "id": 17006,
+     "sv": "himlen"
+    }
+   ]
+  },
+  {
+   "nr": 30,
+   "sv": "Stjärnorna är på himlen.",
+   "ord": [
+    {
+     "id": 17252,
+     "sv": "stjärnorna",
+     "form": [
+      "plural"
+     ]
+    },
+    {
+     "id": 12639,
+     "sv": "är"
+    },
+    {
+     "id": 15918,
+     "sv": "på"
+    },
+    {
+     "id": 17006,
+     "sv": "himlen"
+    }
+   ]
+  },
+  {
+   "nr": 31,
+   "sv": "Mannen ser månen.",
+   "ord": [
+    {
+     "id": 15416,
+     "sv": "mannen"
+    },
+    {
+     "id": 16747,
+     "sv": "ser"
+    },
+    {
+     "id": 15651,
+     "sv": "månen"
+    }
+   ]
+  },
+  {
+   "nr": 32,
+   "sv": "Jag säger ett ord.",
+   "ord": [
+    {
+     "id": 14916,
+     "sv": "jag"
+    },
+    {
+     "id": 16728,
+     "sv": "säger"
+    },
+    {
+     "id": 18272,
+     "sv": "ett ord"
+    }
+   ]
+  },
+  {
+   "nr": 33,
+   "sv": "Barnet ser en fågel.",
+   "ord": [
+    {
+     "id": 13166,
+     "sv": "barnet"
+    },
+    {
+     "id": 16747,
+     "sv": "ser"
+    },
+    {
+     "id": 12837,
+     "sv": "en fågel"
+    }
+   ]
+  },
+  {
+   "nr": 34,
+   "sv": "Jag tänker på dig.",
+   "ord": [
+    {
+     "id": 14916,
+     "sv": "jag"
+    },
+    {
+     "id": 17718,
+     "sv": "tänker"
+    },
+    {
+     "id": 12324,
+     "sv": "på"
+    },
+    {
+     "id": 18465,
+     "sv": "dig"
+    }
+   ]
+  },
+  {
+   "nr": 35,
+   "sv": "Mannen skriver en bok.",
+   "ord": [
+    {
+     "id": 15416,
+     "sv": "mannen"
+    },
+    {
+     "id": 18285,
+     "sv": "skriver"
+    },
+    {
+     "id": 12875,
+     "sv": "en bok"
+    }
+   ]
+  },
+  {
+   "nr": 36,
+   "sv": "Kvinnan skriver med en penna.",
+   "ord": [
+    {
+     "id": 18269,
+     "sv": "kvinnan"
+    },
+    {
+     "id": 18285,
+     "sv": "skriver"
+    },
+    {
+     "id": 18267,
+     "sv": "med"
+    },
+    {
+     "id": 15991,
+     "sv": "en penna"
+    }
+   ]
+  },
+  {
+   "nr": 37,
+   "sv": "Vi går hem.",
+   "ord": [
+    {
+     "id": 18212,
+     "sv": "vi"
+    },
+    {
+     "id": 12343,
+     "sv": "går"
+    },
+    {
+     "id": 14885,
+     "sv": "hem"
+    }
+   ]
+  },
+  {
+   "nr": 38,
+   "sv": "Jag hör musik.",
+   "ord": [
+    {
+     "id": 14916,
+     "sv": "jag"
+    },
+    {
+     "id": 14692,
+     "sv": "hör"
+    },
+    {
+     "id": 15679,
+     "sv": "musik"
+    }
+   ]
+  },
+  {
+   "nr": 39,
+   "sv": "Pappa skriver ett brev.",
+   "ord": [
+    {
+     "id": 14157,
+     "sv": "pappa"
+    },
+    {
+     "id": 18285,
+     "sv": "skriver"
+    },
+    {
+     "id": 15198,
+     "sv": "ett brev"
+    }
+   ]
+  },
+  {
+   "nr": 40,
+   "sv": "Hästen äter gräs.",
+   "ord": [
+    {
+     "id": 14897,
+     "sv": "hästen"
+    },
+    {
+     "id": 13906,
+     "sv": "äter"
+    },
+    {
+     "id": 14636,
+     "sv": "gräs"
+    }
+   ]
+  },
+  {
+   "nr": 41,
+   "sv": "Barnet har en boll.",
+   "ord": [
+    {
+     "id": 13166,
+     "sv": "barnet"
+    },
+    {
+     "id": 14685,
+     "sv": "har"
+    },
+    {
+     "id": 12621,
+     "sv": "en boll"
+    }
+   ]
+  }
+ ]
+}

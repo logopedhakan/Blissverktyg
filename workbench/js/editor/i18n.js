@@ -34,6 +34,8 @@ const SV = [
   ['#aboutA', 'WinBliss² · Blissverktyget 1997–2026 · © 2026 AnyCom AB · CC BY 4.0.'],
   ['#aboutB', 'Blissymbolics © C.K. Bliss 1949, 1965 · symbolerna © Blissymbolics Communication International (BCI), ' +
    'distribuerade under CC BY-SA 4.0 — följer BCI:s auktoriserade ordförråd (BCI Authorized Vocabulary),'],
+  ['#aboutC', 'Skrivreglerna från Bliss-glosor © 2026 John Säbom (MIT) · synonymer ur Swesaurus och ordfrekvenser ur ' +
+    'SUC 3.0 © Språkbanken Text, Göteborgs universitet, CC BY 4.0.'],
   // list panes
   ['#btnResetStd', 'BCI-AV'],
   ['#btnNewList', 'Ny'],

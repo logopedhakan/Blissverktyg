@@ -30,11 +30,16 @@ winbliss-web-beta/
 │  ├─ icons/                appikoner (gjorda med tools/make-icons.html)
 │  └─ js/
 │     ├─ engine/            ritmotorn, porterad från WinBliss (bliss-shapes, bliss-engine)
-│     ├─ data/              BCI-AV: symbolerna (bliss-data) och översättningarna (glosses)
+│     ├─ data/              BCI-AV: symbolerna (bliss-data) och översättningarna (glosses),
+│     │                     och från Bliss-glosor: ordlistan för skrivreglerna (bliss-skriv-data),
+│     │                     synonymer (bliss-synonymer) och härledda verb (bliss-harledda)
 │     ├─ shared/            delas av alla delar: lang (språkval), wbs (.wbs-formatet),
 │     │                     shortcuts ($-genvägar), pwa (installera appen),
-│     │                     blisstext (text → bliss i Bildspel och Gravyrkort),
-│     │                     sv-morph (svensk böjning: barnen → barn + plural)
+│     │                     blisstext (text → bliss i Bildspel, Gravyrkort och Almanacka),
+│     │                     sv-morph (svensk böjning: barnen → barn + plural),
+│     │                     bliss-skriv (Bliss-glosors skrivregler), bliss-grammar
+│     │                     (indikatorernas placering) och skriv-glosor (kopplar
+│     │                     skrivreglerna till Skriv och blisstext)
 │     └─ editor/            editorns kod (app, i18n)
 ├─ tests/run.js             tester för text → bliss (node tests/run.js) — publiceras inte
 ├─ tools/                   utvecklingsverktyg — publiceras inte
@@ -42,6 +47,7 @@ winbliss-web-beta/
 │  ├─ check-pwa.ps1         testar appen online och utan nät i en dold Edge
 │  ├─ pwa-check.html        sidan som check-pwa.ps1 öppnar
 │  ├─ make-icons.html       ritar appikonerna med bliss-motorn
+│  ├─ build-skriv.js        hämtar skrivreglerna, grammatikmotorn och synonymerna från Bliss-glosor
 │  └─ build-artifact.ps1    bygger Bildspel som claude.ai-artefakt (till dist/)
 └─ .github/workflows/pages.yml   publicerar workbench/ till GitHub Pages
 ```
@@ -75,8 +81,25 @@ behöver bara Node:
 node tests/run.js
 ```
 
-Kör dem efter ändringar i `js/shared/sv-morph.js`, `js/shared/blisstext.js`
-eller Skriv i `js/editor/app.js`.
+Kör dem efter ändringar i `js/shared/sv-morph.js`, `js/shared/blisstext.js`,
+`js/shared/skriv-glosor.js` eller Skriv i `js/editor/app.js`. Bland testerna finns
+Bliss-glosors 41 godkända meningar (`tests/fixtures/meningar.json`).
+
+## Skrivreglerna kommer från Bliss-glosor
+
+Skriv, Bildspel, Gravyrkort och Almanacka skriver svensk och engelsk text med
+samma regler som Bliss-glosors "Skriv en egen mening": fraser som är en symbol
+(*tycker om*), *ska* + verb (utelämna *ska* så får verbet framtidsform), artiklar
+som kan utelämnas, BCI:s egennamn bara med stor bokstav, synonymer (Swesaurus) och
+härledda verb (SUC 3.0). Indikatorerna placeras av samma grammatikmotor, så formerna
+ritas exakt som där. Filerna ska inte ändras för hand — hämta en ny version med
+
+```bash
+node tools/build-skriv.js <sökväg till en klon av johbom/blissmaiker>
+```
+
+Skriptet kontrollerar först att ritmotorn och symboldatan är samma original som
+Bliss-glosor låser, och sist att båda apparna skriver samma meningar likadant.
 
 ## Lägga till en ny del
 
