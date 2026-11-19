@@ -11,6 +11,8 @@ const SV = [
   ['#btnManager', 'Listhantering'],
   ['#btnExportList', 'Exportera lista…'],
   ['#btnWrite', '✎ Skriv'],
+  ['#btnHelp', '? Hjälp'],
+  ['#wHelp', '? Hjälp'],
   ['#wtList', 'Lista'],
   ['#wtChips', 'Ordval'],
   ['#wtChooser', 'Böjning'],
@@ -250,6 +252,7 @@ function applyLang() {
   const helpL = sv ? 'Hjälp & tangentbordsgenvägar (?)' : 'Help & keyboard shortcuts (?)';
   $('btnHelp').title = helpL;
   $('btnHelp').setAttribute('aria-label', sv ? 'Hjälp och tangentbordsgenvägar' : 'Help and keyboard shortcuts');
+  $('wHelp').title = sv ? 'Hjälp: alla kortkommandon' : 'Help: all keyboard shortcuts';
   $('setLang').value = lang;
   // refresh dynamic surfaces
   renderListPane('A'); renderListPane('B');

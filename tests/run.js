@@ -465,6 +465,20 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   const a = read('bildspel.html'), b = read('bildspel-ny.html');
   const block = (p) => p.slice(p.indexOf('const KEYS = wbButtonKeys'), p.indexOf('], { paused: showing });'));
   check('keys: the same keys in both slideshows, and a help button', [block(a) === block(b), /id="btnKeys"/.test(a), /id="btnKeys"/.test(b)], [true, true, true]);
+  // Skriv (2026-11-19): its own keys, only while writing; help in the header and, embedded, in the tools row
+  const app = read('js/editor/app.js'), idx = read('index.html');
+  check('keys: Skriv has keys on its buttons, only while writing, and help shows its list',
+    [/wbButtonKeys\(\[[\s\S]*?\{ id: 'wToShow', key: 'Alt\+B'[\s\S]*?\], \{ paused: \(\) => !inWriting\(\) \}\)/.test(app),
+     /function openHelp\(\) \{[\s\S]*?classList\.contains\('writing'\) && SC\) SC\.openList\(\)/.test(app),
+     /id="wHelp"/.test(idx), /body\.embed #wHelp\{display:inline-block\}/.test(idx)],
+    [true, true, true, true]);
+  const cut = (src, a0, b0) => src.slice(src.indexOf(a0), src.indexOf(b0, src.indexOf(a0)));
+  const skrivKeys = [...cut(app, 'wbButtonKeys([', '], { paused').matchAll(/key: '([^']+)'/g)].map(m => m[1]).filter(k => k !== '?');
+  check('keys: no key twice in Skriv, none taken by the window keys (Alt+1/2/3/V/H)',
+    [new Set(skrivKeys).size === skrivKeys.length, skrivKeys.some(k => /^Alt\+[123VH]$/.test(k))], [true, false]);
+  // a tooltip that already names its key keeps its own words
+  const own = keysRun('Win32');
+  check('keys: a tooltip that names its key is not given it twice', own.els.btnSpeak.title, 'Läs upp (Alt+P)');
 }
 
 /* ---------- 9. Skriv -> Bildspel or Nya bildspelet (2026-11-19): the right page gets the text ---------- */
