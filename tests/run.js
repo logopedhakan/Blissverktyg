@@ -357,7 +357,9 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Nya bildspelet: move a slide', [order(0, 2), order(3, 0), order(1, 1), order(0, 9)], ['bcad2', 'dabc0', 'abcd1', 'abcd0']);
   // removing a slide can be undone, also the only one
   const ctx2 = vm.createContext({ console, setTimeout: () => 0, clearTimeout: () => {} });
-  vm.runInContext(`var els = {}; var $ = (id) => (els[id] = els[id] || { hidden: true, textContent: '', onclick: null, addEventListener() {} });
+  vm.runInContext(`var focused = null; var els = {}; var $ = (id) => (els[id] = els[id] || { id, hidden: true, textContent: '', onclick: null,
+      addEventListener() {}, matches: () => false, contains: (x) => x === els[id], focus() { focused = id; },
+      children: id === 'slides' ? [0, 1, 2, 3].map(i => ({ focus() { focused = 'slide' + i; } })) : [] });
     var document = { addEventListener() {} }; var tr = (en, sv) => sv;
     var show = { slides: [] }, cur = 0; var go = (i) => { cur = i; }, autosave = () => {};
     var newSlide = (from) => ({ text: '', img: null, words: [] });\n` + cut('let snackT = null', '$(\'btnDel\').onclick'), ctx2);
@@ -370,6 +372,19 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Nya bildspelet: undo the only slide', ctx2.show.slides.map(x => x.text), ['only']);
   ctx2.show.slides = [S('x'), S('')]; ctx2.cur = 1; ctx2.els.snack.hidden = true; ctx2.delSlide();
   check('Nya bildspelet: an empty slide goes without an undo', [ctx2.show.slides.length, ctx2.els.snack.hidden], [1, true]);
+  // with a key or a switch, Undo is where the focus goes — and back to the slide after undoing
+  ctx2.show.slides = [S('a'), S('b')]; ctx2.cur = 1; ctx2.delSlide(true);
+  const atUndo = ctx2.focused;
+  ctx2.els.snackUndo.onclick();
+  check('Nya bildspelet: removed with a key, focus goes to Undo, then back to the slide', [atUndo, ctx2.focused, ctx2.show.slides.length], ['snackUndo', 'slide1', 2]);
+  ctx2.focused = null; ctx2.show.slides = [S('a'), S('b')]; ctx2.cur = 1; ctx2.delSlide(false);
+  check('Nya bildspelet: removed with a click, focus stays', ctx2.focused, null);
+  // reachable with a switch (Tab + Enter) or the eyes: no roving tab stops, steppers, size buttons, show controls
+  check('Nya bildspelet: every slide thumbnail is a Tab stop', /\.tabIndex = i === cur/.test(page), false);
+  check('Nya bildspelet: − and + beside each slider', /for \(const \[id, step\] of \[\['optImg', 5\], \['optGap', 1\], \['optPen', 1\]\]\)/.test(page), true);
+  check('Nya bildspelet: back, next and end on screen while showing',
+    ['showPrev', 'showNext', 'showExit', 'optClickNext'].map(id => page.includes(`id="${id}"`)), [true, true, true, true]);
+  check('Nya bildspelet: Undo waits 30 s and never while in use', /setTimeout\(\(\) => \{ if \(\$\('snack'\)\.matches\(':hover, :focus-within'\)\) armSnack\(\); else hideSnack\(\); \}, 30000\)/.test(page), true);
   // every button symbol is a BCI-AV symbol
   const data = sandbox('sv').BLISS_DATA, ids = new Set(data.map(x => x.id));
   const missing = [...page.matchAll(/data-bliss="([\d,]+)"/g)].flatMap(m => m[1].split(',').map(Number)).filter(id => !ids.has(id));
