@@ -1,14 +1,15 @@
 Blissverktyget (WinBliss²) — licenser / licenses
 
-Projektet består av tre delar med olika licenser.
-This project has three parts under different licenses.
+Projektet består av fyra delar med olika licenser.
+This project has four parts under different licenses.
 
 
 1. Koden / The code
-   Allt utom innehållet i workbench/js/data/ och workbench/fonts/ — sidorna, ritmotorn
-   (workbench/js/engine/, porterad från WinBliss Bliss_Common), editorn,
-   de delade skripten, verktygen i tools/ och ikonerna.
-   Everything except the contents of workbench/js/data/ and workbench/fonts/.
+   Allt utom innehållet i workbench/js/data/ och workbench/fonts/ och filerna i del 4
+   — sidorna, ritmotorn (workbench/js/engine/, porterad från WinBliss Bliss_Common),
+   editorn, de delade skripten, verktygen i tools/ och ikonerna.
+   Everything except the contents of workbench/js/data/ and workbench/fonts/ and the
+   files in part 4.
 
    Copyright © 2026 AnyCom AB
    Ritmotorn ursprungligen / original engine: © AnyCom AB / P-O Hedvall
@@ -61,3 +62,33 @@ This project has three parts under different licenses.
    så att ingen besökares IP-adress skickas till någon annan.
    The typeface is served by the app instead of Google Fonts, so no
    visitor's IP address is sent to a third party.
+
+
+4. Skrivreglerna, synonymerna och ordfrekvenserna / The writing rules, synonyms and word frequencies
+   Från Bliss-glosor (https://github.com/johbom/blissmaiker), hämtade med tools/build-skriv.js.
+   From Bliss-glosor, brought in by tools/build-skriv.js.
+
+   workbench/js/shared/bliss-skriv.js (skrivreglerna / the writing rules)
+     Copyright © 2026 John Säbom. Licens / License: MIT
+     Permission is hereby granted, free of charge, to any person obtaining a copy of
+     this software and associated documentation files, to deal in the Software
+     without restriction, subject to the copyright notice and this permission
+     notice being included in all copies or substantial portions of the Software.
+     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+     Fullständig text / full text: https://opensource.org/license/mit
+
+   workbench/js/shared/bliss-grammar.js (grammatikmotorn / the grammar engine)
+     Portad från BlissEngine (Grammar, composeSentence) © AnyCom AB, CC BY 4.0, av John Säbom.
+     Indikatorerna i filen / the indicators in it © BCI, CC BY-SA 4.0 (se del 2 / see part 2).
+
+   workbench/js/data/bliss-synonymer.js (synonymer / synonyms)
+     Urval ur Swesaurus, © Språkbanken Text, Göteborgs universitet.
+     Selection from Swesaurus, © Språkbanken Text, University of Gothenburg.
+     Licens / License: CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/
+
+   workbench/js/data/bliss-harledda.js (härledda verb / derived verbs) och
+   workbench/js/data/bliss-skriv-data.js (ordfrekvenser / word frequencies)
+     Verben och frekvenserna ur SUC 3.0-statistik, © Språkbanken Text, Göteborgs universitet.
+     The verbs and frequencies from SUC 3.0 statistics, © Språkbanken Text, University of Gothenburg.
+     Licens / License: CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/
+     BCI-id och ord i filerna / the BCI ids and words in them: se del 2 / see part 2.

@@ -152,6 +152,12 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 <script src="js/data/bliss-data.js"></script>
 <script src="js/data/glosses.js"></script>
 <script src="js/shared/sv-morph.js"></script>
+<script src="js/shared/bliss-grammar.js"></script>
+<script src="js/data/bliss-skriv-data.js"></script>
+<script src="js/data/bliss-synonymer.js"></script>
+<script src="js/data/bliss-harledda.js"></script>
+<script src="js/shared/bliss-skriv.js"></script>
+<script src="js/shared/skriv-glosor.js"></script>
 <script src="js/shared/blisstext.js"></script>
 <script>
 'use strict';
@@ -270,6 +276,7 @@ function membersFromWords() {
   for (const w of state.words) {
     if (w.br) continue;                         // the tag is one row
     if (!symbols) { if (w.token || w.label) out.push(textSym(w.label || w.token)); continue; }
+    if (w.skip) continue;                       // left out of the Bliss text (an article, "ska")
     if (w.asText) { out.push(textSym(w.label || w.token)); continue; }
     const id = w.ids[w.pick], s = BT.symById(id);
     const e = BT.composeEls(id, w.punct ? '' : w.ind);

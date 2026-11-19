@@ -162,9 +162,20 @@ const BT = (() => {
     }
     return { e };
   }
+  /* indicators placed by BlissEngine's grammar engine (js/shared/bliss-grammar.js,
+     from Bliss-glosor, 2026-11-19) — the same placement as Skriv; the code
+     below is the fallback when the engine file is missing */
+  let GRAMMAR = null;
   function composeEls(id, indKey) {
     const base = symById(id);
     if (!base) return [];
+    const BG = typeof window !== 'undefined' && window.BlissGrammar;
+    if (BG && indKey) {
+      if (!GRAMMAR) GRAMMAR = new BG.Grammar();
+      const { words: [one] } = BG.composeSentence({ byId: { get: () => ({ id: base.id, name: base.n, e: base.e }) } },
+        GRAMMAR, [{ id: base.id, indicators: indKeys(indKey) }]);
+      if (one) return one.e;
+    }
     let els = base.e.map(e => e.slice());
     if (indKey) {
       const rec = indRecord(indKey);
@@ -230,7 +241,7 @@ const BT = (() => {
   const pickKey = (tok) => GL + '|' + tok.toLowerCase();
   function rememberPick(w) {
     if (!w || w.br || w.punct || !w.token) return;
-    PICKS[pickKey(w.token)] = w.asText ? 'text' : w.ids[w.pick];
+    PICKS[pickKey(w.token)] = w.opts && typeof SkrivGlosor !== 'undefined' ? SkrivGlosor.pickValue(w) : w.asText ? 'text' : w.ids[w.pick];
     try { localStorage.setItem('wb-picks', JSON.stringify(PICKS)); } catch (_) {}
   }
   /* an inflected word resolved by the morphology (js/shared/sv-morph.js):
@@ -283,7 +294,8 @@ const BT = (() => {
         for (let i = W.length - 1; i >= 0; i--) {
           const ww = W[i];
           if (ww.br || ww.punct) continue;
-          if (!ww.asText && ww.ids.length) { ww.ind = indToggle(ww.ind, key); autoLabel(ww); }
+          if (ww.pending) { (ww.formCodes = ww.formCodes || []).push(key); break; }   // put on once the sentence is resolved
+          if (!ww.asText && ww.ids.length) { ww.ind = indToggle(ww.ind, key); ww.manual = true; autoLabel(ww); }
           break;
         }
         subs.push({ off, raw: word, rep: '' });
@@ -301,7 +313,9 @@ const BT = (() => {
         pushPunct(punct);
         continue;
       }
-      if (word) {
+      if (word && SG()) {
+        W.push({ token: word, raw, pending: true });           // resolved for the whole sentence below
+      } else if (word) {
         const old = prev[W.length];
         if (old && old.token === word) W.push(old);
         else {
@@ -343,7 +357,7 @@ const BT = (() => {
       }
       pushPunct(punct);
     }
-    s.words = W;
+    s.words = SG() ? SkrivGlosor.resolve(W, prev, SG_CFG) : W;
     if (subs.length) {
       let v = text, caret = inp ? inp.selectionStart : v.length;
       for (const sb of subs.sort((a, b) => b.off - a.off)) {
@@ -356,8 +370,15 @@ const BT = (() => {
     }
   }
 
+  /* Bliss-glosor's writing rules (js/shared/skriv-glosor.js, 2026-11-19) — the
+     same as Skriv: phrases, "ska" + verb, articles that can be left out,
+     synonyms, derived verbs. Swedish and English. */
+  const SG = () => typeof SkrivGlosor !== 'undefined' && SkrivGlosor.on(GL);
+  const SG_CFG = { lang: GL, pickOf: (t) => PICKS[pickKey(t)], autoLabel: (w) => autoLabel(w), indToggle: (i, k) => indToggle(i, k) };
+  function takeOption(w, o, s) { SkrivGlosor.take(w, o, autoLabel); w.manual = true; SkrivGlosor.redefault(s.words || [], SG_CFG); }
+
   function wordEls(w) {
-    if (w.br) return [];
+    if (w.br || w.skip) return [];
     if (w.asText) return [['Z', 1, 1, 0, 0, 10, 0, 0, w.token, 0, 6]];
     return composeEls(w.ids[w.pick], w.ind);
   }
@@ -402,11 +423,15 @@ const BT = (() => {
       if (w.br) { const d = document.createElement('div'); d.className = 'br'; box.appendChild(d); return; }
       const c = document.createElement('button');
       c.type = 'button';
-      c.className = 'chip' + (w.asText ? ' text' : '') + (w.fuzzy ? ' fuzzy' : '') + (i === open ? ' on' : '');
-      c.innerHTML = w.asText
+      c.className = 'chip' + (w.asText || w.skip ? ' text' : '') + (w.fuzzy || (w.guess && w.asText) ? ' fuzzy' : '') + (i === open ? ' on' : '');
+      c.innerHTML = w.skip
+        ? `<span class="tx"><s>${escXml(w.token)}</s></span><span class="cap">${tr('left out', 'utelämnat')}</span>`
+        : w.asText
         ? `<span class="tx">${escXml(w.token)}</span><span class="cap">${w.ids.length ? tr('text', 'text') : tr('no symbol', 'ingen symbol')}</span>`
         : `${chipSVG(w)}<span class="cap">${escXml(w.label || w.token)}${w.ind ? ' ·' : ''}</span>`;
-      c.title = w.fuzzy ? tr('No exact match — click to see guesses', 'Ingen exakt träff — klicka för att se gissningar')
+      c.title = w.skip ? tr('Left out of the Bliss text — click to change', 'Utelämnat ur blisstexten — klicka för att ändra')
+        : w.guess && w.asText ? tr('BCI does not have this word — click to see suggestions', 'BCI har inte ordet — klicka för att se förslag')
+        : w.fuzzy ? tr('No exact match — click to see guesses', 'Ingen exakt träff — klicka för att se gissningar')
         : w.ids.length ? tr('Click to choose symbol, form or text', 'Klicka för att välja symbol, böjning eller text')
         : tr('No symbol matched — stays as text', 'Ingen symbol matchade — förblir text');
       c.onclick = () => onToggle(i);
@@ -424,7 +449,21 @@ const BT = (() => {
       const l = document.createElement('div'); l.className = 'lbl'; l.textContent = label; ch.appendChild(l);
       const r = document.createElement('div'); r.className = 'row'; ch.appendChild(r); return r;
     };
-    if (w.ids.length) {
+    if (w.opts && w.opts.length) {
+      const r = sec(w.guess ? tr(`BCI does not have the word “${w.token}” — suggestions:`, `BCI har inte ordet ”${w.token}” — förslag:`) : tr('Symbol:', 'Symbol:'));
+      const cur = w.skip ? 'skip' : w.asText ? 'text' : w.oKey;
+      for (const o of w.opts) {
+        const { label, note } = SkrivGlosor.describe(w, o, GL);
+        const b = document.createElement('button');
+        b.className = 'cand' + (o.key === cur ? ' sel' : '');
+        b.innerHTML = (o.id != null ? chipSVG({ ids: [o.id], pick: 0, ind: o.form || '', asText: false }) : '') +
+          `<span class="cap">${escXml(label)}</span>` + (note ? `<span class="cap note">${escXml(note)}</span>` : '');
+        const sy = o.id != null ? symById(o.id) : null;
+        b.title = sy ? sy.n + ' · ' + sy.id : '';
+        b.onclick = () => { takeOption(w, o, s); rememberPick(w); on.change(); };
+        r.appendChild(b);
+      }
+    } else if (w.ids.length) {
       const r = sec(w.fuzzy || w.keyOf ? tr('Guesses — pick the right one:', 'Gissningar — välj rätt:') : tr('Symbol:', 'Symbol:'));
       w.ids.forEach((id, k) => {
         const sy = symById(id);
@@ -443,12 +482,15 @@ const BT = (() => {
       tb.textContent = tr('Text instead of symbol', 'Text i stället för symbol');
       tb.className = w.asText ? 'sel' : '';
       tb.onclick = () => {
-        if (w.asText && w.ids.length) { w.asText = false; w.fuzzy = false; } else w.asText = true;
+        if (w.opts) {
+          if (w.asText && w.opts.length) takeOption(w, w.opts.find(o => !o.text && !o.skip) || w.opts[0], s);
+          else takeOption(w, { text: true, key: 'text' }, s);
+        } else if (w.asText && w.ids.length) { w.asText = false; w.fuzzy = false; } else w.asText = true;
         rememberPick(w); on.change();
       };
       r.appendChild(tb);
     }
-    if (!w.asText && !w.punct) {
+    if (!w.asText && !w.punct && !w.skip) {
       const r = sec(tr('Form:', 'Böjning:'));
       const have = indKeys(w.ind);
       IND_CHOICES.forEach(([key, label], n) => {
@@ -456,7 +498,7 @@ const BT = (() => {
         b.textContent = label;
         b.title = '#' + n;
         b.className = (key ? have.includes(key) : !have.length) ? 'sel' : '';
-        b.onclick = () => { w.ind = indToggle(w.ind, key); autoLabel(w); on.change(); };
+        b.onclick = () => { w.ind = indToggle(w.ind, key); w.manual = true; autoLabel(w); on.change(); };
         r.appendChild(b);
       });
       const l = document.createElement('div'); l.className = 'lbl';

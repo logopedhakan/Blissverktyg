@@ -1529,9 +1529,21 @@ function wIndRecord(ind) {
   }
   return { e };
 }
+/* Indicators placed by BlissEngine's grammar engine (js/shared/bliss-grammar.js,
+   from Bliss-glosor, 2026-11-19): the same Fundamental Rules placement and the
+   same drawings as Bliss-glosor's pre-drawn forms. The code below is the
+   fallback when the engine file is missing. */
+const W_GRAMMAR = typeof BlissGrammar !== 'undefined' ? new BlissGrammar.Grammar()
+  : (window.BlissGrammar ? new window.BlissGrammar.Grammar() : null);
 function wComposeEls(id, indKey) {
   const base = wSymById(id);
   if (!base) return [];
+  if (W_GRAMMAR && indKey) {
+    const BG = window.BlissGrammar;
+    const { words: [one] } = BG.composeSentence({ byId: { get: () => ({ id: base.id, name: base.n, e: base.e }) } },
+      W_GRAMMAR, [{ id: base.id, indicators: wIndKeys(indKey) }]);
+    if (one) return one.e;
+  }
   let els = base.e.map(e => e.slice());
   if (indKey) {
     const rec = wIndRecord(indKey);
@@ -1635,7 +1647,9 @@ const wPickOf = tok => W_PICKS[wPickKey(tok)] ??
   (!glossLang && wWriteLang() !== 'en' ? W_PICKS['en|' + tok.toLowerCase()] : undefined);
 function wRememberPick(w) {
   if (!w || w.br || w.punct || !w.token) return;
-  W_PICKS[wPickKey(w.token)] = w.asText ? 'text' : w.ids[w.pick];
+  // a left-out word, text, or the option itself (symbol + form); a future form that
+  // only came from a left-out "ska" is remembered as the plain symbol
+  W_PICKS[wPickKey(w.token)] = w.opts ? SkrivGlosor.pickValue(w) : w.asText ? 'text' : w.ids[w.pick];
   try { localStorage.setItem('wb-picks', JSON.stringify(W_PICKS)); } catch (_) {}
 }
 /* an inflected word resolved by the morphology (js/shared/sv-morph.js): the
@@ -1691,7 +1705,8 @@ function wParse() {
       for (let i = W.length - 1; i >= 0; i--) {
         const ww = W[i];
         if (!ww || ww.br || ww.punct) continue;
-        if (!ww.asText && ww.ids.length) { ww.ind = wIndToggle(ww.ind, key); wAutoLabel(ww); }
+        if (ww.pending) { (ww.formCodes = ww.formCodes || []).push(key); break; }   // put on once the sentence is resolved
+        if (!ww.asText && ww.ids.length) { ww.ind = wIndToggle(ww.ind, key); ww.manual = true; wAutoLabel(ww); }
         break;
       }
       subs.push({ off, raw: word, rep: '' });
@@ -1711,7 +1726,10 @@ function wParse() {
       for (const p of punct) if (W_PUNCT[p]) W.push({ token: p, ids: [W_PUNCT[p]], pick: 0, ind: '', asText: false, punct: true });
       return;
     }
-    if (word) {
+    if (word && wGlosorOn()) {
+      // resolved for the whole sentence below (wResolveGlosor): phrases, "ska" + verb, articles
+      W.push({ token: word, raw, off, pending: true });
+    } else if (word) {
       const old = prev[W.length];
       const lower = word.toLowerCase();
       let ids = W_INDEX.get(lower) || [];
@@ -1762,6 +1780,8 @@ function wParse() {
     }
     for (const p of punct) if (W_PUNCT[p]) W.push({ token: p, ids: [W_PUNCT[p]], pick: 0, ind: '', asText: false, punct: true });
   });
+  // resolve before a substitution re-parses: the form codes are on the words by then
+  if (wGlosorOn()) wResolveGlosor(prev);
   if (subs.length) {
     const inp = $('wInput');
     let v = inp.value, caret = inp.selectionStart ?? v.length;
@@ -1777,8 +1797,22 @@ function wParse() {
   wRender();
 }
 
+/* ---- the writing rules of Bliss-glosor, 2026-11-19 ----
+   Swedish and English text is written by Bliss-glosor's rules (phrases, "ska"
+   + verb, articles that can be left out, synonyms, derived verbs …) through
+   js/shared/skriv-glosor.js — the same as Bildspel, Gravyrkort and Almanacka.
+   Every word gets opts; the rest of Skriv works as before on the chosen one
+   (ids/pick, ind, asText) plus skip: left out of the Bliss text. */
+const W_SG_CFG = { get lang() { return wWriteLang(); }, pickOf: (t) => wPickOf(t), autoLabel: (w) => wAutoLabel(w),
+  indToggle: (ind, key) => wIndToggle(ind, key) };
+function wGlosorOn() { return typeof SkrivGlosor !== 'undefined' && SkrivGlosor.on(wWriteLang()); }
+function wOptionOf(w) { return SkrivGlosor.optionOf(w); }
+function wTakeOption(w, o) { SkrivGlosor.take(w, o, wAutoLabel); }
+function wResolveGlosor(prev) { W = SkrivGlosor.resolve(W, prev, W_SG_CFG); }
+function wRedefault() { SkrivGlosor.redefault(W, W_SG_CFG); }
+
 function wWordEls(w) {
-  if (w.br) return [];
+  if (w.br || w.skip) return [];
   if (w.asText) return [['Z', 1, 1, 0, 0, 10, 0, 0, w.token, 0, 6]];
   return wComposeEls(w.ids[w.pick], w.ind);
 }
@@ -1792,9 +1826,18 @@ function wRenderChips() {
     if (w.br) { const d = document.createElement('div'); d.className = 'wBr'; box.appendChild(d); return; }
     const c = document.createElement('button');
     c.type = 'button';
-    c.className = 'wChip' + (w.asText && !w.ids.length ? ' unmatched' : '') + (w.fuzzy ? ' fuzzy' : '') + (i === wOpen ? ' on' : '');
-    c.innerHTML = `${wChipSVG(w)}<span class="cap">${escXml(w.label || w.token)}${w.ind ? ' ·' : ''}</span>`;
-    c.title = w.fuzzy
+    c.className = 'wChip' + (w.asText && !w.ids.length ? ' unmatched' : '') + (w.fuzzy || (w.guess && w.asText) ? ' fuzzy' : '') +
+      (w.skip ? ' skipped' : '') + (i === wOpen ? ' on' : '');
+    const note = w.skip ? '' : w.via ? `<span class="note">≈ ${escXml(w.via)}</span>` : w.derived ? `<span class="note">${tr('derived', 'härlett')}</span>` : '';
+    c.innerHTML = w.skip
+      ? `<span class="skipWord">${escXml(w.token)}</span><span class="cap">${tr('left out', 'utelämnat')}</span>`
+      : `${wChipSVG(w)}<span class="cap">${escXml(w.label || w.token)}${w.ind ? ' ·' : ''}</span>${note}`;
+    c.title = w.skip
+      ? (w.future ? tr('Left out — the verb after it gets the future form. Click to change', 'Utelämnat — verbet efter får framtidsform. Klicka för att ändra')
+                  : tr('Left out of the Bliss text — click to show it', 'Utelämnat ur blisstexten — klicka för att visa det'))
+      : w.guess && w.asText
+      ? tr('BCI does not have this word — click to see suggestions', 'BCI har inte ordet — klicka för att se förslag')
+      : w.fuzzy
       ? tr('No exact match — click to see guesses, or let Interpret decide', 'Ingen exakt träff — klicka för att se gissningar, eller låt Tolka avgöra')
       : w.ids.length
       ? tr('Click to choose symbol, tense or text form', 'Klicka för att välja symbol, tempus eller textform')
@@ -1857,6 +1900,7 @@ function wChipEl(i) {
 }
 function wChipName(w) {
   const word = w.label || w.token;
+  if (w.skip) return word + ' – ' + tr('left out', 'utelämnat');
   if (w.asText || !w.ids.length) return word + ' – ' + tr('as text', 'som text');
   const id = w.ids[w.pick] ?? w.ids[0];
   // the symbol in the language of the page when there is a name for it, else the BCI name
@@ -1883,7 +1927,7 @@ function wSaveDraft() {
   if (!wDraftOn) return;
   clearTimeout(wDraftT);
   wDraftT = setTimeout(() => {
-    try { localStorage.setItem(W_DRAFT_KEY, JSON.stringify({ text: $('wInput').value, words: W })); } catch (_) {}
+    try { localStorage.setItem(W_DRAFT_KEY, JSON.stringify({ text: $('wInput').value, words: W }, (k, v) => (k === 'futureOf' ? undefined : v))); } catch (_) {}
   }, 300);
 }
 function wLoadDraft() {
@@ -1910,6 +1954,34 @@ function wRenderChooser() {
   ch.setAttribute('role', 'group');
   ch.setAttribute('aria-label', tr('Choices for the word ', 'Val för ordet ') + (w.label || w.token));
   const cands = document.createElement('div'); cands.className = 'wCands';
+  if (w.opts) {
+    if (w.guess) {
+      const hd = document.createElement('p'); hd.className = 'wGuessHead';
+      hd.textContent = tr(`BCI does not have the word “${w.token}” — suggestions:`, `BCI har inte ordet ”${w.token}” — förslag:`);
+      ch.appendChild(hd);
+    }
+    const cur = w.skip ? 'skip' : w.asText ? 'text' : w.oKey;
+    w.opts.forEach((o) => {
+      const b = document.createElement('button');
+      const on = o.key === cur || (o.text && cur === 'text');
+      b.className = 'varBtn' + (on ? ' sel' : '');
+      b.setAttribute('aria-pressed', String(on));
+      // the note says why this option is here: its form, a synonym, a derived verb,
+      // or — for two symbols with the same word — BCI's other words for it
+      const { label: cap, note } = SkrivGlosor.describe(w, o, wWriteLang());
+      b.innerHTML = (o.id != null ? wChipSVG({ ids: [o.id], pick: 0, ind: o.form || '', asText: false }) : '') +
+        `<span class="cap">${escXml(cap)}</span>` + (note ? `<span class="note">${escXml(note)}</span>` : '');
+      const sy = o.id != null ? wSymById(o.id) : null;
+      b.title = sy ? sy.n : '';
+      b.onclick = () => {
+        wTakeOption(w, o); w.manual = true;
+        wRememberPick(w);
+        wRedefault();
+        wRender();
+      };
+      cands.appendChild(b);
+    });
+  } else
   w.ids.forEach((id, k) => {
     const sy = wSymById(id);
     const b = document.createElement('button');
@@ -1921,12 +1993,18 @@ function wRenderChooser() {
     b.onclick = () => { w.pick = k; w.asText = false; w.fuzzy = false; wApplyAnalysis(w); wAutoLabel(w); wRememberPick(w); wRender(); };
     cands.appendChild(b);
   });
-  const tb = document.createElement('button');
-  tb.className = 'varBtn' + (w.asText ? ' sel' : '');
-  tb.setAttribute('aria-pressed', String(!!w.asText));
-  tb.textContent = tr('as text', 'som text');
-  tb.onclick = () => { w.asText = true; wRememberPick(w); wRender(); };
-  cands.appendChild(tb);
+  // "as text" is always there (Bliss-glosor offers it only for unknown words; Skriv always did)
+  if (!w.opts || !w.opts.some(o => o.text)) {
+    const tb = document.createElement('button');
+    tb.className = 'varBtn' + (w.asText ? ' sel' : '');
+    tb.setAttribute('aria-pressed', String(!!w.asText));
+    tb.textContent = tr('as text', 'som text');
+    tb.onclick = () => {
+      if (w.opts) { wTakeOption(w, { text: true, key: 'text' }); w.manual = true; wRedefault(); } else w.asText = true;
+      wRememberPick(w); wRender();
+    };
+    cands.appendChild(tb);
+  }
   const eb = document.createElement('button');
   eb.className = 'varBtn';
   eb.textContent = w.ids.length ? tr('open in editor', 'öppna i editorn') : tr('create the symbol', 'skapa symbolen');
@@ -1944,7 +2022,7 @@ function wRenderChooser() {
   };
   cands.appendChild(eb);
   ch.appendChild(cands);
-  if (!w.punct) {
+  if (!w.punct && !w.skip) {
     const lr = document.createElement('div'); lr.className = 'wInds';
     const ll = document.createElement('span'); ll.textContent = tr('Word under the symbol:', 'Ordet under symbolen:');
     const li = document.createElement('input');
@@ -1953,7 +2031,7 @@ function wRenderChooser() {
     li.addEventListener('input', () => { w.label = li.value.trim() || null; w.autoLabel = false; wRenderChips(); wRenderPreview(); });
     lr.appendChild(ll); lr.appendChild(li); ch.appendChild(lr);
   }
-  if (!w.punct && w.ids.length) {
+  if (!w.punct && !w.skip && w.ids.length) {
     const inds = document.createElement('div'); inds.className = 'wInds';
     const lab = document.createElement('span'); lab.textContent = tr('Form:', 'Form:'); inds.appendChild(lab);
     for (const [di, [key, name]] of W_IND_CHOICES.entries()) {
@@ -1975,7 +2053,7 @@ function wRenderChooser() {
         } catch (_) { b.textContent = name(); }
       } else b.textContent = name();
       const kbd = document.createElement('kbd'); kbd.textContent = '#' + di; b.appendChild(kbd);
-      b.onclick = () => { w.ind = wIndToggle(w.ind, key); wAutoLabel(w); wRender(); };
+      b.onclick = () => { w.ind = wIndToggle(w.ind, key); w.manual = true; wAutoLabel(w); wRender(); };
       inds.appendChild(b);
     }
     ch.appendChild(inds);
@@ -1989,7 +2067,7 @@ function wRenderChooser() {
    inside the input #2 is a BCI code, not a shortcut. */
 let wHashArmed = 0;
 function wIndTarget() {
-  const ok = w => w && !w.br && !w.punct && !w.asText && w.ids.length;
+  const ok = w => w && !w.br && !w.punct && !w.asText && !w.skip && w.ids.length;
   if (wOpen >= 0 && ok(W[wOpen])) return wOpen;
   for (let i = W.length - 1; i >= 0; i--) if (ok(W[i])) return i;
   return -1;
@@ -2072,7 +2150,14 @@ function wLineSVG(words, unit = 14, withLabels = true) {
     `<text x="${l.x.toFixed(1)}" y="${textY}" text-anchor="middle" font-size="${fs}" font-family="Helvetica, Arial, sans-serif" stroke="none" class="bfill">${escXml(l.t)}</text>`).join('') : '';
   const vy = Math.min(minY, 300) - pad;
   const vh = (withLabels ? textY + fs * 0.3 : maxY) - vy + pad;
-  const vx = -pad, vw = maxX + 2 * pad;
+  // a word wider than its symbol must not be cut at the ends of the line
+  // (2026-11-19: "Mannen" last on a line showed as "Manne") — about 0.6 em a letter
+  let left = 0, right = maxX;
+  if (withLabels) for (const l of labels) {
+    const half = fs * 0.3 * String(l.t).length;
+    left = Math.min(left, l.x - half); right = Math.max(right, l.x + half);
+  }
+  const vx = left - pad, vw = right - left + 2 * pad;
   const scale = unit / 100;
   const ink = exportInk();
   return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${(vw * scale).toFixed(1)}" height="${(vh * scale).toFixed(1)}" viewBox="${vx} ${vy} ${vw} ${vh}" stroke="${ink}" stroke-width="${WS.pen}" stroke-linecap="round" stroke-linejoin="round" style="color:${ink}"><style>.bfill{fill:${ink}}</style>${parts.join('')}${texts}</svg>`,
@@ -2287,7 +2372,7 @@ let wDocHandle = null;   // the opened/saved file — Save writes BACK to it
 function wBuildDoc() {
   const words = W.filter(w => !w.br && !w.punct).map(w => ({
     t: w.token, id: w.asText ? null : (w.ids[w.pick] ?? null),
-    ind: w.ind || '', label: w.label || null, asText: !!w.asText }));
+    ind: w.ind || '', label: w.label || null, asText: !!w.asText, ...(w.skip ? { skip: true } : {}) }));
   return { app: 'WinBliss', kind: 'write-doc', v: 1,
     date: new Date().toISOString().slice(0, 10), text: $('wInput').value, words };
 }
@@ -2335,7 +2420,10 @@ function wApplyDoc(txt) {
     if (s.id != null) {
       if (!w.ids.includes(s.id) && BLISS_DATA.some(x => x.id === s.id)) w.ids.unshift(s.id);
       if (w.ids.includes(s.id)) { w.pick = w.ids.indexOf(s.id); w.asText = false; w.fuzzy = false; }
-    } else if (s.asText) { w.asText = true; w.fuzzy = false; }
+    } else if (s.skip && w.opts && w.opts.some(o => o.skip)) { wTakeOption(w, w.opts.find(o => o.skip)); }
+    else if (s.asText) { w.asText = true; w.fuzzy = false; w.skip = false; }
+    if (s.id != null) w.skip = false;
+    w.manual = true;
     w.ind = s.ind || '';
     if (s.label) w.label = s.label;
   });
@@ -2430,8 +2518,8 @@ function wCustomSyms(ids) {
   return out;
 }
 function wShowPayload() {
-  const words = W.map(w => { const c = Object.assign({}, w); delete c.keyOf; delete c.off; return c; });
-  return { text: $('wInput').value, words, custom: wCustomSyms(W.filter(w => !w.br && !w.asText).map(w => w.ids[w.pick])) };
+  const words = W.map(w => { const c = Object.assign({}, w); delete c.keyOf; delete c.off; delete c.futureOf; return c; });
+  return { text: $('wInput').value, words, custom: wCustomSyms(W.filter(w => !w.br && !w.asText && !w.skip).map(w => w.ids[w.pick])) };
 }
 $('wToShow').onclick = () => {
   if (!W.some(w => !w.br)) return toast(tr('Write something first', 'Skriv något först'));
@@ -2544,6 +2632,7 @@ $('wAI').onclick = async () => {
       w.ind = c.indicator || '';
       w.label = c.label && c.label !== w.token ? c.label : w.label;
       w.fuzzy = false;                        // interpreted, no longer a guess
+      w.skip = false; w.manual = true;
     }
     wRender();
     toast(tr('Interpreted — every choice is still yours to adjust', 'Tolkat — varje val är fortfarande ditt att justera'));

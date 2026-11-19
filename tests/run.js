@@ -31,6 +31,10 @@ function sandbox(lang) {
   vm.runInContext(globalize(read('js/data/bliss-data.js'), ['BLISS_DATA']), ctx, { filename: 'bliss-data.js' });
   vm.runInContext(globalize(read('js/data/glosses.js'), ['BLISS_GLOSSES', 'GLOSS_LANGS']), ctx, { filename: 'glosses.js' });
   vm.runInContext(globalize(read('js/shared/sv-morph.js'), ['SvMorph']), ctx, { filename: 'sv-morph.js' });
+  // Bliss-glosor's writing rules (2026-11-19), loaded the way the pages load them
+  for (const f of ['js/shared/bliss-grammar.js', 'js/data/bliss-skriv-data.js', 'js/data/bliss-synonymer.js',
+    'js/data/bliss-harledda.js', 'js/shared/bliss-skriv.js', 'js/shared/skriv-glosor.js'])
+    vm.runInContext(globalize(read(f), ['SkrivGlosor']), ctx, { filename: f });
   return ctx;
 }
 
@@ -98,7 +102,8 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     ['och', 12374, ''], ['katterna', 12383, 'plural'], ['sov', 17009, 'past_action'],
   ]);
   check('blisstext: irregular verbs', parse('jag åt och gick hem'), [
-    ['jag', 14916, ''], ['åt', 13906, 'past_action'], ['och', 12374, ''], ['gick', 12343, 'past_action'], ['hem', 14885, ''],
+    // gå = 18031 (walk): Bliss-glosor names 12343 "gå framåt" (advance), so plain "gå" is the walking one
+    ['jag', 14916, ''], ['åt', 13906, 'past_action'], ['och', 12374, ''], ['gick', 18031, 'past_action'], ['hem', 14885, ''],
   ]);
   check('blisstext: the word before decides', parse('han cyklar men två cyklar står där'), [
     ['han', 14687, ''], ['cyklar', 21832, ''], ['men', 13094, ''], ['två', 8498, ''], ['cyklar', 12834, 'plural'],
@@ -243,6 +248,85 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   const fm = read('former.html');
   check('Formfamiljer: forms have a name and a pressed state',
     [/chip\.setAttribute\('aria-label', key \+/.test(fm), /chip\.setAttribute\('aria-pressed', String\(on\)\)/.test(fm)], [true, true]);
+}
+
+/* ---------- 6. Skriv writes by Bliss-glosor's rules (js/shared/bliss-skriv.js), 2026-11-19 ----------
+   Skriv's real parser (wParse in app.js) on Bliss-glosor's approved sentences
+   (tests/fixtures/meningar.json): with the articles and "ska" left out it must
+   give exactly the key, as Bliss-glosor's own test does. */
+{
+  const app = read('js/editor/app.js');
+  const grab = (a, b) => { const i = app.indexOf(a); if (i < 0) throw new Error('app.js: not found: ' + a); return app.slice(i, app.indexOf(b, i)); };
+  const ctx = sandbox('sv');
+  const input = { value: '', selectionStart: 0 };
+  ctx.__input = input;
+  vm.runInContext(`var lang = 'sv', glossLang = '', lists = { A: { syms: [] } };
+    var $ = (id) => (id === 'wInput' ? __input : {}); var tr = (e, s) => s; var toast = () => {}; var wRender = () => {};
+    function firstGloss(s) { return (s.n || '').split(',')[0]; }\n` +
+    globalize([grab('function wWriteLang()', 'function translatedGloss'), grab('function translatedGloss', '/* ================= wbs'),
+      grab('const W_INDICATORS', 'function wWordEls')].join('\n'),
+      ['W', 'W_INDEX', 'W_INDEX_LANG', 'W_LIST_REV', 'W_PICKS', 'W_INDICATORS', 'W_IND_CHOICES', 'W_GRAMMAR', 'wOpen']), ctx, { filename: 'app.js (Skriv)' });
+  const parse = (text) => { input.value = text; input.selectionStart = text.length; ctx.wParse(); return ctx.W; };
+  const one = (w) => (w.skip ? 'skip' : w.asText ? 'TEXT' : w.ids[w.pick] + (w.ind ? '+' + w.ind : ''));
+  const shown = (W) => W.filter(w => !w.br && !w.punct && !w.skip).map(one);
+  // as in the sentence exercise: articles and "ska" left out (one click each)
+  const leaveOut = (W) => {
+    for (const w of W) if (w.opts && w.opts.some(o => o.skip)) { ctx.wTakeOption(w, w.opts.find(o => o.skip)); w.manual = true; }
+    ctx.wRedefault();
+    return W;
+  };
+  const key = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'meningar.json'), 'utf8')).meningar;
+  const OTHER = new Set([23, 34, 37]);   // the exercise picked another of the options (fisk (mat), tänka om, gå framåt)
+  const bad = [];
+  for (const m of key) {
+    const W = leaveOut(parse(m.sv));
+    const want = m.ord.map(o => o.id + (o.form && o.form.length ? '+' + o.form[0] : ''));
+    if (OTHER.has(m.nr)) {
+      const words = W.filter(w => !w.br && !w.punct && !w.skip);
+      m.ord.forEach((o, i) => { if (!words[i] || !words[i].ids.includes(o.id)) bad.push(`${m.nr}: ${o.id} not among the options`); });
+    } else if (JSON.stringify(shown(W)) !== JSON.stringify(want)) bad.push(`${m.nr} ${m.sv}: ${JSON.stringify(shown(W))}`);
+  }
+  check(`Skriv: the ${key.length} approved Bliss-glosor sentences`, bad, []);
+
+  check('Skriv: a phrase is one symbol, "ska" is BCI\'s skall', shown(parse('Vi tycker om katter.')), ['18212', '15210', '12383+plural']);
+  const ska = parse('Barnet ska läsa en bok');
+  check('Skriv: "ska" and the article can be left out', ska.filter(w => !w.punct).map(w => !!(w.opts && w.opts.some(o => o.skip))), [false, true, false, true, false]);
+  check('Skriv: "ska" left out = the verb in the future', shown(leaveOut(ska)), ['13166', '16465+future_action', '12875']);
+  check('Skriv: ... and the word under it says so', ska[2].label, 'ska läsa');
+  check('Skriv: "såg" after an article is the saw, otherwise see in the past',
+    [shown(parse('jag köpte en såg'))[3], shown(parse('Hunden såg katten'))[1]], ['16727', '16747+past_action']);
+  check('Skriv: BCI\'s proper names only with a capital mid-sentence', [shown(parse('Solen är på himlen'))[3], shown(parse('de kom till Himlen'))[3]], ['17006', '24149']);
+  check('Skriv: an inflected noun is not the pronoun', shown(parse('Mannen ser månen'))[0], '15416');
+  const brand = parse('branden')[0];
+  check('Skriv: a synonym (Swesaurus) is marked', [one(brand), brand.via], ['14183', 'eld']);
+  check('Skriv: a derived verb gets the action indicator', one(parse('tystnar')[0]), '16981+action');
+  const kalle = parse('Kalle')[0];
+  check('Skriv: an unknown word stays text, with suggestions', [kalle.asText, kalle.guess], [true, true]);
+  // "gå #2": the form code is put on the word before once the sentence is resolved, and survives the re-parse
+  const ga = parse('jag gå #2 ');
+  check('Skriv: "gå #2" gives the present', [input.value, ga.filter(w => !w.punct).map(one)], ['jag gå  ', ['14916', '18031+present_action']]);
+  check('Skriv: ... and keeps it while writing on', parse('jag gå  hem').filter(w => !w.punct).map(one), ['14916', '18031+present_action', '14885']);
+  // a word chosen by hand keeps its choice when the sentence changes around it
+  const W2 = parse('Barnet ska läsa');
+  ctx.wTakeOption(W2[1], W2[1].opts.find(o => o.skip)); W2[1].manual = true; ctx.wRedefault();
+  check('Skriv: a left-out word stays left out while writing on', shown(parse('Barnet ska läsa en bok')), ['13166', '16465+future_action', '12321', '12875']);
+}
+
+/* ---------- 7. Bildspel, Gravyrkort, Almanacka: the same rules (blisstext.js) ---------- */
+{
+  const ctx = bt('sv');
+  const st = (text, words) => { const s = { text, words: words || [] }; ctx.BT.parse(s); return s; };
+  const one = (w) => (w.skip ? 'skip' : w.asText ? 'TEXT' : w.ids[w.pick] + (w.ind ? '+' + w.ind : ''));
+  check('blisstext: Bliss-glosor\'s rules too', st('Vi tycker om katter och branden tystnar').words.filter(w => !w.punct).map(one),
+    ['18212', '15210', '12383+plural', '12374', '14183', '16981+action']);
+  // Skriv hands its words over (left-out words and the options included): the choices are kept
+  const s1 = st('Barnet ska läsa en bok');
+  for (const w of s1.words) if (w.opts && w.opts.some(o => o.skip)) { ctx.SkrivGlosor.take(w, w.opts.find(o => o.skip)); w.manual = true; }
+  ctx.SkrivGlosor.redefault(s1.words, { pickOf: () => undefined });
+  const handed = JSON.parse(JSON.stringify(s1.words, (k, v) => (k === 'futureOf' ? undefined : v)));
+  check('blisstext: words handed over from Skriv keep their choices', st('Barnet ska läsa en bok', handed).words.map(one),
+    ['13166', 'skip', '16465+future_action', 'skip', '12875']);
+  check('blisstext: a left-out word draws nothing', ctx.BT.wordEls(st('ska läsa', handed.slice(1, 3)).words[0]).length, 0);
 }
 
 console.log(`${pass} passed, ${fail} failed`);
