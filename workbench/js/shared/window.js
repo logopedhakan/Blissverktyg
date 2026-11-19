@@ -157,7 +157,8 @@
      width a part is laid out for, everything is drawn smaller (CSS zoom) — the
      same picture as in a big window, not columns squeezed or cut off. The
      part's own narrow-screen rules are judged by the width it is drawn at. ---- */
-  const BASE = { 'index.html': 1100, 'bildspel.html': 1000, 'almanacka.html': 900, 'gissa.html': 960,
+  // (Bildspel is not listed: since 2026-11-19 it lays itself out for narrow windows)
+  const BASE = { 'index.html': 1100, 'almanacka.html': 900, 'gissa.html': 960,
     'former.html': 1000, 'gravyr.html': 960 };
   const page = (location.pathname.split('/').pop() || 'start.html').toLowerCase();
   const base = BASE[page] || 0;

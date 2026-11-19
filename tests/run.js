@@ -345,20 +345,21 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('blisstext: a left-out word draws nothing', ctx.BT.wordEls(st('ska läsa', handed.slice(1, 3)).words[0]).length, 0);
 }
 
-/* ---------- 8. Nya bildspelet (bildspel-ny.html, 2026-11-19): the same show, a new way of working ---------- */
+/* ---------- 8. Bildspel (2026-11-19: "Nya bildspelet" became the one Bildspel) ---------- */
 {
-  const page = read('bildspel-ny.html');
-  const cut = (start, end) => { const i = page.indexOf(start); if (i < 0) throw new Error('bildspel-ny.html: not found: ' + start); return page.slice(i, page.indexOf(end, i)); };
-  // the show itself is the same as in Bildspel: same file checks, same slide model
-  const old = read('bildspel.html');
-  const same = (start, end) => { const a = old.indexOf(start), b = page.indexOf(start); return old.slice(a, old.indexOf(end, a)) === page.slice(b, page.indexOf(end, b)); };
-  check('Nya bildspelet: the same file checks, slide model and layout as Bildspel',
-    [same('const HEX_COLOR', 'function load('), same('const LOOK_DEFAULT', 'let show ='), same('function gapOf', '/* where the picture')], [true, true, true]);
+  const page = read('bildspel.html');
+  const cut = (start, end) => { const i = page.indexOf(start); if (i < 0) throw new Error('bildspel.html: not found: ' + start); return page.slice(i, page.indexOf(end, i)); };
+  // one Bildspel: one card on the start page, one button in Skriv, and the old address sends on
+  const start = read('start.html'), stub = read('bildspel-ny.html');
+  check('Bildspel: one card, one Skriv button, the old address sends on with its query',
+    [(start.match(/class="card" href="bildspel/g) || []).length, /wToShowNy/.test(read('index.html') + read('js/editor/app.js') + read('js/editor/i18n.js')),
+     /location\.replace\('bildspel\.html' \+ location\.search \+ location\.hash\)/.test(stub), /Nya bildspelet/.test(page)],
+    [1, false, true, false]);
   // moving a slide (buttons, Alt+↑/↓, drag and drop): the moved slide stays the current one
   const ctx = vm.createContext({ console });
   vm.runInContext('var show = { slides: [] }, cur = 0; var go = (i) => { cur = i; }, autosave = () => {};\n' + cut('function moveSlide', 'const move ='), ctx);
   const order = (from, to) => { ctx.show.slides = ['a', 'b', 'c', 'd']; ctx.cur = from; ctx.moveSlide(from, to); return ctx.show.slides.join('') + ctx.cur; };
-  check('Nya bildspelet: move a slide', [order(0, 2), order(3, 0), order(1, 1), order(0, 9)], ['bcad2', 'dabc0', 'abcd1', 'abcd0']);
+  check('Bildspel: move a slide', [order(0, 2), order(3, 0), order(1, 1), order(0, 9)], ['bcad2', 'dabc0', 'abcd1', 'abcd0']);
   // removing a slide can be undone, also the only one
   const ctx2 = vm.createContext({ console, setTimeout: () => 0, clearTimeout: () => {} });
   vm.runInContext(`var focused = null; var els = {}; var $ = (id) => (els[id] = els[id] || { id, hidden: true, textContent: '', onclick: null,
@@ -371,28 +372,28 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   ctx2.show.slides = [S('a'), S('b'), S('c')]; ctx2.cur = 1; ctx2.delSlide();
   const gone = ctx2.show.slides.map(x => x.text).join('') + ctx2.cur + (ctx2.els.snack.hidden ? '' : ' undo');
   ctx2.els.snackUndo.onclick();
-  check('Nya bildspelet: remove a slide, then undo', [gone, ctx2.show.slides.map(x => x.text).join('') + ctx2.cur], ['ac1 undo', 'abc1']);
+  check('Bildspel: remove a slide, then undo', [gone, ctx2.show.slides.map(x => x.text).join('') + ctx2.cur], ['ac1 undo', 'abc1']);
   ctx2.show.slides = [S('only')]; ctx2.cur = 0; ctx2.delSlide(); ctx2.els.snackUndo.onclick();
-  check('Nya bildspelet: undo the only slide', ctx2.show.slides.map(x => x.text), ['only']);
+  check('Bildspel: undo the only slide', ctx2.show.slides.map(x => x.text), ['only']);
   ctx2.show.slides = [S('x'), S('')]; ctx2.cur = 1; ctx2.els.snack.hidden = true; ctx2.delSlide();
-  check('Nya bildspelet: an empty slide goes without an undo', [ctx2.show.slides.length, ctx2.els.snack.hidden], [1, true]);
+  check('Bildspel: an empty slide goes without an undo', [ctx2.show.slides.length, ctx2.els.snack.hidden], [1, true]);
   // with a key or a switch, Undo is where the focus goes — and back to the slide after undoing
   ctx2.show.slides = [S('a'), S('b')]; ctx2.cur = 1; ctx2.delSlide(true);
   const atUndo = ctx2.focused;
   ctx2.els.snackUndo.onclick();
-  check('Nya bildspelet: removed with a key, focus goes to Undo, then back to the slide', [atUndo, ctx2.focused, ctx2.show.slides.length], ['snackUndo', 'slide1', 2]);
+  check('Bildspel: removed with a key, focus goes to Undo, then back to the slide', [atUndo, ctx2.focused, ctx2.show.slides.length], ['snackUndo', 'slide1', 2]);
   ctx2.focused = null; ctx2.show.slides = [S('a'), S('b')]; ctx2.cur = 1; ctx2.delSlide(false);
-  check('Nya bildspelet: removed with a click, focus stays', ctx2.focused, null);
+  check('Bildspel: removed with a click, focus stays', ctx2.focused, null);
   // reachable with a switch (Tab + Enter) or the eyes: no roving tab stops, steppers, size buttons, show controls
-  check('Nya bildspelet: every slide thumbnail is a Tab stop', /\.tabIndex = i === cur/.test(page), false);
-  check('Nya bildspelet: − and + beside each slider', /for \(const \[id, step\] of \[\['optImg', 5\], \['optGap', 1\], \['optPen', 1\]\]\)/.test(page), true);
-  check('Nya bildspelet: back, next and end on screen while showing',
+  check('Bildspel: every slide thumbnail is a Tab stop', /\.tabIndex = i === cur/.test(page), false);
+  check('Bildspel: − and + beside each slider', /for \(const \[id, step\] of \[\['optImg', 5\], \['optGap', 1\], \['optPen', 1\]\]\)/.test(page), true);
+  check('Bildspel: back, next and end on screen while showing',
     ['showPrev', 'showNext', 'showExit', 'optClickNext'].map(id => page.includes(`id="${id}"`)), [true, true, true, true]);
-  check('Nya bildspelet: Undo waits 30 s and never while in use', /setTimeout\(\(\) => \{ if \(\$\('snack'\)\.matches\(':hover, :focus-within'\)\) armSnack\(\); else hideSnack\(\); \}, 30000\)/.test(page), true);
+  check('Bildspel: Undo waits 30 s and never while in use', /setTimeout\(\(\) => \{ if \(\$\('snack'\)\.matches\(':hover, :focus-within'\)\) armSnack\(\); else hideSnack\(\); \}, 30000\)/.test(page), true);
   // every button symbol is a BCI-AV symbol
   const data = sandbox('sv').BLISS_DATA, ids = new Set(data.map(x => x.id));
   const missing = [...page.matchAll(/data-bliss="([\d,]+)"/g)].flatMap(m => m[1].split(',').map(Number)).filter(id => !ids.has(id));
-  check('Nya bildspelet: the button symbols are BCI-AV symbols', missing, []);
+  check('Bildspel: the button symbols are BCI-AV symbols', missing, []);
 }
 
 /* ---------- 8b. the word under a symbol is broken to fit its room (blisstext.js, 2026-11-19) ---------- */
@@ -461,10 +462,9 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   mac.press({ key: 'S', code: 'KeyS', metaKey: true, shiftKey: true });
   mac.press({ key: 'S', code: 'KeyS', ctrlKey: true, shiftKey: true });                   // Ctrl on a Mac is not ⌘
   check('keys: ⌘ on a Mac', mac.clicked, ['btnSaveAs']);
-  // both slideshows have the same keys and a help button
-  const a = read('bildspel.html'), b = read('bildspel-ny.html');
-  const block = (p) => p.slice(p.indexOf('const KEYS = wbButtonKeys'), p.indexOf('], { paused: showing });'));
-  check('keys: the same keys in both slideshows, and a help button', [block(a) === block(b), /id="btnKeys"/.test(a), /id="btnKeys"/.test(b)], [true, true, true]);
+  // Bildspel has its keys and a help button
+  const a = read('bildspel.html');
+  check('keys: Bildspel has its keys and a help button', [/const KEYS = wbButtonKeys\(/.test(a), /id="btnKeys"/.test(a)], [true, true]);
   // Skriv (2026-11-19): its own keys, only while writing; help in the header and, embedded, in the tools row
   const app = read('js/editor/app.js'), idx = read('index.html');
   check('keys: Skriv has keys on its buttons, only while writing, and help shows its list',
@@ -501,15 +501,15 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('switch: nothing stored, nothing learned', JSON.stringify(load().S.config), JSON.stringify({ stick: true }));
   check('switch: keys are heard before the page, keyups too', Object.keys(load().handlers).sort(), ['gamepadconnected', 'gamepaddisconnected', 'keydown', 'keyup']);
   // in every part, and in the app offline
-  const parts = ['index.html', 'bildspel.html', 'bildspel-ny.html', 'gissa.html', 'former.html', 'gravyr.html', 'almanacka.html', 'start.html'];
+  const parts = ['index.html', 'bildspel.html', 'gissa.html', 'former.html', 'gravyr.html', 'almanacka.html', 'start.html'];
   check('switch: in every part, and kept offline', [parts.filter(p => !read(p).includes('<script src="js/shared/switch.js"></script>')), /'js\/shared\/switch\.js'/.test(read('sw.js'))], [[], true]);
 }
 
-/* ---------- 9. Skriv -> Bildspel or Nya bildspelet (2026-11-19): the right page gets the text ---------- */
+/* ---------- 9. Skriv -> Bildspel (2026-11-19): an open Bildspel gets the text, else one opens ---------- */
 {
   const app = read('js/editor/app.js');
   const i = app.indexOf('function wSendToShow'), src = app.slice(i, app.indexOf("$('wToShow').onclick", i));
-  const run = (open, page) => {
+  const run = (open) => {
     const sent = [], opened = [];
     const ctx = vm.createContext({
       W: [{ token: 'hej' }], wShowPayload: () => ({ text: 'hej' }), toast: () => {}, tr: (e, s) => s,
@@ -528,15 +528,12 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     });
     ctx.window.BroadcastChannel = ctx.BroadcastChannel;
     vm.runInContext(src.replace("'BroadcastChannel' in window", 'true'), ctx);
-    ctx.wSendToShow(page);
+    ctx.wSendToShow();
     return sent.length ? 'add:' + sent[0] : 'open:' + opened[0];
   };
-  const both = [{ tab: 'NY', page: 'bildspel-ny' }, { tab: 'OLD' }];
-  check('Skriv: each slideshow button reaches its own page when both are open',
-    [run(both, 'bildspel'), run(both, 'bildspel-ny'), run([{ tab: 'OLD' }], 'bildspel-ny'), run([], 'bildspel')],
-    ['add:OLD', 'add:NY', 'open:bildspel-ny.html?from=skriv', 'open:bildspel.html?from=skriv']);
-  check('Nya bildspelet: answers Skriv with its page name',
-    /type: 'pong', tab: tabId, page: 'bildspel-ny'/.test(read('bildspel-ny.html')), true);
+  check('Skriv: an open Bildspel gets the text, else Bildspel opens with it',
+    [run([{ tab: 'A', page: 'bildspel' }]), run([{ tab: 'OLD', page: 'bildspel-ny' }]), run([])],
+    ['add:A', 'add:OLD', 'open:bildspel.html?from=skriv']);
 }
 
 /* ---------- 10. compound words (2026-11-19): "fisk+pinne" is one Bliss word ---------- */
