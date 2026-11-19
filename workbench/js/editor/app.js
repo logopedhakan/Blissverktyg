@@ -1300,7 +1300,7 @@ $('wSettings').onclick = () => $('btnSettings').onclick();
 // footer link → the full attribution now lives in Settings → About & licence
 $('aboutLink').onclick = (e) => {
   e.preventDefault(); $('btnSettings').onclick();
-  $('aboutText').scrollIntoView({ block: 'end' });
+  $('aboutSlogan').scrollIntoView({ block: 'end' });
 };
 $('btnHelp').onclick = () => { $('helpDlg').showModal(); };
 document.addEventListener('keydown', (ev) => {
