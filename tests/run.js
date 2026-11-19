@@ -182,6 +182,10 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   const next = look.newSlide({ text: 'x', bg: '#000000', textBg: '#ffffff', imgPct: 70, img: 'data:' });
   check('Bildspel: a new slide starts with the look of the one before, nothing else', [next.bg, next.textBg, next.imgPct, next.text, next.img],
     ['#000000', '#ffffff', 70, '', null]);
+  // the space between the symbols is the slide's own too (2026-11-19)
+  const gaps = bs.cleanShow({ gap: 10, slides: [{ gap: 3 }, { gap: 'x' + X }, {}] });
+  check('Bildspel: each slide has its own spacing, a bad or missing one is the show\'s', gaps.slides.map(x => x.gap), [3, 10, 10]);
+  check('Bildspel: a new slide starts with the spacing of the one before', look.newSlide({ gap: 4 }).gap, 4);
 
   // Editera: ink and background from a settings file (.wbx) or the saved settings
   const ed = run(cut('js/editor/app.js', 'const HEX_COLOR', 'function resolvedBg'), 'app.js (okInk, okBg)', ['HEX_COLOR', 'okInk', 'okBg']);
@@ -348,8 +352,8 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   // the show itself is the same as in Bildspel: same file checks, same slide model
   const old = read('bildspel.html');
   const same = (start, end) => { const a = old.indexOf(start), b = page.indexOf(start); return old.slice(a, old.indexOf(end, a)) === page.slice(b, page.indexOf(end, b)); };
-  check('Nya bildspelet: the same file checks and slide model as Bildspel',
-    [same('const HEX_COLOR', 'function load('), same('const LOOK_DEFAULT', 'let show =')], [true, true]);
+  check('Nya bildspelet: the same file checks, slide model and layout as Bildspel',
+    [same('const HEX_COLOR', 'function load('), same('const LOOK_DEFAULT', 'let show ='), same('function gapOf', '/* where the picture')], [true, true, true]);
   // moving a slide (buttons, Alt+↑/↓, drag and drop): the moved slide stays the current one
   const ctx = vm.createContext({ console });
   vm.runInContext('var show = { slides: [] }, cur = 0; var go = (i) => { cur = i; }, autosave = () => {};\n' + cut('function moveSlide', 'const move ='), ctx);
@@ -389,6 +393,28 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   const data = sandbox('sv').BLISS_DATA, ids = new Set(data.map(x => x.id));
   const missing = [...page.matchAll(/data-bliss="([\d,]+)"/g)].flatMap(m => m[1].split(',').map(Number)).filter(id => !ids.has(id));
   check('Nya bildspelet: the button symbols are BCI-AV symbols', missing, []);
+}
+
+/* ---------- 8b. the word under a symbol is broken to fit its room (blisstext.js, 2026-11-19) ---------- */
+{
+  const { BT } = bt('sv');
+  const ch = 300 * 0.56;                                // one letter, outside a page
+  check('label: fits, stays whole', BT.labelLines('Blisshuset', 20 * ch, 300), ['Blisshuset']);
+  check('label: broken before a syllable, with a hyphen', BT.labelLines('Blisshuset', 8 * ch, 300), ['Blisshu-', 'set']);
+  check('label: at the space first', BT.labelLines('tycker om', 6 * ch, 300), ['tycker', 'om']);
+  check('label: never less than three letters a line', BT.labelLines('Blisshuset', 2 * ch, 300), ['Blisshuset']);
+  // in the slide: tight spacing, long words -> the words do not overlap
+  const page = read('bildspel.html');
+  const cut = (start, end) => { const i = page.indexOf(start); return page.slice(i, page.indexOf(end, i)); };
+  const ctx = vm.createContext({ BT, escXml: (t) => String(t), show: { gap: 8 } });
+  vm.runInContext('var SW = 1600, SH = 900, FS = 300, LINE_GAP = 140;\nvar boxOf = (w) => ({ body: "", vx: 0, vy: 0, vw: 1000, vh: 1600 });\n' + cut('function gapOf', '/* show.symbols off'), ctx);
+  const texts = (gap) => [...ctx.lineOf([{ token: 'Blisshuset' }, { token: 'sjukgymnasten' }], true, gap).body.matchAll(/<text x="([\d.]+)" y="([\d.]+)"[^>]*>([^<]*)/g)]
+    .map(m => [+m[1], +m[2], m[3]]);
+  const tight = texts(1), wide = texts(24);
+  check('label: wide spacing, one line each', wide.length, 2);
+  const right = (t) => t[0] + t[2].length * ch / 2, left = (t) => t[0] - t[2].length * ch / 2;
+  const firstWord = tight.filter(t => t[0] === tight[0][0]), second = tight.filter(t => t[0] !== tight[0][0]);
+  check('label: tight spacing, broken and not overlapping', [firstWord.length > 1, Math.max(...firstWord.map(right)) <= Math.min(...second.map(left))], [true, true]);
 }
 
 /* ---------- 9. Skriv -> Bildspel or Nya bildspelet (2026-11-19): the right page gets the text ---------- */

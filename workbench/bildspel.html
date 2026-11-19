@@ -178,6 +178,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
         <span id="tbgSwatches"></span>
         <input id="optTextBg" type="color" value="#ffffff" title="Välj en egen färg" data-en-title="Choose your own colour"></div>
       <label><span data-en="Picture height">Bildens höjd</span> <input id="optImg" type="range" min="30" max="85" step="1"></label>
+      <label><span data-en="Space between symbols">Avstånd mellan symbolerna</span> <input id="optGap" type="range" min="1" max="24" step="1"></label>
       <button id="btnLookAll" data-en="Use on all slides">Använd på alla sidor</button>
       <h3 data-en="The whole slideshow">Hela bildspelet</h3>
       <label><span data-en="Bliss symbols">Blissymboler</span> <input id="optSymbols" type="checkbox" checked></label>
@@ -189,7 +190,6 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
           <option value="90" data-en="Medium">Mellan</option>
           <option value="65" data-en="Small">Små</option>
         </select></label>
-      <label><span data-en="Space between symbols">Avstånd mellan symbolerna</span> <input id="optGap" type="range" min="1" max="24" step="1"></label>
       <label><span data-en="Line width">Linjebredd</span> <input id="optPen" type="range" min="15" max="100" step="5"></label>
       <label><span data-en="Read each slide aloud when showing">Läs upp sidorna vid visning</span> <input id="optSpeak" type="checkbox"></label>
       <button id="btnList" data-en="Open your own word list (.wbs)…">Öppna egen ordlista (.wbs)…</button>
@@ -307,29 +307,41 @@ function boxOf(w) {
    size is semantic. Only text that cannot fit its area is shrunk, and the
    editor says so. */
 const SW = 1600, SH = 900, FS = 300, LINE_GAP = 140;
-// show.gap: half-units between words; punctuation sits closer (as in Skriv)
-function gapOf(w) {
+// gap: the slide's half-units between words (s.gap); punctuation sits closer (as in Skriv)
+function gapOf(w, gap) {
   // plain-text words (symbols off) read as a sentence: tighter, the full stop close
-  if (w.plain) return w.punct ? 0.3 : Math.max(1.5, show.gap * 0.4);
-  return w.punct ? Math.max(1, show.gap / 2) : show.gap;
+  if (w.plain) return w.punct ? 0.3 : Math.max(1.5, gap * 0.4);
+  return w.punct ? Math.max(1, gap / 2) : gap;
 }
-function lineOf(words, labels) {
+function lineOf(words, labels, gap) {
   let cursor = 0, parts = [], labs = [], minY = 1e9, maxY = -1e9, maxX = 0;
   words.forEach((w, i) => {
     const b = boxOf(w); if (!b) return;
-    const dx = cursor * 100 + (i === 0 ? 0 : gapOf(w)) * 100 - b.vx;
+    const dx = cursor * 100 + (i === 0 ? 0 : gapOf(w, gap)) * 100 - b.vx;
     parts.push(`<g transform="translate(${dx.toFixed(1)} 0)">${b.body}</g>`);
-    if (labels && !w.punct) labs.push({ x: dx + b.vx + b.vw / 2, t: w.label || w.token });
+    if (labels && !w.punct) labs.push({ x: dx + b.vx + b.vw / 2, l: dx + b.vx, r: dx + b.vx + b.vw, t: w.label || w.token });
     minY = Math.min(minY, b.vy); maxY = Math.max(maxY, b.vy + b.vh);
     cursor = (dx + b.vx + b.vw) / 100;
     maxX = dx + b.vx + b.vw;
   });
   if (!parts.length) return null;
-  const textY = Math.max(maxY, 1600) + 400;
-  const texts = labels ? labs.map(l =>
-    `<text x="${l.x.toFixed(1)}" y="${textY}" text-anchor="middle" font-size="${FS}" font-family="Helvetica, Arial, sans-serif" stroke="none" class="bsl">${escXml(l.t)}</text>`).join('') : '';
-  return { body: parts.join('') + texts, w: maxX,
-           top: Math.min(minY, 300), bottom: labels ? textY + FS * 0.3 : maxY };
+  const textY = Math.max(maxY, 1600) + 400, LH = FS * 1.15;
+  // 2026-11-19: a word under its symbol keeps to its own room — up to halfway to the
+  // next symbol on each side. With tight spacing a longer word is broken over lines
+  // (BT.labelLines) instead of running into the word next to it.
+  let lo = 0, hi = maxX, rows = 1, texts = '';
+  if (labels) labs.forEach((L, k) => {
+    const left = k ? (labs[k - 1].r + L.l) / 2 : -Infinity, right = k < labs.length - 1 ? (L.r + labs[k + 1].l) / 2 : Infinity;
+    const lines = BT.labelLines(L.t, 2 * Math.min(L.x - left, right - L.x), FS);
+    const half = Math.max(...lines.map(t => BT.textWidth(t, FS))) / 2;
+    lo = Math.min(lo, L.x - half); hi = Math.max(hi, L.x + half); rows = Math.max(rows, lines.length);
+    lines.forEach((t, j) => {
+      texts += `<text x="${L.x.toFixed(1)}" y="${(textY + j * LH).toFixed(1)}" text-anchor="middle" font-size="${FS}" font-family="Helvetica, Arial, sans-serif" stroke="none" class="bsl">${escXml(t)}</text>`;
+    });
+  });
+  // a word wider than the line's symbols widens the line, so the slide makes room for it
+  return { body: `<g transform="translate(${(-lo).toFixed(1)} 0)">${parts.join('')}${texts}</g>`, w: hi - lo,
+           top: Math.min(minY, 300), bottom: labels ? textY + (rows - 1) * LH + FS * 0.3 : maxY };
 }
 /* show.symbols off (Håkan, 2026-10-29): the slide shows the words as plain
    text — each word as it would read under its symbol (a chosen form included),
@@ -339,15 +351,16 @@ function blockOf(s, wrap) {
   const lines = [[]];
   let cursor = 0;
   const words = show.symbols ? s.words : s.words.map(asTextWord);
+  const sgap = s.gap || show.gap;                 // the slide's own spacing (2026-11-19)
   for (const w of words) {
     if (w.br) { lines.push([]); cursor = 0; continue; }
     const b = boxOf(w); if (!b) continue;
     const cur = lines[lines.length - 1];
-    const gap = cur.length ? gapOf(w) * 100 : 0;
+    const gap = cur.length ? gapOf(w, sgap) * 100 : 0;
     if (cur.length && cursor + gap + b.vw > wrap && !w.punct) { lines.push([w]); cursor = b.vw; }
     else { cur.push(w); cursor += gap + b.vw; }
   }
-  const ls = lines.filter(l => l.length).map(l => lineOf(l, show.symbols && show.labels)).filter(Boolean);
+  const ls = lines.filter(l => l.length).map(l => lineOf(l, show.symbols && show.labels, sgap)).filter(Boolean);
   if (!ls.length) return null;
   const W = Math.max(...ls.map(l => l.w));
   let y = 0, body = '';
@@ -420,12 +433,12 @@ function inkFor(bg) {
 
 /* ================= the show ================= */
 /* Each slide has its own look (2026-11-19): background colour, the tile behind
-   the Bliss text and the picture's height. A new slide starts with the look of
-   the slide it comes after; "Use on all slides" copies it to every slide. The
-   symbol size, line width and spacing stay the same for the whole show — Bliss
-   size is semantic, a word is the same size on every slide. */
-const LOOK_DEFAULT = { bg: '#ffffff', textBg: null, imgPct: 62 };
-const lookOf = (s) => ({ bg: s.bg, textBg: s.textBg ?? null, imgPct: s.imgPct });
+   the Bliss text, the picture's height and the space between the symbols. A new
+   slide starts with the look of the slide it comes after; "Use on all slides"
+   copies it to every slide. The symbol size and line width stay the same for the
+   whole show — Bliss size is semantic, a word is the same size on every slide. */
+const LOOK_DEFAULT = { bg: '#ffffff', textBg: null, imgPct: 62, gap: 8 };
+const lookOf = (s) => ({ bg: s.bg, textBg: s.textBg ?? null, imgPct: s.imgPct, gap: s.gap });
 const newSlide = (from) => Object.assign({ text: '', words: [], img: null, imgW: 0, imgH: 0 }, LOOK_DEFAULT, from ? lookOf(from) : {});
 let show = { v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, pen: 35, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, slides: [newSlide()], custom: [] };
 let cur = 0;          // current slide
@@ -482,7 +495,7 @@ function renderOptions() {
   $('optSize').value = String(show.size);
   const sl = show.slides[cur] || show;            // the slide's own look
   $('optImg').value = String(sl.imgPct || show.imgPct);
-  $('optGap').value = String(show.gap);
+  $('optGap').value = String(sl.gap || show.gap);
   $('optPen').value = String(show.pen || 35);
   $('optSpeak').checked = !!show.speakAuto;
   $('optBg').value = sl.bg || '#ffffff';
@@ -682,7 +695,7 @@ $('btnLookAll').onclick = () => {
   flash($('btnLookAll'), tr('✓ Every slide looks like this', '✓ Alla sidor ser ut så här'));
   setTimeout(renderOptions, 1700);               // then greyed out: nothing differs any more
 };
-$('optGap').addEventListener('input', () => { show.gap = +$('optGap').value; renderSlides(); renderStage(); autosave(); });
+$('optGap').addEventListener('input', () => setLook({ gap: +$('optGap').value }));
 /* line width of the symbols, as on Gravyrkort (Håkan, 2026-11-05): engine units,
    35 = the standard pen (about 1/23 of a square), up to a bold 100 */
 $('optPen').addEventListener('input', () => { show.pen = +$('optPen').value; renderSlides(); renderStage(); autosave(); });
@@ -795,6 +808,7 @@ function cleanShow(o) {
     s.bg = HEX_COLOR.test(s.bg) ? s.bg : o.bg;
     s.textBg = s.textBg === null ? null : HEX_COLOR.test(s.textBg) ? s.textBg : o.textBg;
     s.imgPct = clampNum(s.imgPct, 30, 85, o.imgPct);
+    s.gap = clampNum(s.gap, 1, 24, o.gap);
   }
   return o;
 }
