@@ -171,6 +171,18 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Bildspel: good values stay', [good.bg, good.textBg, good.pen, good.gap, good.imgPct, good.title, good.slides[0].img],
     ['#12233d', '#fff6c2', 50, 12, 40, 'Glass', PNG]);
 
+  // Bildspel: each slide has its own look (2026-11-19); a slide from an older file takes the show's
+  const own = bs.cleanShow({ bg: '#112233', textBg: '#fff6c2', imgPct: 50, slides: [
+    { bg: '#ffeecc', textBg: null, imgPct: 40 },            // its own look, no tile
+    { bg: 'red' + X, textBg: X, imgPct: 999 },              // bad values: the show's look
+  ] });
+  check('Bildspel: a slide keeps its own look', [own.slides[0].bg, own.slides[0].textBg, own.slides[0].imgPct], ['#ffeecc', null, 40]);
+  check('Bildspel: bad values on a slide fall back to the show', [own.slides[1].bg, own.slides[1].textBg, own.slides[1].imgPct], ['#112233', '#fff6c2', 85]);
+  const look = run(cut('bildspel.html', 'const LOOK_DEFAULT', 'let show ='), 'bildspel.html (newSlide)', ['LOOK_DEFAULT', 'lookOf', 'newSlide']);
+  const next = look.newSlide({ text: 'x', bg: '#000000', textBg: '#ffffff', imgPct: 70, img: 'data:' });
+  check('Bildspel: a new slide starts with the look of the one before, nothing else', [next.bg, next.textBg, next.imgPct, next.text, next.img],
+    ['#000000', '#ffffff', 70, '', null]);
+
   // Editera: ink and background from a settings file (.wbx) or the saved settings
   const ed = run(cut('js/editor/app.js', 'const HEX_COLOR', 'function resolvedBg'), 'app.js (okInk, okBg)', ['HEX_COLOR', 'okInk', 'okBg']);
   check('Editera: settings colours', [ed.okInk('#aa0000'), ed.okInk('#000' + X), ed.okBg('class'), ed.okBg('#ffeecc'), ed.okBg('red' + X)],
