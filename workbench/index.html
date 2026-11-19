@@ -195,6 +195,7 @@ body.embed header,body.embed #colophon,body.embed #wHint{display:none}
    2026-09-11): the URL sets the start state, ⚙ adjusts in the moment */
 #wSettings{display:none;font-size:18px;line-height:1;padding:4px 10px 6px}
 body.embed #wSettings{display:inline-block}
+#wHelp{display:none} body.embed #wHelp{display:inline-block}
 #edBackWrite,#edBackSep{display:none}
 body.embed #edBackWrite{display:inline-block} body.embed #edBackSep{display:inline-block}
 body.embed main{padding:4px;gap:4px}
@@ -341,7 +342,7 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
   <span class="spacer"></span>
   <button id="btnWrite">✎ Write</button>
   <button id="btnSettings" title="Settings" aria-label="Settings">⚙</button>
-  <button id="btnHelp" title="Help & keyboard shortcuts (?)" aria-label="Help and keyboard shortcuts">?</button>
+  <button id="btnHelp" title="Help & keyboard shortcuts (?)" aria-label="Help and keyboard shortcuts">? Help</button>
 </header>
 <main>
   <section id="listPanel" aria-label="Symbol list">
@@ -374,6 +375,8 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
       <button id="wFam" title="Fetch a word from Form families without leaving Write">⬡ Form families…</button>
       <button id="wClear">Clear</button>
       <button id="wSettings" title="Settings" aria-label="Settings">⚙</button>
+      <!-- the header (and its ? Help) is hidden when embedded: help in the tools row instead -->
+      <button id="wHelp" title="Help: all keyboard shortcuts">? Help</button>
     </div>
     <div id="wChips" role="group" aria-label="Sentence words"></div>
     <div id="wChooser" hidden></div>

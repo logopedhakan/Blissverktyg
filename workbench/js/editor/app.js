@@ -1302,13 +1302,22 @@ $('aboutLink').onclick = (e) => {
   e.preventDefault(); $('btnSettings').onclick();
   $('aboutSlogan').scrollIntoView({ block: 'end' });
 };
-$('btnHelp').onclick = () => { $('helpDlg').showModal(); };
+/* Help (2026-11-19): in Write, the list of Write's keys (shortcuts.js); in the
+   editor, the full help dialog */
+let SC = null;
+function openHelp() {
+  if (document.querySelector('dialog[open]')) return;
+  if (document.body.classList.contains('writing') && SC) SC.openList();
+  else $('helpDlg').showModal();
+}
+$('btnHelp').onclick = openHelp;
+$('wHelp').onclick = openHelp;
 document.addEventListener('keydown', (ev) => {
   if (ev.key !== '?' ) return;
   const t = ev.target;
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
   ev.preventDefault();
-  $('helpDlg').showModal();
+  openHelp();
 });
 
 /* export settings files — the .wbx of WinBliss, reborn as JSON */
@@ -2859,9 +2868,25 @@ applyTheme(localStorage.getItem('wb-theme') || 'auto');
    deliberately carries no navigation). ---- */
 if (typeof wbShortcuts === 'function') {
   const inWriting = () => document.body.classList.contains('writing');
-  wbShortcuts({
+  /* keys on Write's important buttons, shown in their tooltips (2026-11-19);
+     only while writing — the editor has its own one-key shortcuts */
+  const KEYS = typeof wbButtonKeys === 'function' ? wbButtonKeys([
+    { id: 'wSpeak', key: 'Alt+P', shown: true, name: () => tr('read the text aloud / stop reading', 'läs upp texten / stoppa uppläsningen') },
+    { id: 'wMic', key: 'Alt+M', name: () => tr('dictate', 'diktera') },
+    { id: 'wFam', key: 'Alt+O', name: () => tr('fetch a word from Form families', 'hämta ett ord ur Formfamiljer') },
+    { id: 'wOpenDoc', key: 'Ctrl+O', shown: true, name: () => tr('open a document', 'öppna ett dokument') },
+    { id: 'wSaveDoc', key: 'Ctrl+S', shown: true, name: () => tr('save the document', 'spara dokumentet') },
+    { id: 'wPrint', key: 'Ctrl+P', name: () => tr('print, or save as PDF', 'skriv ut eller spara som PDF') },
+    { id: 'wClip', key: 'Alt+C', name: () => tr('copy the text to the clipboard', 'kopiera texten till urklipp') },
+    { id: 'wToShow', key: 'Alt+B', name: () => tr('the text as a new slide in Slideshow', 'texten som en ny sida i Bildspel') },
+    { id: 'wToShowNy', key: 'Alt+Shift+B', name: () => tr('the text as a new slide in the new slideshow', 'texten som en ny sida i Nya bildspelet') },
+    { id: 'wToTag', key: 'Alt+G', name: () => tr('the symbols onto an engraving tag', 'symbolerna på ett gravyrkort') },
+    { id: 'btnHelp', key: '?', shown: true, name: () => tr('all keyboard shortcuts (this list)', 'alla kortkommandon (den här listan)') },
+    { id: 'wHelp', key: '?', shown: true, inList: false, name: () => '' },
+  ], { paused: () => !inWriting() }) : null;
+  SC = wbShortcuts({
     title: () => inWriting() ? 'WinBliss — Skriv' : 'WinBliss — Editera',
-    onHelp: () => { if (!$('helpDlg').open) $('helpDlg').showModal(); },
+    onHelp: openHelp,
     actions: Object.assign({
       C: { run: () => inWriting() ? $('wClip').click() : $('btnCopyClip').click(),
            desc: () => inWriting() ? tr('copy the text to the clipboard', 'kopiera texten till klippbordet')
@@ -2877,9 +2902,11 @@ if (typeof wbShortcuts === 'function') {
            desc: () => tr('to the start page', 'till startsidan') },
     }),
     extra: () => inWriting()
-      ? [['# 0–7', tr('form on the word: none/verb/present/past/future/plural/imperative/definite — also inline: "gå #2" → går', 'form på ordet: ingen/verb/presens/dåtid/futurum/plural/uppmaning/bestämd — även i texten: "gå #2" → går')],
-         ['Ctrl+S / Ctrl+O', tr('save / open a document', 'spara / öppna dokument')],
-         ['Alt+P', tr('read the text aloud / stop reading', 'läs upp texten / stoppa uppläsningen')]]
+      ? [[tr('Buttons', 'Knappar')], ...(KEYS ? KEYS.rows() : []),
+         [tr('In the text', 'I texten')],
+         ['# 0–7', tr('form on the word: none / verb / present / past / future / plural / imperative / definite — also inline: "gå #2" → går', 'form på ordet: ingen / verb / presens / dåtid / futurum / plural / uppmaning / bestämd — även i texten: "gå #2" → går')],
+         ['+', tr('one Bliss word of two: "fisk+pinne"', 'ett blissord av två: "fisk+pinne"')],
+         ['Esc', tr('close the choices for a word', 'stäng valen för ett ord')]]
       : [['R', tr('rotate the shape', 'rotera formen')],
          ['D', tr('duplicate', 'duplicera')],
          ['Delete', tr('remove the shape', 'ta bort formen')],

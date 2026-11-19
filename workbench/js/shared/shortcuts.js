@@ -57,10 +57,10 @@ function wbShortcuts(cfg) {
     dlg.innerHTML = '<h2 style="margin:0 0 4px;font-size:16px">' + T('Keyboard shortcuts', 'Kortkommandon') + '</h2>' +
       '<p style="margin:0 0 10px;color:var(--dim,#666)">' + esc(cfg.title ? cfg.title() : '') +
       T(' — $ and #: press the character, release, then press the key (nothing is held down)', ' — $ och #: tryck tecknet, släpp, tryck sedan tangenten (inget behöver hållas ner)') + '</p>' +
-      '<table style="border-collapse:collapse">' + rows.map(([k, d]) => d === undefined
+      '<table style="border-collapse:collapse;width:100%">' + rows.map(([k, d]) => d === undefined
         ? `<tr><th colspan="2" style="text-align:left;padding:10px 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim,#666)">${esc(k)}</th></tr>`
         : `<tr><td style="padding:3px 14px 3px 0;white-space:nowrap"><b>${esc(k)}</b></td>` +
-          `<td style="padding:3px 0">${esc(d)}</td></tr>`).join('') + '</table>' +
+          `<td style="padding:3px 0;overflow-wrap:anywhere">${esc(d)}</td></tr>`).join('') + '</table>' +
       '<form method="dialog" style="margin-top:12px;text-align:right"><button ' +
       'style="font:inherit;padding:6px 12px;border:1px solid var(--rule,#ccc);border-radius:9px;' +
       'background:var(--panel-2,#f4f3ef);color:inherit;cursor:pointer">' + T('Close', 'Stäng') + '</button></form>';
@@ -137,16 +137,24 @@ function wbButtonKeys(list, opts = {}) {
   // the tooltip keeps its key when the page changes it (a file name, another language)
   const tip = (el, it) => {
     const suffix = ` (${label(it.key)})`;
-    const fix = () => {
-      if (el.title.endsWith(suffix)) return;
-      let base = (el.title || el.getAttribute('aria-label') || words(el)).trim().replace(/\s+/g, ' ');
+    // a button without a tooltip of its own shows its words: they follow a change of language
+    let fromWords = !el.title && !el.getAttribute('aria-label');
+    const set = (base) => {
       // a key the page already put in the tooltip ("Läs upp (Alt+P)") is replaced, not repeated
-      base = base.replace(/\s*\(([^()]*)\)$/, (all, k) => (k === it.key || k === label(it.key) ? '' : all))
+      base = base.trim().replace(/\s+/g, ' ').replace(/\s*\(([^()]*)\)$/, (all, k) => (k === it.key || k === label(it.key) ? '' : all))
         .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}…)]+$/gu, '');
-      el.title = (base || it.name()) + suffix;
+      // a tooltip that already names the key ("… or Alt+P, to stop") keeps its own words
+      const t = base.includes(it.key) ? base : (base || it.name()) + suffix;
+      if (el.title !== t) el.title = t;
+    };
+    const fix = () => {
+      if (el.title.endsWith(suffix) || el.title.includes(it.key)) return;
+      if (el.title) fromWords = false;                 // the page gave it a tooltip of its own
+      set(el.title || el.getAttribute('aria-label') || words(el));
     };
     fix();
     new MutationObserver(fix).observe(el, { attributes: true, attributeFilter: ['title'] });
+    new MutationObserver(() => { if (fromWords) set(words(el)); }).observe(el, { childList: true, subtree: true, characterData: true });
     el.setAttribute('aria-keyshortcuts', aria(it.key));
   };
   for (const it of items) { const el = document.getElementById(it.id); if (el) tip(el, it); }
