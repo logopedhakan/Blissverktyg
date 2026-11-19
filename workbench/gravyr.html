@@ -41,9 +41,15 @@ button:hover{border-color:var(--accent)}
 #controls input[type=number]{width:74px;font:inherit;padding:4px 7px;border:1px solid var(--rule);
   border-radius:7px;background:var(--panel);color:var(--ink)}
 #controls select{font:inherit;padding:4px 6px;border:1px solid var(--rule);border-radius:7px;background:var(--panel);color:var(--ink)}
-#controls .posRow{display:flex;gap:4px;align-items:center}
-#controls .posRow button{padding:3px 9px;font-size:15px;line-height:1.2}
-#controls .posRow input{width:58px}
+/* the settings are sliders (2026-11-19, as in Bildspel): the name and the value on
+   one row, the slider the whole width under them — the arrow keys step it finely */
+#controls label.slider{flex-wrap:wrap;row-gap:2px}
+#controls label.slider output{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:600;min-width:3.5ch;text-align:right}
+#controls label.slider > input[type=range],#controls label.slider .posRow{flex:1 0 100%}
+#controls input[type=range]{width:100%;margin:0;accent-color:var(--accent);min-height:24px}
+#controls .posRow{display:flex;gap:6px;align-items:center}
+#controls .posRow input{flex:1}
+#controls .posRow button{padding:3px 10px;font-size:13px}
 #controls input[type=text]{font:inherit;padding:5px 8px;border:1px solid var(--rule);
   border-radius:7px;background:var(--panel);color:var(--ink);width:100%}
 #controls input[type=checkbox]{width:16px;height:16px}
@@ -93,10 +99,10 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
           <option value="148x210">A5 stående</option>
           <option value="210x148">A5 liggande</option>
         </select></label>
-      <label>Bredd (mm) <input id="cardW" type="number" min="20" max="600" value="85"></label>
-      <label>Höjd (mm) <input id="cardH" type="number" min="15" max="600" value="55"></label>
+      <label class="slider">Bredd (mm) <output for="cardW"></output><input id="cardW" type="range" min="20" max="600" step="1" value="85"></label>
+      <label class="slider">Höjd (mm) <output for="cardH"></output><input id="cardH" type="range" min="15" max="600" step="1" value="55"></label>
       <label>Skärram <input id="cutFrame" type="checkbox" checked></label>
-      <label>Hörnradie (mm) <input id="cornerR" type="number" min="0" max="30" value="4"></label>
+      <label class="slider">Hörnradie (mm) <output for="cornerR"></output><input id="cornerR" type="range" min="0" max="30" step="0.5" value="4"></label>
       <!-- Håkan, 2026-09-24: hål för ring på valfri kant — 0/90/180/270 grader, flera går bra -->
       <div id="holes" style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px">
         <span>Hål för ring</span>
@@ -107,7 +113,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
           <label title="Vänster (270°)"><input class="hole" data-side="left" type="checkbox"> ←</label>
         </span>
       </div>
-      <label>Håldiameter (mm) <input id="holeD" type="number" min="1" max="20" step="0.5" value="4"></label>
+      <label class="slider">Håldiameter (mm) <output for="holeD"></output><input id="holeD" type="range" min="1" max="20" step="0.5" value="4"></label>
       <!-- Håkan, 2026-10-14: egen bakgrundsbild — graveras som raster bakom symbolerna -->
       <label style="flex-direction:column;align-items:stretch;gap:4px">Bakgrundsbild
         <span style="display:flex;gap:6px;align-items:center">
@@ -115,24 +121,20 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
           <button id="btnBgOff" title="Ta bort bakgrundsbilden" style="display:none">✕</button>
         </span>
       </label>
-      <label id="bgLightRow" style="display:none">Ljusare bakgrund (%)
-        <input id="bgLight" type="number" min="0" max="90" step="5" value="50"></label>
+      <label id="bgLightRow" class="slider" style="display:none">Ljusare bakgrund (%) <output for="bgLight"></output><input id="bgLight" type="range" min="0" max="90" step="5" value="50"></label>
       <h3>Symboler</h3>
-      <label>Symbolhöjd (mm) <input id="symH" type="number" min="5" max="300" value="24"></label>
-      <label>Mellanrum (mm) <input id="gap" type="number" min="0" max="100" value="6"></label>
-      <label>Linjebredd (mm) <input id="penW" type="number" min="0.1" max="3" step="0.1" value="0.4"></label>
+      <label class="slider">Symbolhöjd (mm) <output for="symH"></output><input id="symH" type="range" min="5" max="300" step="1" value="24"></label>
+      <label class="slider">Mellanrum (mm) <output for="gap"></output><input id="gap" type="range" min="0" max="100" step="0.5" value="6"></label>
+      <label class="slider">Linjebredd (mm) <output for="penW"></output><input id="penW" type="range" min="0.1" max="3" step="0.1" value="0.4"></label>
       <!-- Håkan, 2026-11-04: flytta symbolerna och textraden tillsammans uppåt/nedåt på kortet -->
-      <label for="posY">Läge i höjd (mm, + = uppåt)
-        <span class="posRow">
-          <button id="posUp" type="button" title="Flytta uppåt 1 mm">↑</button>
-          <input id="posY" type="number" step="0.5" value="0">
-          <button id="posDown" type="button" title="Flytta nedåt 1 mm">↓</button>
-          <button id="posMid" type="button" title="Mitt på kortet igen">⊙</button>
-        </span></label>
+      <!-- 2026-11-19: a slider instead of the arrow buttons; it reaches from the bottom edge to the top -->
+      <label class="slider" for="posY">Läge i höjd (mm, + = uppåt) <output for="posY"></output><span class="posRow">
+          <input id="posY" type="range" min="-27.5" max="27.5" step="0.5" value="0">
+          <button id="posMid" type="button" title="Mitt på kortet igen">Mitten</button></span></label>
       <h3>Text</h3>
       <label style="flex-direction:column;align-items:stretch;gap:4px">Textrad under symbolerna
         <input id="caption" type="text" placeholder="t.ex. ett namn — lämna tom för ingen text"></label>
-      <label>Texthöjd (mm) <input id="txtH" type="number" min="2" max="60" value="7"></label>
+      <label class="slider">Texthöjd (mm) <output for="txtH"></output><input id="txtH" type="range" min="2" max="60" step="0.5" value="7"></label>
       <button id="btnSVG" class="primary">Ladda ner laser-SVG ↓</button>
       <div id="hint2" style="font-size:12px;color:var(--dim)">Symbolernas former exporteras som rena
         vektorbanor. Text — textraden och text inne i symboler (t.ex. ett namn) — följer med som
@@ -195,7 +197,7 @@ if (LNG === 'en') {
   L('symH', 'Symbol height (mm)'); L('gap', 'Word spacing (mm)'); L('penW', 'Line width (mm)');
   L('txtH', 'Text height (mm)');
   L('posY', 'Vertical position (mm, + = up)');
-  $('posUp').title = 'Move up 1 mm'; $('posDown').title = 'Move down 1 mm'; $('posMid').title = 'Back to the middle of the tag';
+  $('posMid').textContent = 'Middle'; $('posMid').title = 'Back to the middle of the tag';
   L('btnBg', 'Background image'); L('bgLight', 'Lighten background (%)');
   $('btnBg').textContent = 'Choose image…';
   $('btnBgOff').title = 'Remove the background image';
@@ -502,7 +504,21 @@ function buildCard() {
 }
 
 let lastFit = { ok: true };
+/* the value beside each slider, and how far "Läge i höjd" reaches: from the
+   bottom edge of the tag to the top (half its height each way) */
+function syncSliders() {
+  const half = Math.floor(num('cardH', 55)) / 2;
+  const py = $('posY');
+  py.min = String(-half); py.max = String(half);
+  if (+py.value > half) py.value = String(half);
+  if (+py.value < -half) py.value = String(-half);
+  for (const o of document.querySelectorAll('#controls output[for]')) {
+    const id = o.getAttribute('for'), v = num(id, 0);
+    o.textContent = (id === 'posY' && v > 0 ? '+' : '') + v.toLocaleString(LNG === 'sv' ? 'sv-SE' : 'en-GB', { maximumFractionDigits: 1 });
+  }
+}
 function renderStage() {
+  syncSliders();
   $('stage').innerHTML = chosen.length || $('caption').value.trim() || bgImg
     ? buildCard()
     : '<span style="color:var(--dim);font-size:14px">' + tr('Add a symbol and the tag appears here.', 'Lägg till en symbol så visas kortet här.') + '</span>';
@@ -540,9 +556,6 @@ $('cardFmt').addEventListener('change', () => {
 });
 $('cardW').addEventListener('input', syncFmt);
 $('cardH').addEventListener('input', syncFmt);
-const nudge = (mm) => { $('posY').value = String(Math.round((num('posY', 0) + mm) * 10) / 10); renderStage(); };
-$('posUp').onclick = () => nudge(1);
-$('posDown').onclick = () => nudge(-1);
 $('posMid').onclick = () => { $('posY').value = '0'; renderStage(); };
 $('cutFrame').addEventListener('change', renderStage);
 document.querySelectorAll('.hole').forEach(h => h.addEventListener('change', renderStage));
