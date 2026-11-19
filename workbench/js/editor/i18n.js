@@ -12,6 +12,7 @@ const SV = [
   ['#btnExportList', 'Exportera lista…'],
   ['#btnWrite', '✎ Skriv'],
   ['#btnHelp', '? Hjälp'],
+  ['#helpSwitch', 'Brytare och joystick…'],
   ['#wHelp', '? Hjälp'],
   ['#wtList', 'Lista'],
   ['#wtChips', 'Ordval'],

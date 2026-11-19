@@ -1311,6 +1311,7 @@ function openHelp() {
   else $('helpDlg').showModal();
 }
 $('btnHelp').onclick = openHelp;
+$('helpSwitch').onclick = () => { $('helpDlg').close(); if (window.wbSwitch) wbSwitch.open(); };
 $('wHelp').onclick = openHelp;
 document.addEventListener('keydown', (ev) => {
   if (ev.key !== '?' ) return;

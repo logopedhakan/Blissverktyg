@@ -481,6 +481,30 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('keys: a tooltip that names its key is not given it twice', own.els.btnSpeak.title, 'Läs upp (Alt+P)');
 }
 
+/* ---------- 8d. switches and joysticks (js/shared/switch.js, 2026-11-19) ---------- */
+{
+  const load = (stored) => {
+    const handlers = {}, store = { 'wb-brytare': stored === undefined ? null : JSON.stringify(stored) };
+    const ctx = vm.createContext({ console, setTimeout, clearTimeout, wbLang: () => 'sv', navigator: {},
+      localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } },
+      addEventListener: (t, f) => { (handlers[t] = handlers[t] || []).push(f); } });
+    vm.runInContext(globalize(read('js/shared/switch.js'), ['wbSwitch']), ctx);
+    return { S: ctx.wbSwitch, handlers, store };
+  };
+  const { S } = load({ step: { code: 'F8', key: 'F8' }, confirm: { pad: 'button', i: 5 }, back: { pad: 'axis', i: 1, dir: -1 }, stick: false });
+  check('switch: what was learned, in words', [S.nameOf(S.config.step), S.nameOf(S.config.confirm), S.nameOf(S.config.back), S.nameOf(null), S.nameOf({ key: ' ' })],
+    ['F8', 'joystickknapp 6', 'joystick upp', 'inte inlärd', 'Mellanslag']);
+  check('switch: the stick setting is kept', S.config.stick, false);
+  const X = '<img src=x onerror=alert(1)>';
+  check('switch: a bad stored setting is dropped, never markup', JSON.stringify(load({ step: { key: X + X + X }, confirm: { pad: 'button', i: -1 }, back: { pad: 'axis', i: 0, dir: 2 }, junk: 1 }).S.config),
+    JSON.stringify({ stick: true }));
+  check('switch: nothing stored, nothing learned', JSON.stringify(load().S.config), JSON.stringify({ stick: true }));
+  check('switch: keys are heard before the page, keyups too', Object.keys(load().handlers).sort(), ['gamepadconnected', 'gamepaddisconnected', 'keydown', 'keyup']);
+  // in every part, and in the app offline
+  const parts = ['index.html', 'bildspel.html', 'bildspel-ny.html', 'gissa.html', 'former.html', 'gravyr.html', 'almanacka.html', 'start.html'];
+  check('switch: in every part, and kept offline', [parts.filter(p => !read(p).includes('<script src="js/shared/switch.js"></script>')), /'js\/shared\/switch\.js'/.test(read('sw.js'))], [[], true]);
+}
+
 /* ---------- 9. Skriv -> Bildspel or Nya bildspelet (2026-11-19): the right page gets the text ---------- */
 {
   const app = read('js/editor/app.js');

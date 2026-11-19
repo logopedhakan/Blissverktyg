@@ -350,6 +350,7 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
 <script src="js/shared/speak.js"></script>
 <script src="js/shared/wbs.js"></script>
 <script src="js/shared/shortcuts.js"></script>
+<script src="js/shared/switch.js"></script>
 <script src="js/engine/bliss-shapes.js"></script>
 <script src="js/engine/bliss-engine.js"></script>
 <script src="js/data/bliss-data.js"></script>
@@ -1498,6 +1499,8 @@ function endShow() {
   go(pIdx);
 }
 const pGo = (i) => { if (i < 0 || i >= show.slides.length) return; pIdx = i; pRender(); };
+/* switches while showing (js/shared/switch.js): Step goes between the buttons on the screen only */
+if (window.wbSwitch) wbSwitch.scope = () => (showing() ? ['showSpeak', 'showPrev', 'showNext', 'showExit'].map($) : null);
 $('btnPlay').onclick = () => startShow(cur);
 // a click on the picture changes slide — unless turned off: with eye control, resting the eyes on
 // the picture to read it is a click (the choice lives in this browser, 'wb-bildspel-ui')
