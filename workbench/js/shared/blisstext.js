@@ -240,7 +240,7 @@ const BT = (() => {
   try { PICKS = JSON.parse(localStorage.getItem('wb-picks') || '{}') || {}; } catch (_) {}
   const pickKey = (tok) => GL + '|' + tok.toLowerCase();
   function rememberPick(w) {
-    if (!w || w.br || w.punct || !w.token) return;
+    if (!w || w.br || w.punct || !w.token || w.parts) return;
     PICKS[pickKey(w.token)] = w.opts && typeof SkrivGlosor !== 'undefined' ? SkrivGlosor.pickValue(w) : w.asText ? 'text' : w.ids[w.pick];
     try { localStorage.setItem('wb-picks', JSON.stringify(PICKS)); } catch (_) {}
   }
@@ -380,6 +380,8 @@ const BT = (() => {
   function wordEls(w) {
     if (w.br || w.skip) return [];
     if (w.asText) return [['Z', 1, 1, 0, 0, 10, 0, 0, w.token, 0, 6]];
+    // "fisk+pinne": the parts as one word (js/shared/skriv-glosor.js)
+    if (w.parts && typeof SkrivGlosor !== 'undefined') return SkrivGlosor.compoundEls(w, symById, w.ind);
     return composeEls(w.ids[w.pick], w.ind);
   }
   function chipSVG(w) { try { return blissSVG({ e: wordEls(w) }, { unit: 3.2, color: 'currentColor' }); } catch (_) { return '?'; } }
@@ -449,7 +451,21 @@ const BT = (() => {
       const l = document.createElement('div'); l.className = 'lbl'; l.textContent = label; ch.appendChild(l);
       const r = document.createElement('div'); r.className = 'row'; ch.appendChild(r); return r;
     };
-    if (w.opts && w.opts.length) {
+    if (w.parts) {
+      // a compound: each part's symbols
+      for (const p of w.parts) {
+        const r = sec(p.ids.length ? p.token + ':' : tr(`BCI does not have “${p.token}” — the word is shown as text`, `BCI har inte ”${p.token}” — ordet visas som text`));
+        p.ids.forEach((id, k) => {
+          const b = document.createElement('button');
+          b.className = 'cand' + (!w.asText && k === p.pick ? ' sel' : '');
+          b.innerHTML = `${chipSVG({ ids: [id], pick: 0, ind: '', asText: false })}<span class="cap">${escXml(SkrivGlosor.headOf(id))}</span>`;
+          const sy = symById(id);
+          b.title = sy ? sy.n + ' · ' + sy.id : '';
+          b.onclick = () => { p.pick = k; w.ids = SkrivGlosor.partIds(w); w.asText = false; w.manual = true; on.change(); };
+          r.appendChild(b);
+        });
+      }
+    } else if (w.opts && w.opts.length) {
       const r = sec(w.guess ? tr(`BCI does not have the word “${w.token}” — suggestions:`, `BCI har inte ordet ”${w.token}” — förslag:`) : tr('Symbol:', 'Symbol:'));
       const cur = w.skip ? 'skip' : w.asText ? 'text' : w.oKey;
       for (const o of w.opts) {
@@ -482,6 +498,7 @@ const BT = (() => {
       tb.textContent = tr('Text instead of symbol', 'Text i stället för symbol');
       tb.className = w.asText ? 'sel' : '';
       tb.onclick = () => {
+        if (w.parts) { w.asText = !w.asText || !w.parts.every(p => p.ids.length); w.manual = true; on.change(); return; }
         if (w.opts) {
           if (w.asText && w.opts.length) takeOption(w, w.opts.find(o => !o.text && !o.skip) || w.opts[0], s);
           else takeOption(w, { text: true, key: 'text' }, s);

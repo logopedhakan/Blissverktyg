@@ -59,16 +59,18 @@ function wbSpeakProblem(res) {
 function wbSpeakButton(btn, getText, onProblem) {
   if (!WB_SPEECH) { btn.hidden = true; return; }
   let warned = false, idle = '';
-  // the label is read at click time: a page may translate the button after setup
-  const done = () => { if (btn.classList.contains('speaking')) btn.textContent = idle; btn.classList.remove('speaking'); };
+  // the label is read at click time: a page may translate the button after setup.
+  // A button with a symbol and a word (.lbl, Nya bildspelet) only has its word changed.
+  const lbl = () => btn.querySelector('.lbl') || btn;
+  const done = () => { if (btn.classList.contains('speaking')) lbl().textContent = idle; btn.classList.remove('speaking'); };
   if (!btn.title.includes('Alt+P'))
     btn.title = (btn.title || (wbLang() === 'sv' ? 'Läs upp' : 'Read aloud')) + ' (Alt+P)';
   btn.addEventListener('click', () => {
     if (btn.classList.contains('speaking')) { wbStopSpeaking(); done(); return; }
     const res = wbSpeak(getText(), { onend: done });
     if (res === false || res === 'empty') { if (onProblem) onProblem(wbSpeakProblem(res)); return; }
-    idle = btn.textContent;
-    btn.textContent = wbLang() === 'sv' ? '■ Stoppa' : '■ Stop'; btn.classList.add('speaking');
+    idle = lbl().textContent;
+    lbl().textContent = wbLang() === 'sv' ? '■ Stoppa' : '■ Stop'; btn.classList.add('speaking');
     if (res === 'novoice' && !warned && onProblem) { warned = true; onProblem(wbSpeakProblem(res)); }
   });
 }

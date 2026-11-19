@@ -357,7 +357,9 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Nya bildspelet: move a slide', [order(0, 2), order(3, 0), order(1, 1), order(0, 9)], ['bcad2', 'dabc0', 'abcd1', 'abcd0']);
   // removing a slide can be undone, also the only one
   const ctx2 = vm.createContext({ console, setTimeout: () => 0, clearTimeout: () => {} });
-  vm.runInContext(`var els = {}; var $ = (id) => (els[id] = els[id] || { hidden: true, textContent: '', onclick: null, addEventListener() {} });
+  vm.runInContext(`var focused = null; var els = {}; var $ = (id) => (els[id] = els[id] || { id, hidden: true, textContent: '', onclick: null,
+      addEventListener() {}, matches: () => false, contains: (x) => x === els[id], focus() { focused = id; },
+      children: id === 'slides' ? [0, 1, 2, 3].map(i => ({ focus() { focused = 'slide' + i; } })) : [] });
     var document = { addEventListener() {} }; var tr = (en, sv) => sv;
     var show = { slides: [] }, cur = 0; var go = (i) => { cur = i; }, autosave = () => {};
     var newSlide = (from) => ({ text: '', img: null, words: [] });\n` + cut('let snackT = null', '$(\'btnDel\').onclick'), ctx2);
@@ -370,6 +372,19 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Nya bildspelet: undo the only slide', ctx2.show.slides.map(x => x.text), ['only']);
   ctx2.show.slides = [S('x'), S('')]; ctx2.cur = 1; ctx2.els.snack.hidden = true; ctx2.delSlide();
   check('Nya bildspelet: an empty slide goes without an undo', [ctx2.show.slides.length, ctx2.els.snack.hidden], [1, true]);
+  // with a key or a switch, Undo is where the focus goes — and back to the slide after undoing
+  ctx2.show.slides = [S('a'), S('b')]; ctx2.cur = 1; ctx2.delSlide(true);
+  const atUndo = ctx2.focused;
+  ctx2.els.snackUndo.onclick();
+  check('Nya bildspelet: removed with a key, focus goes to Undo, then back to the slide', [atUndo, ctx2.focused, ctx2.show.slides.length], ['snackUndo', 'slide1', 2]);
+  ctx2.focused = null; ctx2.show.slides = [S('a'), S('b')]; ctx2.cur = 1; ctx2.delSlide(false);
+  check('Nya bildspelet: removed with a click, focus stays', ctx2.focused, null);
+  // reachable with a switch (Tab + Enter) or the eyes: no roving tab stops, steppers, size buttons, show controls
+  check('Nya bildspelet: every slide thumbnail is a Tab stop', /\.tabIndex = i === cur/.test(page), false);
+  check('Nya bildspelet: − and + beside each slider', /for \(const \[id, step\] of \[\['optImg', 5\], \['optGap', 1\], \['optPen', 1\]\]\)/.test(page), true);
+  check('Nya bildspelet: back, next and end on screen while showing',
+    ['showPrev', 'showNext', 'showExit', 'optClickNext'].map(id => page.includes(`id="${id}"`)), [true, true, true, true]);
+  check('Nya bildspelet: Undo waits 30 s and never while in use', /setTimeout\(\(\) => \{ if \(\$\('snack'\)\.matches\(':hover, :focus-within'\)\) armSnack\(\); else hideSnack\(\); \}, 30000\)/.test(page), true);
   // every button symbol is a BCI-AV symbol
   const data = sandbox('sv').BLISS_DATA, ids = new Set(data.map(x => x.id));
   const missing = [...page.matchAll(/data-bliss="([\d,]+)"/g)].flatMap(m => m[1].split(',').map(Number)).filter(id => !ids.has(id));
@@ -381,15 +396,21 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   const app = read('js/editor/app.js');
   const i = app.indexOf('function wSendToShow'), src = app.slice(i, app.indexOf("$('wToShow').onclick", i));
   const run = (open, page) => {
-    // `open`: the slideshow tabs that answer the ping, as their pongs
     const sent = [], opened = [];
     const ctx = vm.createContext({
       W: [{ token: 'hej' }], wShowPayload: () => ({ text: 'hej' }), toast: () => {}, tr: (e, s) => s,
       localStorage: { setItem() {} }, setTimeout: (f) => f(),
       window: { open: (u) => { opened.push(u); return {}; } },
-      BroadcastChannel: class { constructor() { this.onmessage = null; }
-        postMessage(m) { if (m.type === 'ping') for (const p of open) this.onmessage({ data: Object.assign({ type: 'pong' }, p) }); else sent.push(m.to); }
-        close() {} },
+      BroadcastChannel: class {
+        constructor() { this.onmessage = null; }
+        postMessage(m) {
+          if (m.type === 'ping')
+            for (const p of open)
+              this.onmessage({ data: Object.assign({ type: 'pong' }, p) });
+          else sent.push(m.to);
+        }
+        close() {}
+      },
     });
     ctx.window.BroadcastChannel = ctx.BroadcastChannel;
     vm.runInContext(src.replace("'BroadcastChannel' in window", 'true'), ctx);
@@ -400,7 +421,56 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Skriv: each slideshow button reaches its own page when both are open',
     [run(both, 'bildspel'), run(both, 'bildspel-ny'), run([{ tab: 'OLD' }], 'bildspel-ny'), run([], 'bildspel')],
     ['add:OLD', 'add:NY', 'open:bildspel-ny.html?from=skriv', 'open:bildspel.html?from=skriv']);
-  check('Nya bildspelet: answers Skriv with its page name', /type: 'pong', tab: tabId, page: 'bildspel-ny'/.test(read('bildspel-ny.html')), true);
+  check('Nya bildspelet: answers Skriv with its page name',
+    /type: 'pong', tab: tabId, page: 'bildspel-ny'/.test(read('bildspel-ny.html')), true);
+}
+
+/* ---------- 10. compound words (2026-11-19): "fisk+pinne" is one Bliss word ---------- */
+{
+  const app = read('js/editor/app.js');
+  const grab = (a, b) => { const i = app.indexOf(a); if (i < 0) throw new Error('app.js: not found: ' + a); return app.slice(i, app.indexOf(b, i)); };
+  const ctx = sandbox('sv');
+  const input = { value: '', selectionStart: 0 };
+  ctx.__input = input;
+  vm.runInContext(`var lang = 'sv', glossLang = '', lists = { A: { syms: [] } };
+    var $ = (id) => (id === 'wInput' ? __input : {}); var tr = (e, s) => s; var toast = () => {}; var wRender = () => {};
+    function firstGloss(s) { return (s.n || '').split(',')[0]; }\n` +
+    globalize([grab('function wWriteLang()', 'function translatedGloss'), grab('function translatedGloss', '/* ================= wbs'),
+      grab('const W_INDICATORS', 'function wWordEls')].join('\n'),
+      ['W', 'W_INDEX', 'W_INDEX_LANG', 'W_LIST_REV', 'W_PICKS', 'W_INDICATORS', 'W_IND_CHOICES', 'W_GRAMMAR', 'wOpen']), ctx, { filename: 'app.js (Skriv)' });
+  const parse = (text) => { input.value = text; input.selectionStart = text.length; ctx.wParse(); return ctx.W.filter(w => !w.punct && !w.br); };
+  const head = (id) => ctx.SkrivGlosor.headOf(id);
+  const fp = parse('Vi åt fisk+pinne.');
+  check('compound: "fisk+pinne" is one word with two parts', [fp.length, fp[2].token, fp[2].label, fp[2].parts.map(p => p.token), fp[2].asText],
+    [3, 'fisk+pinne', 'fiskpinne', ['fisk', 'pinne'], false]);
+  check('compound: each part is its BCI word', fp[2].parts.map(p => head(p.ids[p.pick])), ['fisk', 'pinne']);
+  const ds = parse('dum+skalle')[0];
+  check('compound: "dum+skalle"', [ds.label, ds.parts.map(p => head(p.ids[p.pick]))], ['dumskalle', ['dum', 'skalle']]);
+  // another symbol chosen for a part stays while writing on
+  const fisk = parse('fisk+pinne')[0];
+  fisk.parts[0].pick = fisk.parts[0].ids.length - 1; fisk.manual = true;
+  const chosen = fisk.parts[0].ids[fisk.parts[0].pick];
+  check('compound: a part\'s chosen symbol stays while writing on', parse('fisk+pinne och mer')[0].parts[0].ids[parse('fisk+pinne och mer')[0].parts[0].pick], chosen);
+  check('compound: a part BCI does not have makes the word text', parse('fisk+xyzzy')[0].asText, true);
+  check('compound: not while the second part is still being written', !!parse('fisk+')[0].parts, false);
+
+  // drawn side by side, a quarter square apart, without the parts' indicators
+  const sg = vm.createContext({ console, window: {} });
+  vm.runInContext(read('js/shared/bliss-grammar.js'), sg);
+  // a stand-in for the engine's measure: every element is one half-unit wide from its x
+  vm.runInContext(`var blissSVG = (sym) => { const xs = sym.e.map(e => e[4]); const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1;
+      return '<svg viewBox="' + (x0 * 100) + ' 0 ' + ((x1 - x0) * 100) + ' 100">'; };` +
+    read('js/shared/skriv-glosor.js').replace(/^const SkrivGlosor/m, 'var SkrivGlosor'), sg);
+  const syms = { 1: { id: 1, e: [['H', 1, 1, 0, 0, 8, 0, 0, '', 0, 4], ['H', 1, 1, 0, 3, 8, 0, 0, '', 0, 4]] },
+                 2: { id: 2, e: [['H', 1, 1, 0, 0, 8, 0, 0, '', 0, 4], ['V', 5, 1, 0, 0, 4, 27, 5, '', 0, 4]] } };   // V5 at y 4 = the action indicator
+  const els = sg.SkrivGlosor.compoundEls({ parts: [{ ids: [1], pick: 0 }, { ids: [2], pick: 0 }] }, (id) => syms[id], '');
+  check('compound: the second part starts a quarter square (2 half-units) after the first, its indicator left out',
+    els.map(e => e[0] + e[4]), ['H0', 'H3', 'H6']);
+  // written straight into Bildspel, Gravyrkort or Almanacka (blisstext.js)
+  const bctx = bt('sv');
+  const st = { text: 'en dum+skalle', words: [] }; bctx.BT.parse(st);
+  const d2 = st.words.filter(w => !w.punct);
+  check('compound: in Bildspel too', [d2.length, d2[1].label, d2[1].parts.map(p => bctx.SkrivGlosor.headOf(p.ids[p.pick]))], [2, 'dumskalle', ['dum', 'skalle']]);
 }
 
 console.log(`${pass} passed, ${fail} failed`);

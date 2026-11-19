@@ -1300,7 +1300,7 @@ $('wSettings').onclick = () => $('btnSettings').onclick();
 // footer link → the full attribution now lives in Settings → About & licence
 $('aboutLink').onclick = (e) => {
   e.preventDefault(); $('btnSettings').onclick();
-  $('aboutText').scrollIntoView({ block: 'end' });
+  $('aboutSlogan').scrollIntoView({ block: 'end' });
 };
 $('btnHelp').onclick = () => { $('helpDlg').showModal(); };
 document.addEventListener('keydown', (ev) => {
@@ -1646,7 +1646,7 @@ const wPickKey = tok => wWriteLang() + '|' + tok.toLowerCase();
 const wPickOf = tok => W_PICKS[wPickKey(tok)] ??
   (!glossLang && wWriteLang() !== 'en' ? W_PICKS['en|' + tok.toLowerCase()] : undefined);
 function wRememberPick(w) {
-  if (!w || w.br || w.punct || !w.token) return;
+  if (!w || w.br || w.punct || !w.token || w.parts) return;
   // a left-out word, text, or the option itself (symbol + form); a future form that
   // only came from a left-out "ska" is remembered as the plain symbol
   W_PICKS[wPickKey(w.token)] = w.opts ? SkrivGlosor.pickValue(w) : w.asText ? 'text' : w.ids[w.pick];
@@ -1814,6 +1814,8 @@ function wRedefault() { SkrivGlosor.redefault(W, W_SG_CFG); }
 function wWordEls(w) {
   if (w.br || w.skip) return [];
   if (w.asText) return [['Z', 1, 1, 0, 0, 10, 0, 0, w.token, 0, 6]];
+  // "fisk+pinne": the parts as one word (js/shared/skriv-glosor.js)
+  if (w.parts) return SkrivGlosor.compoundEls(w, wSymById, w.ind);
   return wComposeEls(w.ids[w.pick], w.ind);
 }
 function wChipSVG(w) {
@@ -1901,6 +1903,7 @@ function wChipEl(i) {
 function wChipName(w) {
   const word = w.label || w.token;
   if (w.skip) return word + ' – ' + tr('left out', 'utelämnat');
+  if (w.parts && !w.asText) return word + ' – ' + w.parts.map(p => SkrivGlosor.headOf(p.ids[p.pick])).join(' + ');
   if (w.asText || !w.ids.length) return word + ' – ' + tr('as text', 'som text');
   const id = w.ids[w.pick] ?? w.ids[0];
   // the symbol in the language of the page when there is a name for it, else the BCI name
@@ -1954,7 +1957,28 @@ function wRenderChooser() {
   ch.setAttribute('role', 'group');
   ch.setAttribute('aria-label', tr('Choices for the word ', 'Val för ordet ') + (w.label || w.token));
   const cands = document.createElement('div'); cands.className = 'wCands';
-  if (w.opts) {
+  if (w.parts) {
+    // a compound: each part's symbols, and the whole word as text
+    for (const p of w.parts) {
+      const hd = document.createElement('p'); hd.className = 'wGuessHead';
+      hd.textContent = p.ids.length ? p.token + ':' : tr(`BCI does not have “${p.token}” — the word is shown as text`, `BCI har inte ”${p.token}” — ordet visas som text`);
+      ch.appendChild(hd);
+      const row = document.createElement('div'); row.className = 'wCands';
+      p.ids.forEach((id, k) => {
+        const b = document.createElement('button');
+        const on = !w.asText && k === p.pick;
+        b.className = 'varBtn' + (on ? ' sel' : '');
+        b.setAttribute('aria-pressed', String(on));
+        const sy = wSymById(id);
+        const cap = SkrivGlosor.headOf(id);
+        b.innerHTML = `${wChipSVG({ ids: [id], pick: 0, ind: '', asText: false })}<span class="cap">${escXml(cap)}</span>`;
+        b.title = sy ? sy.n : '';
+        b.onclick = () => { p.pick = k; w.ids = SkrivGlosor.partIds(w); w.asText = false; w.manual = true; wRender(); };
+        row.appendChild(b);
+      });
+      ch.appendChild(row);
+    }
+  } else if (w.opts) {
     if (w.guess) {
       const hd = document.createElement('p'); hd.className = 'wGuessHead';
       hd.textContent = tr(`BCI does not have the word “${w.token}” — suggestions:`, `BCI har inte ordet ”${w.token}” — förslag:`);
@@ -2000,6 +2024,7 @@ function wRenderChooser() {
     tb.setAttribute('aria-pressed', String(!!w.asText));
     tb.textContent = tr('as text', 'som text');
     tb.onclick = () => {
+      if (w.parts) { w.asText = !w.asText || !w.parts.every(p => p.ids.length); w.manual = true; wRender(); return; }
       if (w.opts) { wTakeOption(w, { text: true, key: 'text' }); w.manual = true; wRedefault(); } else w.asText = true;
       wRememberPick(w); wRender();
     };
@@ -2009,7 +2034,11 @@ function wRenderChooser() {
   eb.className = 'varBtn';
   eb.textContent = w.ids.length ? tr('open in editor', 'öppna i editorn') : tr('create the symbol', 'skapa symbolen');
   eb.onclick = () => {
-    if (w.ids.length && !w.asText) {
+    if (w.parts && !w.asText) {
+      // a compound opens as a new symbol of its own, drawn as in the text
+      loadIntoEditor({ id: '', n: (w.label || w.token).replace(/\+/g, ''), c: (wSymById(w.ids[0]) || {}).c || 'YELLOW', k: 'SWE',
+        e: SkrivGlosor.compoundEls(w, wSymById, w.ind) }, 'A');
+    } else if (w.ids.length && !w.asText) {
       const base = deep(lists.A.syms.find(x => x.id === w.ids[w.pick]) || BLISS_DATA.find(x => x.id === w.ids[w.pick]));
       // the chosen form goes with it (Håkan, 2026-09-24: dåtid/futurum/presens
       // arrived in the editor as the bare base symbol) — same composition as the preview
@@ -2519,7 +2548,7 @@ function wCustomSyms(ids) {
 }
 function wShowPayload() {
   const words = W.map(w => { const c = Object.assign({}, w); delete c.keyOf; delete c.off; delete c.futureOf; return c; });
-  return { text: $('wInput').value, words, custom: wCustomSyms(W.filter(w => !w.br && !w.asText && !w.skip).map(w => w.ids[w.pick])) };
+  return { text: $('wInput').value, words, custom: wCustomSyms(W.filter(w => !w.br && !w.asText && !w.skip).flatMap(w => (w.parts ? w.ids : [w.ids[w.pick]]))) };
 }
 /* Skriv -> a slideshow, as a new slide (2026-11-19: to Bildspel or to Nya bildspelet).
    An open slideshow of that kind gets it over the 'wb-bildspel' channel; else
