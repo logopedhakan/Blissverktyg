@@ -497,6 +497,15 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   const st = { text: 'en dum+skalle', words: [] }; bctx.BT.parse(st);
   const d2 = st.words.filter(w => !w.punct);
   check('compound: in Bildspel too', [d2.length, d2[1].label, d2[1].parts.map(p => bctx.SkrivGlosor.headOf(p.ids[p.pick]))], [2, 'dumskalle', ['dum', 'skalle']]);
+
+  // a fixed exception (2026-11-19): "Blisshuset" is the house symbol + the Bliss symbol, "Blisshuset" under it
+  for (const text of ['Vi är på blisshuset.', 'Blisshuset']) {
+    const b = parse(text).find(w => /blisshuset/i.test(w.token));
+    check(`Blisshuset: "${text}" in Skriv`, [b.asText, b.parts.map(p => head(p.ids[p.pick])), b.ids, b.label], [false, ['hus', 'bliss'], [14905, 23031], 'Blisshuset']);
+  }
+  const bh = { text: 'blisshuset', words: [] }; bctx.BT.parse(bh);
+  check('Blisshuset: in Bildspel too', [bh.words[0].ids, bh.words[0].label], [[14905, 23031], 'Blisshuset']);
+  check('Blisshuset: only that word', [parse('blisshus')[0].asText, !!parse('blisshus')[0].parts], [true, false]);
 }
 
 console.log(`${pass} passed, ${fail} failed`);
