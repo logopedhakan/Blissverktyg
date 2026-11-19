@@ -175,6 +175,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/wbs.js"></script>
+<script src="js/shared/vardagsord.js"></script>
 <script src="js/shared/shortcuts.js"></script>
 <script src="js/shared/switch.js"></script>
 <script src="js/engine/bliss-shapes.js"></script>
@@ -263,18 +264,8 @@ function distinctClocks(fam, sub) {
 
 /* ---- word pool ---- */
 const SV = (BLISS_GLOSSES && BLISS_GLOSSES.sv) || {};
-/* Lätt-nivåns ordförråd: Håkan Larssons lista med vardagssubstantiv
-   (2026-08-26, från hans gissa ordet-övning) — matchas mot svenska glosser */
-const HAKAN = new Set(('mat efterrätt bulle bröd kaka kex dryck mjölk juice saft läsk smörgås kött paj ' +
- 'korv ägg marmelad sås pizza hamburgare sallad soppa kaffe ost yoghurt fil pasta skaldjur ' +
- 'grönsak frukt glass socker salt krydda godis kropp huvud hår öra öga näsa mun mage nacke rygg ' +
- 'arm ben hals hand fot tänder stjärt smink medicin kläder ytterkläder underkläder skjorta blus ' +
- 'klänning kjol byxor strumpor skor hatt mössa hjälm kudde täcke filt servett haklapp väska ' +
- 'pengar glasögon borste smycke nyckel verktyg maskin hus lägenhet hem rum toalett kök fönster ' +
- 'trappa dörr bord skåp stol byrå hylla säng lampa flaska nål sax snöre elektricitet ugn spis ' +
- 'batteri spegel träd blomma skog sjö berg himmel sol stjärna regn luft snö vind rullstol ' +
- 'elrullstol fordon vagn cykel bil buss taxi tåg flygplan båt skola post bank arbetsplats ' +
- 'dagcenter teater biograf sjukhus museum hotell stad bondgård trädgård gata').split(' '));
+/* Lätt-nivåns ordförråd: Håkan Larssons vardagsord (js/shared/vardagsord.js) */
+const HAKAN = WB_VARDAGSORD;
 function svWords(id) {
   return (SV[id] || '').split(',').map(w => w.replace(/\s*\([^)]*\)/g, '').trim().toLowerCase());
 }

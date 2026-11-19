@@ -238,7 +238,7 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     [ratio(v(light, 'dim'), v(light, 'bg')) >= 4.5, ratio(v(light, 'dim'), v(light, 'panel-2')) >= 4.5, ratio(v(dark, 'dim'), v(dark, 'bg')) >= 4.5], [true, true, true]);
   check('Palett: text on an accent button, light and dark (≥ 4.5)',
     [ratio(v(light, 'on-accent'), v(light, 'accent')) >= 4.5, ratio(v(dark, 'on-accent'), v(dark, 'accent')) >= 4.5], [true, true]);
-  const whiteOnAccent = ['start.html', 'bildspel.html', 'almanacka.html', 'gissa.html', 'former.html', 'gravyr.html', 'css/wb-blisstext.css', 'js/shared/window.js']
+  const whiteOnAccent = ['start.html', 'bildspel.html', 'almanacka.html', 'gissa.html', 'memory.html', 'former.html', 'gravyr.html', 'css/wb-blisstext.css', 'js/shared/window.js']
     .filter(f => /var\(--accent\)[^}]*?color:#fff/i.test(read(f)));
   check('Palett: no white text on the accent colour', whiteOnAccent, []);
   check('Palett: a visible focus ring for every part', /:focus-visible\{outline:3px solid var\(--accent\)/.test(css), true);
@@ -501,8 +501,50 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('switch: nothing stored, nothing learned', JSON.stringify(load().S.config), JSON.stringify({ stick: true }));
   check('switch: keys are heard before the page, keyups too', Object.keys(load().handlers).sort(), ['gamepadconnected', 'gamepaddisconnected', 'keydown', 'keyup']);
   // in every part, and in the app offline
-  const parts = ['index.html', 'bildspel.html', 'gissa.html', 'former.html', 'gravyr.html', 'almanacka.html', 'start.html'];
+  const parts = ['index.html', 'bildspel.html', 'gissa.html', 'memory.html', 'former.html', 'gravyr.html', 'almanacka.html', 'start.html'];
   check('switch: in every part, and kept offline', [parts.filter(p => !read(p).includes('<script src="js/shared/switch.js"></script>')), /'js\/shared\/switch\.js'/.test(read('sw.js'))], [[], true]);
+}
+
+/* ---------- 8e. Memory (memory.html, 2026-11-19): pairs of Bliss cards ---------- */
+{
+  const page = read('memory.html');
+  const a = page.indexOf('/* ---- game core'), b = page.indexOf('/* ---- end of the game core');
+  const ctx = vm.createContext({ Math });
+  vm.runInContext(page.slice(a, b), ctx);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const sym = (id) => ({ id });
+  const pool = [{ sym: sym(1), word: 'katt' }, { sym: sym(1), word: 'katt' }, { sym: sym(2), word: 'Katt' },
+                { sym: sym(3), word: 'hund' }, { sym: sym(4), word: 'sol' }, { sym: sym(5), word: 'boll' }];
+  const picked = ctx.pickEntries(pool, 10, rnd);
+  check('memory: different symbols and different words, as many as there are',
+    [picked.length, new Set(picked.map(e => e.sym.id)).size, new Set(picked.map(e => e.word.toLowerCase())).size], [4, 4, 4]);
+  const entries = [{ sym: sym(1), word: 'katt' }, { sym: sym(3), word: 'hund' }];
+  const same = ctx.makeDeck(entries, 'same', rnd), word = ctx.makeDeck(entries, 'word', rnd);
+  check('memory: two cards a pair — the symbol twice, or the symbol and its word',
+    [same.length, same.every(c => c.show === 'sym'), entries.map((_, p) => word.filter(c => c.p === p).map(c => c.show).sort().join('+'))],
+    [4, true, ['sym+word', 'sym+word']]);
+  // a game on a known deck: cards 0+2 are a pair, 1+3 are a pair
+  const deck = () => [{ p: 0 }, { p: 1 }, { p: 0 }, { p: 1 }].map(c => Object.assign(c, { found: false }));
+  let G = ctx.newState(deck(), 2);
+  const steps = [0, 1, 1, 3, 2, 0, 2, 1, 3].map(i => ctx.turnCard(G, i).what + G.turn);
+  check('memory: a miss passes the turn, a pressed open card only turns them back, a pair keeps the turn',
+    [steps, G.scores, G.moves, G.over],
+    [['up0', 'miss1', 'cover1', 'up1', 'miss0', 'up0', 'pair0', 'up0', 'end0'], [2, 0], 4, true]);
+  G = ctx.newState(deck(), 1);
+  ctx.turnCard(G, 0); ctx.turnCard(G, 1);
+  const third = ctx.turnCard(G, 2);
+  check('memory: a third card turns the two back and itself up — one press', [third.what, third.covered, G.up], ['up', true, [2]]);
+  check('memory: a found card or a finished game does nothing', (() => { const H = ctx.newState(deck(), 1);
+    ctx.turnCard(H, 0); ctx.turnCard(H, 2); return ctx.turnCard(H, 0).what; })(), 'none');
+  check('memory: the timer turns back only a missed pair', (() => { const H = ctx.newState(deck(), 1);
+    ctx.turnCard(H, 0); const one = ctx.coverCards(H); ctx.turnCard(H, 1); return [one, ctx.coverCards(H), H.up.length]; })(), [false, true, 0]);
+  check('memory: near-square cards in a wide board and a tall one',
+    [[12, 1000, 600], [16, 1000, 600], [24, 1000, 600], [12, 400, 900]].map(([n, w, h]) => { const g = ctx.gridFor(n, w, h); return g.cols + 'x' + g.rows; }),
+    ['4x3', '6x3', '6x4', '3x4']);
+  check('memory: on the start page, offline, with the shared everyday words',
+    [/href="memory\.html"/.test(read('start.html')), /'memory\.html'/.test(read('sw.js')), /'js\/shared\/vardagsord\.js'/.test(read('sw.js')),
+     /src="js\/shared\/vardagsord\.js"/.test(page), /const HAKAN = WB_VARDAGSORD/.test(read('gissa.html'))],
+    [true, true, true, true, true]);
 }
 
 /* ---------- 9. Skriv -> Bildspel (2026-11-19): an open Bildspel gets the text, else one opens ---------- */

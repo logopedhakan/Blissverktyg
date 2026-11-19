@@ -22,6 +22,7 @@ winbliss-web-beta/
 │  │                        knapparna, dra in bilder, ångra)
 │  ├─ bildspel-ny.html      skickar vidare till bildspel.html (gamla adressen för Nya bildspelet)
 │  ├─ gissa.html            Hänga gubbe
+│  ├─ memory.html           Memory — hitta paren: samma symbol, eller symbol och ord
 │  ├─ former.html           Formfamiljer
 │  ├─ gravyr.html           Gravyrkort för laser
 │  ├─ manifest.webmanifest  appens namn, ikoner och genvägar

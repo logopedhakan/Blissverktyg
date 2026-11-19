@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#28558C">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Bliss — memory</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="css/wb-base.css">
+<style>
+body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;
+  background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:baseline;gap:14px;padding:12px 18px;flex-wrap:wrap}
+header h1{font-size:20px}
+header .sub{color:var(--dim);font-size:13px}
+#score{margin-left:auto;font-size:15px;color:var(--dim);display:flex;gap:10px;flex-wrap:wrap}
+#score b{color:var(--ink)}
+#score .pl{padding:2px 10px;border-radius:999px;border:2px solid transparent}
+#score .pl.on{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+main{flex:1;display:grid;grid-template-columns:1fr 280px;gap:14px;padding:0 18px 14px;min-height:0}
+#play{display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0}
+#msg{font-size:16px;min-height:24px;color:var(--dim)}
+#msg.good{color:var(--ok);font-weight:600} #msg.bad{color:var(--sel)}
+/* the cards fill the free space; the page picks columns so they stay near square */
+#board{flex:1;min-height:0;display:grid;gap:clamp(6px,1.2vmin,14px);
+  grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));grid-template-rows:repeat(var(--rows,3),minmax(0,1fr))}
+.card{position:relative;container-type:size;padding:0;border-radius:14px;border:2px solid var(--rule);
+  background:var(--stage);color:var(--ink);cursor:pointer;overflow:hidden;font:inherit;min-height:0}
+.card:focus-visible{outline:4px solid var(--sel);outline-offset:3px}
+.card .back,.card .face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4%}
+.card .back{background:var(--accent);
+  background-image:radial-gradient(circle at 50% 50%, transparent 0 22%, color-mix(in srgb,var(--on-accent) 22%,transparent) 22.5% 25%, transparent 25.5%),
+                   radial-gradient(circle at 50% 50%, color-mix(in srgb,var(--on-accent) 22%,transparent) 0 6%, transparent 6.5%)}
+.card .num{position:absolute;left:8px;top:5px;font-size:clamp(11px,12cqmin,18px);color:var(--on-accent);opacity:.8}
+.card .face{display:none;padding:6%}
+.card.up .face,.card.found .face{display:flex}
+.card.up .back,.card.found .back{display:none}
+.card.up{border-color:var(--accent)}
+.card.up,.card.found{animation:flipIn .2s ease-out}
+@keyframes flipIn{0%{transform:scaleX(.05)}100%{transform:scaleX(1)}}
+@media (prefers-reduced-motion: reduce){.card.up,.card.found{animation:none}}
+.card.miss{border-color:var(--sel);box-shadow:0 0 0 3px color-mix(in srgb,var(--sel) 35%,transparent)}
+.card.found{border-color:var(--ok);cursor:default;opacity:.7}
+.card.found::after{content:"✓";position:absolute;right:8px;top:4px;color:var(--ok);font-weight:700;font-size:clamp(12px,13cqmin,22px)}
+#board.won .card.found{opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 35%,transparent)}
+.face svg{width:84%;height:64%;flex:none}
+.face.noLabel svg{height:80%}
+.face .lbl{font-size:clamp(11px,11cqmin,30px);line-height:1.1;text-align:center;overflow-wrap:anywhere}
+.face .word{font-size:clamp(14px,19cqmin,56px);font-weight:700;line-height:1.1;text-align:center;overflow-wrap:anywhere}
+#side{display:flex;flex-direction:column;gap:9px;background:var(--panel-2);border-radius:14px;padding:12px;overflow-y:auto;min-height:0}
+#side label{display:flex;flex-direction:column;gap:3px;font-size:13.5px}
+#side label.chk{flex-direction:row;align-items:center;gap:7px}
+select,textarea{font:inherit;padding:6px;border-radius:8px;border:1px solid var(--rule);background:var(--panel);color:var(--ink)}
+textarea{min-height:64px;resize:vertical}
+button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);font-weight:600;font-size:16px;padding:9px 12px}
+#ownRow{display:flex;flex-direction:column;gap:6px}
+#ownRow[hidden]{display:none}
+.hint{font-size:11.5px;color:var(--dim)}
+footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
+/* narrow: the board on top at a fixed height, the settings below it, the page scrolls */
+@media (max-width:760px){
+  main{grid-template-columns:1fr;grid-template-rows:auto auto;align-content:start;overflow-y:auto}
+  #play{min-height:auto}
+  #board{flex:none;height:min(70vh,120vw)}
+  #side{overflow:visible}
+}
+</style>
+</head>
+<body>
+<header>
+  <a class="homeLink" href="start.html" title="Till startsidan" data-en-title="To the start page">⌂ Start</a>
+  <h1><span data-en="Memory">Memory</span> <span style="color:var(--sel)">·</span> Bliss</h1>
+  <span class="sub" data-en="turn two cards at a time and find the pairs">vänd två kort i taget och hitta paren</span>
+  <span id="score" aria-live="off"></span>
+</header>
+<main>
+  <section id="play" aria-label="Spelplan" data-en-aria="Game board">
+    <div id="msg" aria-live="polite"></div>
+    <div id="board"></div>
+  </section>
+  <aside id="side" aria-label="Inställningar" data-en-aria="Settings">
+    <button id="btnNew" class="primary"><span data-en="New game">Nytt spel</span></button>
+    <label><span data-en="Pairs">Antal par</span>
+      <select id="optPairs">
+        <option value="4">4</option><option value="6" selected>6</option><option value="8">8</option>
+        <option value="10">10</option><option value="12">12</option>
+      </select>
+    </label>
+    <label><span data-en="A pair is">Ett par är</span>
+      <select id="optKind">
+        <option value="same" data-en="the same symbol twice">samma symbol två gånger</option>
+        <option value="word" data-en="a symbol and its word">en symbol och dess ord</option>
+      </select>
+    </label>
+    <label><span data-en="Words">Ord</span>
+      <select id="optLevel">
+        <option value="latt" data-en="Easy · everyday words">Lätt · vardagsord</option>
+        <option value="gula" data-en="Medium · all yellow words">Medel · alla gula ord</option>
+        <option value="alla" data-en="Hard · the whole Bliss list">Svår · hela blisslistan</option>
+        <option value="egna" data-en="My own words">Egna ord</option>
+        <option value="lista" hidden data-en="My word list (.wbs)">Egen ordlista (.wbs)</option>
+      </select>
+    </label>
+    <div id="ownRow" hidden>
+      <textarea id="ownWords" aria-label="Egna ord" data-en-aria="My own words"
+                placeholder="katt, hund, boll, sol …" data-en-ph="cat, dog, ball, sun …"></textarea>
+      <button id="btnOwn"><span data-en="Play with these words">Spela med orden</span></button>
+      <span class="hint" data-en="Comma between the words. A word without a Bliss symbol is left out.">Komma mellan orden. Ett ord utan blissymbol tas inte med.</span>
+    </div>
+    <button id="btnList"><span data-en="Open your own word list (.wbs)…">Öppna egen ordlista (.wbs)…</span></button>
+    <label><span data-en="Players">Spelare</span>
+      <select id="optPlayers">
+        <option value="1" data-en="One player">En spelare</option>
+        <option value="2" data-en="Two players, taking turns">Två spelare, turas om</option>
+      </select>
+    </label>
+    <label><span data-en="Two cards that are not a pair turn back">Två kort som inte är ett par vänds tillbaka</span>
+      <select id="optBack">
+        <option value="2000" data-en="after 2 seconds">efter 2 sekunder</option>
+        <option value="4000" data-en="after 4 seconds">efter 4 sekunder</option>
+        <option value="tryck" data-en="at the next press">vid nästa tryck</option>
+      </select>
+    </label>
+    <label class="chk"><input type="checkbox" id="optLabel" checked> <span data-en="The word under the symbol">Ordet under symbolen</span></label>
+    <label class="chk"><input type="checkbox" id="optSpeak" checked> <span data-en="Read the turned card aloud">Läs upp kortet som vänds</span></label>
+    <button id="btnKeys"><span data-en="? Help">? Hjälp</span></button>
+  </aside>
+</main>
+<footer><span data-en="WinBliss² · memory · 2026 AnyCom AB · CC BY 4.0">WinBliss² · memory · 2026 AnyCom AB · CC BY 4.0</span> · <span title="Blissymbolics © C.K. Bliss 1949, 1965 · symbols © Blissymbolics Communication International (BCI), distributed under CC BY-SA 4.0 — conforming to the BCI Authorized Vocabulary, blissymbolics.org">Blissymbolics © BCI, CC BY-SA 4.0</span></footer>
+<script src="js/shared/lang.js"></script>
+<script src="js/shared/pwa.js"></script>
+<script src="js/shared/window.js"></script>
+<script src="js/shared/wbs.js"></script>
+<script src="js/shared/vardagsord.js"></script>
+<script src="js/shared/speak.js"></script>
+<script src="js/shared/shortcuts.js"></script>
+<script src="js/shared/switch.js"></script>
+<script src="js/engine/bliss-shapes.js"></script>
+<script src="js/engine/bliss-engine.js"></script>
+<script src="js/data/bliss-data.js"></script>
+<script src="js/data/glosses.js"></script>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+
+/* Language: follows the suite's wb-lang. Swedish is the text in the markup;
+   English comes from the data-en attributes. */
+const LNG = wbLang();
+const tr = (en, sv) => LNG === 'sv' ? sv : en;
+document.documentElement.lang = LNG;
+if (LNG === 'en') {
+  document.title = 'Bliss — memory';
+  for (const el of document.querySelectorAll('[data-en]')) el.textContent = el.dataset.en;
+  for (const el of document.querySelectorAll('[data-en-title]')) el.title = el.dataset.enTitle;
+  for (const el of document.querySelectorAll('[data-en-ph]')) el.placeholder = el.dataset.enPh;
+  for (const el of document.querySelectorAll('[data-en-aria]')) el.setAttribute('aria-label', el.dataset.enAria);
+}
+
+/* ---- game core (no page here: tests/run.js runs this part on its own) ---- */
+function shuffle(a, rnd = Math.random) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+// n entries ({sym, word}) with different symbols and different words
+function pickEntries(pool, n, rnd = Math.random) {
+  const out = [], ids = new Set(), words = new Set();
+  for (const e of shuffle(pool.slice(), rnd)) {
+    const w = e.word.toLowerCase();
+    if (ids.has(e.sym.id) || words.has(w)) continue;
+    ids.add(e.sym.id); words.add(w); out.push(e);
+    if (out.length === n) break;
+  }
+  return out;
+}
+// two cards per entry: the symbol twice, or the symbol and its word
+function makeDeck(entries, kind, rnd = Math.random) {
+  return shuffle(entries.flatMap((e, p) => [
+    { p, sym: e.sym, word: e.word, show: 'sym', found: false },
+    { p, sym: e.sym, word: e.word, show: kind === 'word' ? 'word' : 'sym', found: false }]), rnd);
+}
+function newState(deck, players) {
+  return { deck, up: [], moves: 0, turn: 0, scores: players === 2 ? [0, 0] : [0], over: false };
+}
+/* One press on card i. Two cards that were not a pair stay up until the timer
+   or the next press turns them back: pressing one of them only turns them back,
+   pressing another card turns them back and that card up — one press, not two. */
+function turnCard(G, i) {
+  const c = G.deck[i];
+  if (!c || G.over || c.found) return { what: 'none' };
+  let covered = false;
+  if (G.up.length === 2) {
+    const was = G.up.includes(i);
+    G.up = []; covered = true;
+    if (was) return { what: 'cover' };
+  }
+  if (G.up.includes(i)) return { what: 'none' };
+  G.up.push(i);
+  if (G.up.length === 1) return { what: 'up', i, covered };
+  G.moves++;
+  const [a, b] = G.up;
+  if (G.deck[a].p === G.deck[b].p) {
+    G.deck[a].found = G.deck[b].found = true;
+    G.up = [];
+    G.scores[G.turn]++;
+    if (G.deck.every(d => d.found)) { G.over = true; return { what: 'end', i, a, b }; }
+    return { what: 'pair', i, a, b };
+  }
+  if (G.scores.length > 1) G.turn = 1 - G.turn;     // a miss: the other player's turn
+  return { what: 'miss', i, a, b };
+}
+function coverCards(G) { if (G.up.length !== 2) return false; G.up = []; return true; }
+// columns that keep the cards closest to square in a w × h box, rows filled
+function gridFor(count, w, h) {
+  let best = null;
+  for (let cols = 2; cols <= count; cols++) {
+    const rows = Math.ceil(count / cols), empty = cols * rows - count;
+    const score = Math.abs(Math.log((w / cols) / (h / rows) / 0.85)) + empty * 0.1;
+    if (!best || score < best.score) best = { cols, rows, score };
+  }
+  return best || { cols: count, rows: 1 };
+}
+/* ---- end of the game core ---- */
+
+/* ---- words and symbols ---- */
+const SV = (typeof BLISS_GLOSSES !== 'undefined' && BLISS_GLOSSES.sv) || {};
+const clean = (w) => w.replace(/\s*\([^)]*\)/g, '').replace(/_/g, ' ').trim();
+// in Swedish a BCI symbol needs its Swedish gloss; a symbol from an opened list has its own name
+function wordsOf(sym) {
+  return String((LNG === 'sv' ? (SV[sym.id] || (sym.own ? sym.n : '')) : sym.n) || '').split(',').map(clean).filter(Boolean);
+}
+const wordOf = (sym) => wordsOf(sym)[0] || '';
+const drawable = (s) => !!s && Array.isArray(s.e) && s.e.length > 0 && !/^indicator_/.test(s.n || '') && !!wordOf(s);
+const svWords = (id) => (SV[id] || '').split(',').map(w => clean(w).toLowerCase());
+let customList = null;             // symbols from an opened .wbs list
+let ownEntries = [];               // the teacher's own words, found in BCI-AV
+function pool(level) {
+  if (level === 'egna') return ownEntries;
+  const src = level === 'lista' && customList ? customList : BLISS_DATA;
+  return src.filter(s => {
+    if (!drawable(s)) return false;
+    if (level === 'latt') return s.c === 'YELLOW' && svWords(s.id).some(w => WB_VARDAGSORD.has(w));
+    if (level === 'gula') return s.c === 'YELLOW';
+    return true;
+  }).map(sym => ({ sym, word: wordOf(sym) }));
+}
+// a written word -> its symbol: the word as the first gloss first, then a yellow word, then the simpler symbol
+function findSymbol(word) {
+  const q = word.toLowerCase();
+  let best = null, score = -Infinity;
+  for (const s of BLISS_DATA) {
+    if (!drawable(s)) continue;
+    const k = wordsOf(s).map(w => w.toLowerCase()).indexOf(q);
+    if (k < 0) continue;
+    const sc = (k === 0 ? 4 : 0) + (s.c === 'YELLOW' ? 2 : 0) - s.e.length / 100;
+    if (sc > score) { score = sc; best = s; }
+  }
+  return best;
+}
+function readOwnWords() {
+  const typed = [...new Set($('ownWords').value.split(/[,;\n]+/).map(w => w.trim()).filter(Boolean))];
+  const missing = [];
+  ownEntries = [];
+  for (const w of typed) {
+    const sym = findSymbol(w);
+    if (sym) ownEntries.push({ sym, word: w }); else missing.push(w);
+  }
+  return missing;
+}
+
+/* ---- settings, kept in this browser ('wb-memory') ---- */
+const OPTS = ['optPairs', 'optKind', 'optLevel', 'optPlayers', 'optBack', 'optLabel', 'optSpeak', 'ownWords'];
+function saveOpts() {
+  const o = {};
+  for (const id of OPTS) o[id] = $(id).type === 'checkbox' ? $(id).checked : $(id).value;
+  try { localStorage.setItem('wb-memory', JSON.stringify(o)); } catch (_) {}
+}
+try {
+  const o = JSON.parse(localStorage.getItem('wb-memory') || '{}') || {};
+  for (const id of OPTS) {
+    if (!(id in o)) continue;
+    if ($(id).type === 'checkbox') $(id).checked = !!o[id];
+    else if ($(id).tagName === 'SELECT') { if ([...$(id).options].some(op => op.value === String(o[id]) && !op.hidden)) $(id).value = String(o[id]); }
+    else $(id).value = String(o[id]).slice(0, 2000);
+  }
+} catch (_) {}
+if (!WB_SPEECH) $('optSpeak').closest('label').hidden = true;
+$('ownRow').hidden = $('optLevel').value !== 'egna';
+
+/* ---- the page ---- */
+let G = null, backT = null;
+const player = (k) => tr('Player ', 'Spelare ') + (k + 1);
+function say(t, cls) { $('msg').textContent = t; $('msg').className = cls || ''; }
+function speak(text, then) {
+  if (!$('optSpeak').checked || !text) { if (then) then(); return; }
+  const res = wbSpeak(text, then ? { onend: then } : {});
+  if (res === false && then) then();
+}
+
+function newGame() {
+  clearTimeout(backT);
+  const level = $('optLevel').value;
+  let note = '';
+  if (level === 'egna') {
+    const missing = readOwnWords();
+    if (missing.length) note = tr('No Bliss symbol for: ', 'Ingen blissymbol för: ') + missing.join(', ') + '. ';
+  }
+  const want = +$('optPairs').value;
+  const entries = pickEntries(pool(level), want);
+  if (entries.length < 2) {
+    G = null; $('board').innerHTML = ''; renderScore();
+    say(note + (level === 'egna' ? tr('Write at least two words that have Bliss symbols.', 'Skriv minst två ord som har blissymboler.')
+                                 : tr('There are not enough words here.', 'Det finns inte tillräckligt många ord här.')), 'bad');
+    return;
+  }
+  if (entries.length < want) note += tr(`Only ${entries.length} pairs this time. `, `Bara ${entries.length} par den här gången. `);
+  G = newState(makeDeck(entries, $('optKind').value), +$('optPlayers').value);
+  buildBoard();
+  say(note + (G.scores.length > 1 ? tr(`${player(0)} begins.`, `${player(0)} börjar.`) : ''), note ? 'bad' : '');
+}
+
+function cardLabel(i) {
+  const c = G.deck[i], n = i + 1;
+  if (!c.found && !G.up.includes(i)) return tr(`Card ${n}`, `Kort ${n}`);
+  const what = c.show === 'word' ? tr(`the word ${c.word}`, `ordet ${c.word}`) : c.word;
+  return tr(`Card ${n}: `, `Kort ${n}: `) + what + (c.found ? tr(', found', ', hittat') : '');
+}
+function faceHTML(c) {
+  const box = document.createElement('span');
+  box.className = 'face' + ($('optLabel').checked || c.show === 'word' ? '' : ' noLabel');
+  if (c.show === 'word') {
+    const w = document.createElement('span'); w.className = 'word'; w.lang = LNG; w.textContent = c.word; box.append(w);
+  } else {
+    try { box.innerHTML = blissSVG(c.sym, { unit: 6, color: 'currentColor' }); } catch (_) {}
+    if ($('optLabel').checked) {
+      const l = document.createElement('span'); l.className = 'lbl'; l.lang = LNG; l.textContent = c.word; box.append(l);
+    }
+  }
+  const svg = box.querySelector('svg');
+  if (svg) svg.setAttribute('aria-hidden', 'true');
+  return box;
+}
+function buildBoard() {
+  const b = $('board');
+  b.innerHTML = ''; b.classList.remove('won');
+  G.deck.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'card'; btn.dataset.i = i;
+    const back = document.createElement('span'); back.className = 'back';
+    const num = document.createElement('span'); num.className = 'num'; num.textContent = i + 1; num.setAttribute('aria-hidden', 'true');
+    back.append(num);
+    btn.append(back, faceHTML(c));
+    btn.onclick = () => onCard(i);
+    b.append(btn);
+  });
+  layout(); paint();
+}
+function layout() {
+  if (!G) return;
+  const b = $('board'), r = b.getBoundingClientRect();
+  const g = gridFor(G.deck.length, r.width || 800, r.height || 500);
+  b.style.setProperty('--cols', g.cols); b.style.setProperty('--rows', g.rows);
+}
+function paint(miss) {
+  if (!G) return;
+  const cards = $('board').children;
+  G.deck.forEach((c, i) => {
+    const el = cards[i];
+    el.classList.toggle('up', G.up.includes(i));
+    el.classList.toggle('found', c.found);
+    el.classList.toggle('miss', !!miss && G.up.includes(i));
+    el.disabled = c.found;
+    el.setAttribute('aria-label', cardLabel(i));
+  });
+  $('board').classList.toggle('won', G.over);
+  renderScore();
+}
+function renderScore() {
+  const s = $('score');
+  s.innerHTML = '';
+  if (!G) return;
+  const add = (html, cls) => { const e = document.createElement('span'); e.className = cls || ''; e.innerHTML = html; s.append(e); };
+  const pairs = G.deck.length / 2;
+  if (G.scores.length > 1) {
+    G.scores.forEach((v, k) => add(`${player(k)}: <b>${v}</b>`, 'pl' + (k === G.turn && !G.over ? ' on' : '')));
+    add(`${tr('pairs', 'par')} <b>${G.scores[0] + G.scores[1]}</b>/${pairs}`);
+  } else {
+    add(`${tr('pairs', 'par')} <b>${G.scores[0]}</b>/${pairs} · ${tr('moves', 'drag')} <b>${G.moves}</b>`);
+  }
+}
+function endText() {
+  if (G.scores.length === 1) return tr(`All pairs found in ${G.moves} moves!`, `Alla par hittade på ${G.moves} drag!`);
+  const [a, b] = G.scores;
+  if (a === b) return tr(`A draw — ${a} pairs each!`, `Oavgjort — ${a} par var!`);
+  const w = a > b ? 0 : 1;
+  return tr(`${player(w)} wins, ${Math.max(a, b)} pairs to ${Math.min(a, b)}!`, `${player(w)} vann med ${Math.max(a, b)} par mot ${Math.min(a, b)}!`);
+}
+function onCard(i) {
+  if (!G) return;
+  clearTimeout(backT);
+  const r = turnCard(G, i);
+  if (r.what === 'none') return;
+  if (r.what === 'cover') { paint(); say(''); return; }
+  paint(r.what === 'miss');
+  const c = G.deck[i];
+  if (r.what === 'up') { say(c.word); speak(c.word); return; }
+  if (r.what === 'pair') {
+    say(tr(`A pair: ${c.word}!`, `Ett par: ${c.word}!`) + (G.scores.length > 1 ? ' ' + tr(`${player(G.turn)} goes again.`, `${player(G.turn)} fortsätter.`) : ''), 'good');
+    speak(c.word);
+  } else if (r.what === 'end') {
+    const t = endText();
+    say(t, 'good');
+    speak(c.word, () => speak(t));
+    $('btnNew').focus();
+  } else {
+    const manual = $('optBack').value === 'tryck';
+    say(tr('Not a pair.', 'Inte ett par.') + (G.scores.length > 1 ? ' ' + tr(`Now it is ${player(G.turn)}'s turn.`, `Nu är det ${player(G.turn)}:s tur.`) : '') +
+        (manual ? ' ' + tr('Press a card to go on.', 'Tryck på ett kort för att fortsätta.') : ''), 'bad');
+    speak(c.word);
+    if (!manual) backT = setTimeout(() => { if (coverCards(G)) paint(); }, +$('optBack').value || 2000);
+  }
+  // a found card cannot keep the focus: the next card still in play gets it
+  const a = document.activeElement;
+  if (!G.over && (!a || a === document.body || a.disabled)) {
+    const cards = [...$('board').children];
+    const next = cards.slice(i).concat(cards.slice(0, i)).find(el => !el.disabled);
+    if (next) next.focus();
+  }
+}
+
+/* arrows walk the cards on the board, row by row; found cards are skipped */
+$('board').addEventListener('keydown', (ev) => {
+  const d = { ArrowLeft: -1, ArrowRight: 1 }[ev.key];
+  const cols = +getComputedStyle($('board')).getPropertyValue('--cols') || 4;
+  const step = d || { ArrowUp: -cols, ArrowDown: cols }[ev.key];
+  if (!step || !G) return;
+  const cards = [...$('board').children];
+  let i = cards.indexOf(document.activeElement);
+  if (i < 0) return;
+  ev.preventDefault();
+  for (let j = i + step; j >= 0 && j < cards.length; j += step) {
+    if (!cards[j].disabled) { cards[j].focus(); return; }
+  }
+});
+new ResizeObserver(() => layout()).observe($('board'));
+/* a switch steps through the cards still in play and New game — not the settings
+   (Tab still reaches everything); a dialog that is open keeps its own stops */
+if (window.wbSwitch) wbSwitch.scope = () => document.querySelector('dialog[open]') ? null
+  : [...$('board').children].filter(el => !el.disabled).concat($('btnNew'));
+
+/* ---- settings ---- */
+for (const id of ['optPairs', 'optKind', 'optPlayers']) $(id).onchange = () => { saveOpts(); newGame(); };
+$('optLevel').onchange = () => {
+  saveOpts();
+  $('ownRow').hidden = $('optLevel').value !== 'egna';
+  if ($('optLevel').value === 'egna') { $('ownWords').focus(); if (!$('ownWords').value.trim()) return; }
+  newGame();
+};
+$('optLabel').onchange = () => { saveOpts(); if (G) buildBoard(); };
+for (const id of ['optBack', 'optSpeak', 'ownWords']) $(id).addEventListener('change', saveOpts);
+$('btnOwn').onclick = () => { saveOpts(); newGame(); };
+$('btnNew').onclick = newGame;
+$('btnList').onclick = () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.wbs,.txt';
+  inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return;
+    f.arrayBuffer().then(buf => {
+      const syms = parseWbsText(decodeWbsBuffer(buf)).map(s => Object.assign(s, { own: true })).filter(drawable);
+      if (syms.length < 2) { say(tr('The list held fewer than two words with symbols.', 'Listan hade färre än två ord med symboler.'), 'bad'); return; }
+      customList = syms;
+      const op = $('optLevel').querySelector('option[value="lista"]');
+      op.hidden = false;
+      op.textContent = `${tr('List', 'Lista')}: ${f.name.replace(/\.wbs$/i, '')} (${syms.length} ${tr('words', 'ord')})`;
+      $('optLevel').value = 'lista';
+      $('ownRow').hidden = true;
+      newGame();
+    }).catch(() => say(tr('The list could not be read.', 'Listan gick inte att läsa.'), 'bad'));
+  };
+  inp.click();
+};
+
+/* ---- keys: on the buttons, in their tooltips, and all of them under Help ---- */
+let SC = null;
+const KEYS = wbButtonKeys([
+  { id: 'btnNew', key: 'Alt+N', shown: true, name: () => tr('new game', 'nytt spel') },
+  { id: 'btnKeys', key: '?', run: () => SC && SC.openList(), name: () => tr('all keyboard shortcuts (this list)', 'alla kortkommandon (den här listan)') },
+], {});
+try { SC = wbShortcuts({
+  title: () => tr('Memory', 'Memory'),
+  actions: {
+    O: { run: () => $('btnList').click(), desc: () => tr('open your own word list (.wbs)', 'öppna egen ordlista (.wbs)') },
+    H: { run: () => { location.href = 'start.html'; }, desc: () => tr('to the start page', 'till startsidan') },
+  },
+  extra: () => [
+    [tr('Buttons', 'Knappar')], ...KEYS.rows(),
+    [tr('On the board', 'På spelplanen')],
+    [tr('Arrows', 'Pilar'), tr('move between the cards', 'flytta mellan korten')],
+    ['Enter · ' + tr('Space', 'Mellanslag'), tr('turn the card', 'vänd kortet')],
+  ],
+}); } catch (_) {}
+$('btnKeys').onclick = () => SC && SC.openList();
+
+newGame();
+</script>
+</body>
+</html>
