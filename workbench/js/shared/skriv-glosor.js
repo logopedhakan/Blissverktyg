@@ -94,6 +94,12 @@ const SkrivGlosor = (() => {
         run = null;
         continue;
       }
+      const fixed = w.pending && fixedCompound(w.token, cfg.lang);
+      if (fixed) {                                                      // "Blisshuset": a fixed exception
+        resolveCompound(w, prev, usedOld, cfg, fixed.parts, fixed.label);
+        run = null;
+        continue;
+      }
       if (w.pending) {
         if (!w.token.replace(EDGE, '')) { asText(w); continue; }      // only quotes or dashes
         if (!run) runs.push(run = []);
@@ -173,12 +179,22 @@ const SkrivGlosor = (() => {
     const parts = token.split('+').map(t => t.replace(EDGE, '')).filter(Boolean);
     return parts.length >= 2 ? parts : null;
   }
-  function resolveCompound(w, prev, usedOld, cfg) {
+  /* Fixed exceptions (Håkan's tool, 2026-11-19): words written as a given compound,
+     whatever the general rules say. "Blisshuset" is the house symbol and the Bliss
+     symbol (classifier first), with "Blisshuset" under it. Only these words, only
+     in this language; the parts are written words, each keeping its options. */
+  const FIXED = { sv: { blisshuset: { parts: ['hus', 'bliss'], label: 'Blisshuset' } } };
+  function fixedCompound(token, lang) {
+    const t = FIXED[lang], key = String(token || '').replace(EDGE, '').toLowerCase();
+    return t && Object.prototype.hasOwnProperty.call(t, key) ? t[key] : null;
+  }
+  /** tokens: the parts in drawing order (default: the parts written with +); label: the word under it. */
+  function resolveCompound(w, prev, usedOld, cfg, tokens, label) {
     const B = S();
     delete w.pending;
     // the same compound written before keeps its choices
     const old = (prev || []).find(o => o && o.parts && o.token === w.token && !usedOld.has(o));
-    const parts = splitCompound(w.token).map((t, k) => {
+    const parts = (tokens || splitCompound(w.token)).map((t, k) => {
       const e = B.writeWords(t, cfg.lang)[0];
       const ids = [...new Set(((e && e.options) || []).filter(o => o.id != null).map(o => o.id))];
       const was = old && old.parts[k] && old.parts[k].token === t ? old.parts[k] : null;
@@ -194,7 +210,7 @@ const SkrivGlosor = (() => {
       manual: !!(old && old.manual),
       // a part BCI does not have makes the whole word text: no half a symbol
       asText: parts.some(p => !p.ids.length) || (old ? !!old.asText && parts.every(p => p.ids.length) : false),
-      label: old && old.label && !old.autoLabel ? old.label : parts.map(p => p.token).join(''),
+      label: old && old.label && !old.autoLabel ? old.label : label || parts.map(p => p.token).join(''),
       autoLabel: false,
     });
   }
@@ -252,6 +268,6 @@ const SkrivGlosor = (() => {
     return { label, note };
   }
 
-  return { on, optionOf, take, defaultOption, pickValue, redefault, resolve, describe, splitCompound, partIds, compoundEls, headOf };
+  return { on, optionOf, take, defaultOption, pickValue, redefault, resolve, describe, splitCompound, fixedCompound, partIds, compoundEls, headOf };
 })();
 if (typeof window !== 'undefined') window.SkrivGlosor = SkrivGlosor;
