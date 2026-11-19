@@ -417,6 +417,56 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('label: tight spacing, broken and not overlapping', [firstWord.length > 1, Math.max(...firstWord.map(right)) <= Math.min(...second.map(left))], [true, true]);
 }
 
+/* ---------- 8c. keys on the slideshows' buttons, in their tooltips (shortcuts.js, 2026-11-19) ---------- */
+{
+  const keysRun = (platform) => {
+    const els = {}, clicked = [];
+    const el = (id, title, extra) => (els[id] = Object.assign({ id, title, textContent: title, tagName: 'BUTTON', disabled: false,
+      attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k] ?? null; },
+      getClientRects: () => [1], click() { clicked.push(id); } }, extra));
+    el('btnAdd', '+ Ny sida'); el('btnUp', 'Flytta upp'); el('btnSaveAs', 'Spara som…'); el('btnSpeak', 'Läs upp (Alt+P)');
+    el('btnDel', 'Ta bort', { disabled: true });
+    let onKey = null, paused = false;
+    const ctx = vm.createContext({ console, wbLang: () => 'sv', navigator: { platform }, MutationObserver: class { observe() {} },
+      document: { getElementById: (id) => els[id] || null, addEventListener: (t, f) => { onKey = f; }, querySelector: () => null } });
+    vm.runInContext(read('js/shared/shortcuts.js'), ctx);
+    const K = ctx.wbButtonKeys([
+      { id: 'btnAdd', key: 'Alt+N', name: () => 'ny sida' }, { id: 'btnUp', key: 'Alt+ArrowUp', name: () => 'upp' },
+      { id: 'btnSaveAs', key: 'Ctrl+Shift+S', name: () => 'spara som' }, { id: 'btnSpeak', key: 'Alt+P', shown: true, name: () => 'läs' },
+      { id: 'btnDel', key: 'Alt+R', name: () => 'ta bort' }, { id: 'nothing', key: 'Alt+X', name: () => '' },
+    ], { paused: () => paused });
+    const press = (o, target = { tagName: 'BODY' }) => {
+      let prevented = false;
+      onKey(Object.assign({ key: '', code: '', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, target,
+        preventDefault() { prevented = true; } }, o));
+      return prevented;
+    };
+    return { els, clicked, K, press, pause: (v) => { paused = v; } };
+  };
+  const win = keysRun('Win32');
+  check('keys: the tooltip ends with the key, the page\'s own key is not repeated',
+    ['btnAdd', 'btnUp', 'btnSaveAs', 'btnSpeak'].map(id => win.els[id].title),
+    ['Ny sida (Alt+N)', 'Flytta upp (Alt+↑)', 'Spara som… (Ctrl+Skift+S)', 'Läs upp (Alt+P)']);
+  check('keys: screen readers get the key', [win.els.btnAdd.attrs['aria-keyshortcuts'], win.els.btnSaveAs.attrs['aria-keyshortcuts']], ['Alt+N', 'Control+Shift+S']);
+  win.press({ key: '~', code: 'KeyN', altKey: true }, { tagName: 'TEXTAREA' });          // while writing, as Alt+P
+  win.press({ key: 'ArrowUp', code: 'ArrowUp', altKey: true }, { tagName: 'TEXTAREA' }); // the caret's, in a text field
+  win.press({ key: 'S', code: 'KeyS', ctrlKey: true, shiftKey: true });
+  win.press({ key: 'r', code: 'KeyR', altKey: true });                                   // a disabled button: nothing
+  win.press({ key: 'n', code: 'KeyN', altKey: true, ctrlKey: true });                     // AltGr: not Alt+N
+  win.pause(true); win.press({ key: 'n', code: 'KeyN', altKey: true }); win.pause(false); // while showing: nothing
+  check('keys: each key presses its button, only when it should', win.clicked, ['btnAdd', 'btnSaveAs']);
+  check('keys: the list rows', win.K.rows().map(r => r[0]), ['Alt+N', 'Alt+↑', 'Ctrl+Skift+S', 'Alt+P', 'Alt+R']);
+  const mac = keysRun('MacIntel');
+  check('keys: on a Mac ⌥ and ⌘', [mac.els.btnAdd.title, mac.els.btnSaveAs.title, mac.K.label('Ctrl+V')], ['Ny sida (⌥N)', 'Spara som… (⌘⇧S)', '⌘V']);
+  mac.press({ key: 'S', code: 'KeyS', metaKey: true, shiftKey: true });
+  mac.press({ key: 'S', code: 'KeyS', ctrlKey: true, shiftKey: true });                   // Ctrl on a Mac is not ⌘
+  check('keys: ⌘ on a Mac', mac.clicked, ['btnSaveAs']);
+  // both slideshows have the same keys and a help button
+  const a = read('bildspel.html'), b = read('bildspel-ny.html');
+  const block = (p) => p.slice(p.indexOf('const KEYS = wbButtonKeys'), p.indexOf('], { paused: showing });'));
+  check('keys: the same keys in both slideshows, and a help button', [block(a) === block(b), /id="btnKeys"/.test(a), /id="btnKeys"/.test(b)], [true, true, true]);
+}
+
 /* ---------- 9. Skriv -> Bildspel or Nya bildspelet (2026-11-19): the right page gets the text ---------- */
 {
   const app = read('js/editor/app.js');

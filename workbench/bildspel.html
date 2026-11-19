@@ -133,7 +133,8 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
   <button id="btnSave" data-en="Save ↓">Spara ↓</button>
   <button id="btnSaveAs" data-en="Save as…">Spara som…</button>
   <button id="btnPptx" data-en="PowerPoint ↓">PowerPoint ↓</button>
-  <button id="btnPlay" class="primary" title="F5" data-en="▶ Show">▶ Visa</button>
+  <button id="btnPlay" class="primary" data-en="▶ Show">▶ Visa</button>
+  <button id="btnKeys" title="Hjälp: alla kortkommandon" data-en-title="Help: all keyboard shortcuts" data-en="? Help">? Hjälp</button>
 </header>
 <main>
   <aside class="col" aria-label="Sidor" data-en-aria="Slides">
@@ -1215,19 +1216,47 @@ if ('BroadcastChannel' in window) {
   };
 }
 
-/* delade $-genvägar (shortcuts.js) */
-try { wbShortcuts({
+/* ---- keys on the important buttons, shown in their tooltips (2026-11-19) ---- */
+let SC = null;
+const KEYS = wbButtonKeys([
+  { id: 'btnPlay', key: 'F5', shown: true, name: () => tr('show from the first slide (Shift+F5: from this one)', 'visa från första sidan (Skift+F5: från den här)') },
+  { id: 'btnAdd', key: 'Alt+N', name: () => tr('new slide', 'ny sida') },
+  { id: 'btnDup', key: 'Alt+K', name: () => tr('copy the slide', 'kopiera sidan') },
+  { id: 'btnDel', key: 'Alt+R', name: () => tr('remove the slide', 'ta bort sidan') },
+  { id: 'btnUp', key: 'Alt+ArrowUp', name: () => tr('move the slide up', 'flytta upp sidan') },
+  { id: 'btnDown', key: 'Alt+ArrowDown', name: () => tr('move the slide down', 'flytta ner sidan') },
+  { id: 'btnImg', key: 'Alt+B', name: () => tr('choose a picture', 'välj bild') },
+  { id: 'btnSpeak', key: 'Alt+P', shown: true, name: () => tr('read the slide aloud / stop reading', 'läs upp sidan / stoppa uppläsningen') },
+  { id: 'btnOpen', key: 'Ctrl+O', name: () => tr('open a slideshow', 'öppna ett bildspel') },
+  { id: 'btnSave', key: 'Ctrl+S', name: () => tr('save the slideshow', 'spara bildspelet') },
+  { id: 'btnSaveAs', key: 'Ctrl+Shift+S', name: () => tr('save as…', 'spara som…') },
+  { id: 'btnKeys', key: '?', run: () => SC && SC.openList(), name: () => tr('all keyboard shortcuts (this list)', 'alla kortkommandon (den här listan)') },
+  // on the screen while showing (Nya bildspelet); the show's own keys, listed below
+  { id: 'showPrev', key: 'ArrowLeft', shown: true, inList: false, name: () => '' },
+  { id: 'showNext', key: 'ArrowRight', shown: true, inList: false, name: () => '' },
+  { id: 'showExit', key: 'Escape', shown: true, inList: false, name: () => '' },
+], { paused: showing });
+
+/* delade $-genvägar (shortcuts.js), and the help button: every key in one list */
+try { SC = wbShortcuts({
   title: () => tr('Slideshow', 'Bildspel'),
   actions: {
     S: { run: () => $('btnSave').click(), desc: () => tr('save the slideshow (.wbbild)', 'spara bildspelet (.wbbild)') },
     O: { run: () => $('btnOpen').click(), desc: () => tr('open a slideshow', 'öppna ett bildspel') },
     H: { run: () => { location.href = 'start.html'; }, desc: () => tr('to the start page', 'till startsidan') },
   },
-  extra: () => [['F5', tr('show from the first slide (Shift+F5: from this one)', 'visa från första sidan (Skift+F5: från den här)')],
-                ['Ctrl+V', tr('paste a picture onto the slide', 'klistra in en bild på sidan')],
-                ['Alt+P', tr('read the slide aloud / stop reading', 'läs upp sidan / stoppa uppläsningen')],
-                ['L', tr('while showing: read the slide aloud', 'under visning: läs upp sidan')]],
+  extra: () => [
+    [tr('Buttons', 'Knappar')], ...KEYS.rows(),
+    [KEYS.label('Ctrl+V'), tr('paste a picture onto the slide (or drag it there)', 'klistra in en bild på sidan (eller dra dit den)')],
+    [tr('While showing', 'Under visning')],
+    ['→ · ' + tr('Space', 'Mellanslag') + ' · Enter', tr('next slide', 'nästa sida')],
+    ['← · ' + tr('Backspace', 'Backsteg'), tr('the slide before', 'sidan före')],
+    ['Home · End', tr('the first slide · the last', 'första sidan · sista')],
+    ['L', tr('read the slide aloud', 'läs upp sidan')],
+    ['Esc', tr('end the show', 'avsluta visningen')],
+  ],
 }); } catch (_) {}
+$('btnKeys').onclick = () => SC && SC.openList();
 </script>
 </body>
 </html>
