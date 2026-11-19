@@ -341,5 +341,40 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('blisstext: a left-out word draws nothing', ctx.BT.wordEls(st('ska läsa', handed.slice(1, 3)).words[0]).length, 0);
 }
 
+/* ---------- 8. Nya bildspelet (bildspel-ny.html, 2026-11-19): the same show, a new way of working ---------- */
+{
+  const page = read('bildspel-ny.html');
+  const cut = (start, end) => { const i = page.indexOf(start); if (i < 0) throw new Error('bildspel-ny.html: not found: ' + start); return page.slice(i, page.indexOf(end, i)); };
+  // the show itself is the same as in Bildspel: same file checks, same slide model
+  const old = read('bildspel.html');
+  const same = (start, end) => { const a = old.indexOf(start), b = page.indexOf(start); return old.slice(a, old.indexOf(end, a)) === page.slice(b, page.indexOf(end, b)); };
+  check('Nya bildspelet: the same file checks and slide model as Bildspel',
+    [same('const HEX_COLOR', 'function load('), same('const LOOK_DEFAULT', 'let show =')], [true, true]);
+  // moving a slide (buttons, Alt+↑/↓, drag and drop): the moved slide stays the current one
+  const ctx = vm.createContext({ console });
+  vm.runInContext('var show = { slides: [] }, cur = 0; var go = (i) => { cur = i; }, autosave = () => {};\n' + cut('function moveSlide', 'const move ='), ctx);
+  const order = (from, to) => { ctx.show.slides = ['a', 'b', 'c', 'd']; ctx.cur = from; ctx.moveSlide(from, to); return ctx.show.slides.join('') + ctx.cur; };
+  check('Nya bildspelet: move a slide', [order(0, 2), order(3, 0), order(1, 1), order(0, 9)], ['bcad2', 'dabc0', 'abcd1', 'abcd0']);
+  // removing a slide can be undone, also the only one
+  const ctx2 = vm.createContext({ console, setTimeout: () => 0, clearTimeout: () => {} });
+  vm.runInContext(`var els = {}; var $ = (id) => (els[id] = els[id] || { hidden: true, textContent: '', onclick: null, addEventListener() {} });
+    var document = { addEventListener() {} }; var tr = (en, sv) => sv;
+    var show = { slides: [] }, cur = 0; var go = (i) => { cur = i; }, autosave = () => {};
+    var newSlide = (from) => ({ text: '', img: null, words: [] });\n` + cut('let snackT = null', '$(\'btnDel\').onclick'), ctx2);
+  const S = (t) => ({ text: t, img: null, words: [] });
+  ctx2.show.slides = [S('a'), S('b'), S('c')]; ctx2.cur = 1; ctx2.delSlide();
+  const gone = ctx2.show.slides.map(x => x.text).join('') + ctx2.cur + (ctx2.els.snack.hidden ? '' : ' undo');
+  ctx2.els.snackUndo.onclick();
+  check('Nya bildspelet: remove a slide, then undo', [gone, ctx2.show.slides.map(x => x.text).join('') + ctx2.cur], ['ac1 undo', 'abc1']);
+  ctx2.show.slides = [S('only')]; ctx2.cur = 0; ctx2.delSlide(); ctx2.els.snackUndo.onclick();
+  check('Nya bildspelet: undo the only slide', ctx2.show.slides.map(x => x.text), ['only']);
+  ctx2.show.slides = [S('x'), S('')]; ctx2.cur = 1; ctx2.els.snack.hidden = true; ctx2.delSlide();
+  check('Nya bildspelet: an empty slide goes without an undo', [ctx2.show.slides.length, ctx2.els.snack.hidden], [1, true]);
+  // every button symbol is a BCI-AV symbol
+  const data = sandbox('sv').BLISS_DATA, ids = new Set(data.map(x => x.id));
+  const missing = [...page.matchAll(/data-bliss="([\d,]+)"/g)].flatMap(m => m[1].split(',').map(Number)).filter(id => !ids.has(id));
+  check('Nya bildspelet: the button symbols are BCI-AV symbols', missing, []);
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
