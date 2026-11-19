@@ -413,7 +413,7 @@ $('btnPlay').title = lblOf($('btnPlay')).textContent + ' (F5)';
 const BOX = new Map();
 function boxOf(w) {
   if (w.skip && !w.plain) return null;                 // left out of the Bliss text (an article, "ska")
-  const key = w.asText ? 't|' + w.token : w.ids[w.pick] + '|' + (w.ind || '');
+  const key = w.asText ? 't|' + w.token : (w.parts ? 'c|' + w.ids.join('+') : w.ids[w.pick]) + '|' + (w.ind || '');
   if (BOX.has(key)) return BOX.get(key);
   const els = wordEls(w);
   let b = null;

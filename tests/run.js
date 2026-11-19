@@ -376,5 +376,53 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Nya bildspelet: the button symbols are BCI-AV symbols', missing, []);
 }
 
+/* ---------- 10. compound words (2026-11-19): "fisk+pinne" is one Bliss word ---------- */
+{
+  const app = read('js/editor/app.js');
+  const grab = (a, b) => { const i = app.indexOf(a); if (i < 0) throw new Error('app.js: not found: ' + a); return app.slice(i, app.indexOf(b, i)); };
+  const ctx = sandbox('sv');
+  const input = { value: '', selectionStart: 0 };
+  ctx.__input = input;
+  vm.runInContext(`var lang = 'sv', glossLang = '', lists = { A: { syms: [] } };
+    var $ = (id) => (id === 'wInput' ? __input : {}); var tr = (e, s) => s; var toast = () => {}; var wRender = () => {};
+    function firstGloss(s) { return (s.n || '').split(',')[0]; }\n` +
+    globalize([grab('function wWriteLang()', 'function translatedGloss'), grab('function translatedGloss', '/* ================= wbs'),
+      grab('const W_INDICATORS', 'function wWordEls')].join('\n'),
+      ['W', 'W_INDEX', 'W_INDEX_LANG', 'W_LIST_REV', 'W_PICKS', 'W_INDICATORS', 'W_IND_CHOICES', 'W_GRAMMAR', 'wOpen']), ctx, { filename: 'app.js (Skriv)' });
+  const parse = (text) => { input.value = text; input.selectionStart = text.length; ctx.wParse(); return ctx.W.filter(w => !w.punct && !w.br); };
+  const head = (id) => ctx.SkrivGlosor.headOf(id);
+  const fp = parse('Vi åt fisk+pinne.');
+  check('compound: "fisk+pinne" is one word with two parts', [fp.length, fp[2].token, fp[2].label, fp[2].parts.map(p => p.token), fp[2].asText],
+    [3, 'fisk+pinne', 'fiskpinne', ['fisk', 'pinne'], false]);
+  check('compound: each part is its BCI word', fp[2].parts.map(p => head(p.ids[p.pick])), ['fisk', 'pinne']);
+  const ds = parse('dum+skalle')[0];
+  check('compound: "dum+skalle"', [ds.label, ds.parts.map(p => head(p.ids[p.pick]))], ['dumskalle', ['dum', 'skalle']]);
+  // another symbol chosen for a part stays while writing on
+  const fisk = parse('fisk+pinne')[0];
+  fisk.parts[0].pick = fisk.parts[0].ids.length - 1; fisk.manual = true;
+  const chosen = fisk.parts[0].ids[fisk.parts[0].pick];
+  check('compound: a part\'s chosen symbol stays while writing on', parse('fisk+pinne och mer')[0].parts[0].ids[parse('fisk+pinne och mer')[0].parts[0].pick], chosen);
+  check('compound: a part BCI does not have makes the word text', parse('fisk+xyzzy')[0].asText, true);
+  check('compound: not while the second part is still being written', !!parse('fisk+')[0].parts, false);
+
+  // drawn side by side, a quarter square apart, without the parts' indicators
+  const sg = vm.createContext({ console, window: {} });
+  vm.runInContext(read('js/shared/bliss-grammar.js'), sg);
+  // a stand-in for the engine's measure: every element is one half-unit wide from its x
+  vm.runInContext(`var blissSVG = (sym) => { const xs = sym.e.map(e => e[4]); const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1;
+      return '<svg viewBox="' + (x0 * 100) + ' 0 ' + ((x1 - x0) * 100) + ' 100">'; };` +
+    read('js/shared/skriv-glosor.js').replace(/^const SkrivGlosor/m, 'var SkrivGlosor'), sg);
+  const syms = { 1: { id: 1, e: [['H', 1, 1, 0, 0, 8, 0, 0, '', 0, 4], ['H', 1, 1, 0, 3, 8, 0, 0, '', 0, 4]] },
+                 2: { id: 2, e: [['H', 1, 1, 0, 0, 8, 0, 0, '', 0, 4], ['V', 5, 1, 0, 0, 4, 27, 5, '', 0, 4]] } };   // V5 at y 4 = the action indicator
+  const els = sg.SkrivGlosor.compoundEls({ parts: [{ ids: [1], pick: 0 }, { ids: [2], pick: 0 }] }, (id) => syms[id], '');
+  check('compound: the second part starts a quarter square (2 half-units) after the first, its indicator left out',
+    els.map(e => e[0] + e[4]), ['H0', 'H3', 'H6']);
+  // written straight into Bildspel, Gravyrkort or Almanacka (blisstext.js)
+  const bctx = bt('sv');
+  const st = { text: 'en dum+skalle', words: [] }; bctx.BT.parse(st);
+  const d2 = st.words.filter(w => !w.punct);
+  check('compound: in Bildspel too', [d2.length, d2[1].label, d2[1].parts.map(p => bctx.SkrivGlosor.headOf(p.ids[p.pick]))], [2, 'dumskalle', ['dum', 'skalle']]);
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
