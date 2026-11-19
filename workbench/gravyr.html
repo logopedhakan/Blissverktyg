@@ -281,7 +281,7 @@ function membersFromWords() {
     if (w.skip) continue;                       // left out of the Bliss text (an article, "ska")
     if (w.asText) { out.push(textSym(w.label || w.token)); continue; }
     const id = w.ids[w.pick], s = BT.symById(id);
-    const e = BT.composeEls(id, w.punct ? '' : w.ind);
+    const e = w.parts ? BT.wordEls(w) : BT.composeEls(id, w.punct ? '' : w.ind);   // "fisk+pinne": one word
     if (s && e.length) out.push({ id: s.id, n: w.punct ? s.n : (w.label || w.token), c: s.c, e,
       lab: w.punct ? '' : (w.label || w.token) });
   }

@@ -93,7 +93,9 @@ Skriv, Bildspel, Gravyrkort och Almanacka skriver svensk och engelsk text med
 samma regler som Bliss-glosors "Skriv en egen mening": fraser som är en symbol
 (*tycker om*), *ska* + verb (utelämna *ska* så får verbet framtidsform), artiklar
 som kan utelämnas, BCI:s egennamn bara med stor bokstav, synonymer (Swesaurus) och
-härledda verb (SUC 3.0). Indikatorerna placeras av samma grammatikmotor, så formerna
+härledda verb (SUC 3.0). Skriver man ett plustecken mellan två ord (*fisk+pinne*,
+*dum+skalle*) blir de ett sammansatt blissord, ritat som BCI:s egna: tecknen en kvarts
+ruta isär, utan delarnas indikatorer. Indikatorerna placeras av samma grammatikmotor, så formerna
 ritas exakt som där. Filerna ska inte ändras för hand — hämta en ny version med
 
 ```bash
