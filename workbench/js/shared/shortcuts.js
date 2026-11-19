@@ -16,7 +16,10 @@ function wbShortcuts(cfg) {
   // cfg.actions: { C: {run, desc: () => string}, ... }  (desc lazy: language can switch)
   // cfg.extra:   () => [[keys, desc], ...]  — page-specific rows for the list
   // cfg.title:   () => string  — page name in the list header
-  const FN_KEYS = ['C', 'S', 'O', 'H'];
+  const FN_KEYS = ['C', 'S', 'O', 'H', 'B'];
+  // $ B: switches and joystick (js/shared/switch.js), in every part that has it
+  const acts = () => Object.assign({}, cfg.actions, window.wbSwitch
+    ? { B: { run: () => window.wbSwitch.open(), desc: () => T('switches and joystick — learn their keys', 'brytare och joystick — lär in deras tangenter') } } : {});
   let armed = 0;
 
   const toastEl = document.createElement('div');
@@ -39,9 +42,11 @@ function wbShortcuts(cfg) {
   dlg.setAttribute('aria-label', T('Keyboard shortcuts', 'Kortkommandon'));
   document.body.appendChild(dlg);
   dlg.addEventListener('click', (ev) => { if (ev.target === dlg) dlg.close(); });
+  const BTN = 'font:inherit;padding:6px 12px;border:1px solid var(--rule,#ccc);border-radius:9px;background:var(--panel-2,#f4f3ef);color:inherit;cursor:pointer';
   function openList() {
     const rows = [], fn = [];
-    for (const k of FN_KEYS) if (cfg.actions[k]) fn.push(['$ ' + k, cfg.actions[k].desc()]);
+    const A = acts();
+    for (const k of FN_KEYS) if (A[k]) fn.push(['$ ' + k, A[k].desc()]);
     fn.push(['$ ?', T('show this list', 'visa den här listan')]);
     const extra = cfg.extra ? cfg.extra() : [];
     // a page that sorts its keys under headings gets the $ keys under one of their own, after its own
@@ -61,12 +66,14 @@ function wbShortcuts(cfg) {
         ? `<tr><th colspan="2" style="text-align:left;padding:10px 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim,#666)">${esc(k)}</th></tr>`
         : `<tr><td style="padding:3px 14px 3px 0;white-space:nowrap"><b>${esc(k)}</b></td>` +
           `<td style="padding:3px 0;overflow-wrap:anywhere">${esc(d)}</td></tr>`).join('') + '</table>' +
-      '<form method="dialog" style="margin-top:12px;text-align:right"><button ' +
-      'style="font:inherit;padding:6px 12px;border:1px solid var(--rule,#ccc);border-radius:9px;' +
-      'background:var(--panel-2,#f4f3ef);color:inherit;cursor:pointer">' + T('Close', 'Stäng') + '</button></form>';
+      '<form method="dialog" style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">' +
+      (window.wbSwitch ? '<button type="button" data-switch style="' + BTN + '">' + esc(T('Switches and joystick…', 'Brytare och joystick…')) + '</button>' : '') +
+      '<button style="' + BTN + '">' + T('Close', 'Stäng') + '</button></form>';
+    const sw = dlg.querySelector('[data-switch]');
+    if (sw) sw.onclick = () => { dlg.close(); window.wbSwitch.open(); };
     dlg.showModal();
     // the close button gets the focus; the list is read from the top
-    dlg.querySelector('form button').focus({ preventScroll: true });
+    dlg.querySelector('form button:last-child').focus({ preventScroll: true });
     dlg.scrollTop = 0;
   }
 
@@ -77,7 +84,7 @@ function wbShortcuts(cfg) {
     if (dlg.open) return;
     if (ev.key === '$') {
       armed = Date.now(); ev.preventDefault();
-      const avail = FN_KEYS.filter(k => cfg.actions[k]).join('/');
+      const avail = FN_KEYS.filter(k => acts()[k]).join('/');
       toast(T('$ — press ' + avail + ', or ? for the list', '$ — tryck ' + avail + ', eller ? för listan')); return;
     }
     if (!armed) return;
@@ -90,7 +97,7 @@ function wbShortcuts(cfg) {
       ev.preventDefault(); ev.stopImmediatePropagation();
       (cfg.onHelp || openList)(); return;
     }
-    const a = cfg.actions[ev.key.toUpperCase()];
+    const a = acts()[ev.key.toUpperCase()];
     if (!a) { toast(T('No shortcut on $' + ev.key.toUpperCase() + ' — $? shows the list.', 'Ingen genväg på $' + ev.key.toUpperCase() + ' — $? visar listan.')); return; }
     ev.preventDefault();
     toast(a.desc());
