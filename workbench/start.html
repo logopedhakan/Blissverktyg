@@ -19,7 +19,7 @@
     sessionStorage.setItem('wb-igang', '1');
     if (/[?&]start\b/.test(location.search)) return;
     const last = localStorage.getItem('wb-senast') || '';
-    if (/^(index|bildspel|almanacka|gissa|former|gravyr)\.html(\?[\w=&%-]*)?$/.test(last)) {
+    if (/^(index|bildspel|bildspel-ny|almanacka|gissa|former|gravyr)\.html(\?[\w=&%-]*)?$/.test(last)) {
       window.wbGoingBack = true;
       location.replace(last);
     }
@@ -92,6 +92,13 @@ header{position:relative}
       <p data-sv="en bild överst och blisstext under — visa i helskärm eller spara som PowerPoint"
          data-en="a picture on top and Bliss text below — show full screen or save as PowerPoint">en bild överst och blisstext under — visa i helskärm eller spara som PowerPoint</p>
     </a>
+    <!-- 2026-11-19: the new Bildspel beside the old one, which stays as it is -->
+    <a class="card" href="bildspel-ny.html">
+      <span class="icon" aria-hidden="true" data-ids="15710,16172"></span>
+      <h2 data-sv="Nya bildspelet" data-en="The new slideshow">Nya bildspelet</h2>
+      <p data-sv="samma bildspel med ett nytt arbetssätt — symboler på knapparna, dra in bilder, ångra"
+         data-en="the same slideshow, worked in a new way — symbols on the buttons, drag pictures in, undo">samma bildspel med ett nytt arbetssätt — symboler på knapparna, dra in bilder, ångra</p>
+    </a>
     <a class="card" href="almanacka.html">
       <span class="icon" aria-hidden="true" data-gloss="calendar,week,today"></span>
       <h2 data-sv="Almanacka" data-en="Almanac">Almanacka</h2>
@@ -163,6 +170,13 @@ for (const el of document.querySelectorAll('.icon[data-gloss]')) {
     if (sym) break;
   }
   if (sym) try { el.innerHTML = blissSVG(sym, { unit: 6, color: 'currentColor' }); } catch (_) {}
+}
+// a card drawn from BCI ids, side by side (the new slideshow: new + picture)
+for (const el of document.querySelectorAll('.icon[data-ids]')) {
+  try {
+    el.innerHTML = el.dataset.ids.split(',').map(id => BLISS_DATA.find(s => s.id === +id))
+      .filter(Boolean).map(sym => blissSVG(sym, { unit: 6, color: 'currentColor' })).join('');
+  } catch (_) {}
 }
 for (const el of document.querySelectorAll('.icon[data-elements]')) {
   const one = (f, s) => blissSVG({ e: [[f, s, 1, 0, 0, 0, 0, 0, '', 0, 4]] }, { unit: 5, color: 'currentColor' });

@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#28558C">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>WinBliss² — Nya bildspelet</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="css/wb-base.css">
+<link rel="stylesheet" href="css/wb-blisstext.css">
+<style>
+#dlg{border:1px solid var(--rule);border-radius:14px;padding:18px;max-width:min(420px,90vw);
+  background:var(--panel);color:var(--ink)}
+#dlg::backdrop{background:rgba(0,0,0,.35)}
+#dlg form{display:flex;flex-direction:column;gap:14px}
+#dlg .btns{display:flex;gap:8px;justify-content:flex-end}
+#dlgInput{font:inherit;font-size:15px;padding:7px 10px;border:1px solid var(--rule);border-radius:8px;
+  background:var(--panel-2);color:var(--ink);width:100%}
+#dirRow[hidden],#dlgCancel[hidden]{display:none}
+body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;
+  background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:8px;padding:10px 16px;flex-wrap:wrap}
+header h1{font-size:20px;white-space:nowrap}
+header .grow{flex:1}
+#showTitle{font:inherit;font-size:14.5px;padding:8px 10px;border:1px solid var(--rule);border-radius:9px;
+  background:var(--panel);color:var(--ink);width:160px;min-height:40px}
+#saveState{font-size:12.5px;color:var(--dim);white-space:nowrap;min-width:5.5em}
+header .tools{display:flex;gap:6px}
+/* Buttons with a Bliss symbol AND a word (2026-11-19): the symbol for the
+   Bliss reader, the word for everyone else — both always there. Targets at
+   least 40 px high. */
+.bi{display:inline-flex;align-items:center;gap:2px;line-height:0;flex:none}
+.bi svg{height:24px;width:auto;max-width:44px;display:block}
+.tb{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:6px 12px;
+  font-size:14.5px;border-radius:10px;line-height:1.15}
+.tb .lbl{white-space:nowrap}
+#btnPlay.big{font-size:17px;padding:8px 20px;min-height:48px}
+#btnPlay.big .bi svg{height:28px}
+/* a narrower window (a 1280 px laptop): the file buttons show their symbol only — the word stays
+   their name for a screen reader and their tooltip */
+@media (max-width:1360px){
+  header .tools .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  header .tools .tb{padding:6px 9px}
+}
+main{flex:1;display:grid;grid-template-columns:200px 1fr 350px;gap:14px;padding:0 18px 12px;min-height:0}
+.colHead{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:700;color:var(--ink)}
+.colHead #slideCount{font-weight:400;color:var(--dim)}
+.colHead .bi svg{height:20px}
+.col{display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
+/* the slide strip scrolls sideways in a narrow window — it must not widen the page (320 px: 470) */
+#slides,#stageWrap,#controls{min-width:0}
+button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--rule);
+  border-radius:10px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:disabled{opacity:.45;cursor:default}
+.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);font-weight:600}
+/* slide list */
+#slides{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:8px;
+  background:var(--panel-2);border-radius:12px;padding:8px}
+.thumb{display:flex;gap:6px;align-items:flex-start;padding:4px;border:2px solid transparent;border-radius:9px;background:transparent;cursor:grab}
+.thumb.on{border-color:var(--accent);background:var(--accent-soft)}
+.thumb:hover{border-color:var(--rule)}
+.thumb.on:hover{border-color:var(--accent)}
+.thumb.dragging{opacity:.45}
+/* where a dragged slide will land: a line above or below the thumbnail */
+.thumb.dropBefore{box-shadow:0 -4px 0 0 var(--accent)}
+.thumb.dropAfter{box-shadow:0 4px 0 0 var(--accent)}
+.thumb .no{font-size:12px;color:var(--dim);width:16px;text-align:right;padding-top:2px}
+.thumb svg{width:100%;height:auto;display:block;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+#slideBtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#slideBtns .tb{padding:5px 6px;font-size:13.5px;gap:5px}
+#slideBtns .bi svg{height:20px}
+#btnAdd{grid-column:1/-1;font-weight:700;font-size:15px}
+#btnDel:not(:disabled):hover{border-color:var(--sel);color:var(--sel)}
+/* stage */
+#stageWrap{flex:1;min-height:0;position:relative;display:flex}
+#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
+  background:var(--panel-2);border-radius:14px;padding:18px;outline:3px dashed transparent;outline-offset:-10px;
+  transition:outline-color .15s}
+#stageWrap.dropping #stage{outline-color:var(--accent);background:var(--accent-soft)}
+/* what an empty slide needs, right where it is missing */
+#stageCta{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:16px;
+  pointer-events:none;flex-wrap:wrap;padding:24px}
+#stageCta .cta{pointer-events:auto;font-size:17px;font-weight:700;min-height:56px;padding:10px 22px;
+  box-shadow:0 2px 10px rgba(0,0,0,.12);border-width:2px}
+#stageCta .cta .bi svg{height:30px}
+#stageCta .cta[hidden],#stageCta[hidden]{display:none}
+/* a slide that already has one of the two: a smaller button at the top or the bottom */
+#stageCta.top{align-items:flex-start}
+#stageCta.bottom{align-items:flex-end}
+#stageCta.top .cta,#stageCta.bottom .cta{font-size:15px;min-height:44px;padding:6px 16px}
+#stageCta.top .cta .bi svg,#stageCta.bottom .cta .bi svg{height:24px}
+#dropNote{position:absolute;inset:0;display:none;align-items:center;justify-content:center;gap:12px;
+  font-size:22px;font-weight:700;color:var(--accent);pointer-events:none}
+#dropNote .bi svg{height:40px}
+#stageWrap.dropping #dropNote{display:flex}
+#stageWrap.dropping #stageCta{display:none}
+@media (prefers-reduced-motion: reduce){#stage{transition:none}}
+#stage svg{width:100%;height:100%;max-width:100%;max-height:100%;display:block;
+  filter:drop-shadow(0 2px 10px rgba(0,0,0,.18))}
+#hint{font-size:12px;color:var(--dim)}
+/* controls */
+#controls{display:flex;flex-direction:column;gap:9px;overflow-y:auto;min-height:0;padding-right:2px}
+/* nothing in the panel may shrink: when room runs out (a small screen, or
+   zoomed in) the panel scrolls instead. Before, the picture gallery was the
+   one part that could shrink, and it collapsed to a sliver (Håkan, 2026-10-30) */
+#controls > *{flex-shrink:0}
+#controls h3{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink);text-transform:uppercase;letter-spacing:.04em;margin-top:6px}
+#controls h3 .bi svg{height:20px}
+/* the panel in three parts: the slide's content (always open), its look, and the whole show */
+#controls details.sec{border:1px solid var(--rule);border-radius:12px;background:var(--panel)}
+#controls details.sec > summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 12px;cursor:pointer;
+  font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;list-style:none;border-radius:12px}
+#controls details.sec > summary::-webkit-details-marker{display:none}
+/* the fold mark, drawn (a font's ▸ may come out turned): pointing right when shut, down when open */
+#controls details.sec > summary::after{content:"";margin-left:auto;margin-right:4px;width:9px;height:9px;flex:none;
+  border-right:2.5px solid var(--dim);border-bottom:2.5px solid var(--dim);transform:rotate(-45deg);transition:transform .15s}
+#controls details.sec[open] > summary::after{transform:rotate(45deg)}
+#controls details.sec > summary .bi svg{height:20px}
+#controls details.sec > summary:hover{background:var(--panel-2)}
+#controls .secBody{display:flex;flex-direction:column;gap:10px;padding:4px 12px 12px}
+@media (prefers-reduced-motion: reduce){#controls details.sec > summary::after{transition:none}}
+#controls label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px}
+#controls select,#controls input[type=range]{font:inherit;font-size:13px}
+#controls input[type=checkbox]{width:22px;height:22px}
+#controls input[type=range]{min-height:32px;width:150px}
+#controls select{min-height:36px}
+#controls > .tb,#controls .secBody > .tb{width:100%}
+#imgRow{display:flex;gap:6px}
+#imgRow #btnImg{flex:1;min-width:0;justify-content:flex-start}
+#imgRow #btnImg .lbl,#dirRow #btnDir .lbl{overflow:hidden;text-overflow:ellipsis}
+/* the text box, word chips and chooser: css/wb-blisstext.css */
+#dirRow{display:flex;gap:6px}
+#dirRow #btnDir{flex:1;min-width:0;justify-content:flex-start;font-size:14px}
+#dirRow [hidden]{display:none}
+/* the picture folder as a small strip of thumbnails, at most 3 cm high
+   (Håkan, 2026-10-30); more pictures scroll inside it. The file name shows
+   on hover (title) rather than under each thumbnail. */
+#gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px;
+  max-height:3cm;overflow-y:auto;background:var(--panel-2);border-radius:8px;padding:4px}
+#gallery[hidden]{display:none}
+#gallery button{padding:1px;border-radius:5px;display:flex;align-items:center;justify-content:center;min-width:0}
+#gallery img{width:100%;height:30px;object-fit:contain;display:block}
+#gallery .cap{display:none}
+#gallery .msg{grid-column:1/-1;font-size:12.5px;color:var(--dim);padding:4px}
+#fitNote{font-size:12.5px;color:var(--sel);font-weight:600}
+#saveNote{font-size:12px;color:var(--sel);display:none}
+#snack{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:70;display:flex;align-items:center;gap:14px;
+  background:var(--ink);color:var(--bg);padding:8px 10px 8px 18px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.3);font-size:15px}
+#snack[hidden]{display:none}
+#snack .tb{background:var(--panel);color:var(--ink);font-weight:700;min-height:40px}
+footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
+/* presentation */
+#show{position:fixed;inset:0;background:#000;z-index:60;display:none;align-items:center;justify-content:center;cursor:none}
+#show.on{display:flex}
+#show svg{width:100vw;height:100vh;display:block}
+#showNo{position:fixed;right:14px;bottom:10px;color:#888;font-size:13px;z-index:61;display:none}
+#show.on + #showNo{display:block}
+/* read-aloud button while showing: bottom left, shown only with the show */
+#showSpeak{position:fixed;left:14px;bottom:10px;z-index:61;display:none;font-size:22px;padding:6px 12px;
+  background:rgba(255,255,255,.12);color:#ddd;border:1px solid rgba(255,255,255,.25);border-radius:12px;cursor:pointer}
+#showSpeak:hover{background:rgba(255,255,255,.22)}
+#show.on ~ #showSpeak{display:block}
+#showSpeak[hidden]{display:none !important}
+#btnSpeak.speaking{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+/* background colour of the slides: swatches + a free colour */
+.bgRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
+.bgRow > span:first-child{flex:1 0 100%}
+#bgSwatches,#tbgSwatches{display:flex;gap:4px;flex-wrap:wrap}
+#bgSwatches button,#tbgSwatches button{width:29px;height:29px;padding:0;border-radius:8px;border:2px solid var(--rule)}
+#bgSwatches button.on,#bgSwatches button:focus-visible,
+#tbgSwatches button.on,#tbgSwatches button:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+/* "no text background": a white tile struck through */
+#tbgSwatches button.none{background:linear-gradient(to top right,transparent 44%,#c33 44%,#c33 56%,transparent 56%),#fff !important}
+#optBg,#optTextBg{width:36px;height:29px;padding:0 2px;border:1px solid var(--rule);border-radius:7px;background:var(--panel);cursor:pointer}
+/* zoomed in or a small window: the slides become a strip on top, and the
+   slide and the panel (picture folder included) stay side by side on screen */
+@media (max-width:900px) and (min-width:601px){
+  main{grid-template-columns:1fr 280px;grid-template-rows:auto minmax(0,1fr)}
+  main > aside:first-child{grid-column:1/-1;flex-direction:row;align-items:stretch}
+  #slides{flex-direction:row;overflow-x:auto;padding:6px}
+  .thumb{flex:0 0 120px}
+  #slideBtns{grid-template-columns:repeat(2,1fr);width:190px;align-content:start}
+  main > aside:first-child .colHead{display:none}
+}
+/* phones: one column, the page scrolls */
+@media (max-width:600px){
+  body{height:auto;min-height:100vh}
+  main{grid-template-columns:1fr}
+  #slides{flex-direction:row;overflow-x:auto;max-height:none}
+  .thumb{min-width:140px}
+  #stageWrap{aspect-ratio:16/9;flex:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <a class="homeLink" href="start.html" title="Till startsidan" data-en-title="To the start page">⌂ Start</a>
+  <h1 title="En bild överst, blisstext under — visa i helskärm eller spara som PowerPoint"
+      data-en-title="A picture at the top, Bliss text underneath — show it full screen or save as PowerPoint"><span data-en="The new slideshow">Nya bildspelet</span> <span style="color:var(--sel)">·</span> Bliss</h1>
+  <input id="showTitle" type="text" placeholder="Bildspelets namn" data-en-ph="Slideshow name" autocomplete="off"
+         aria-label="Bildspelets namn" data-en-aria="Slideshow name">
+  <span id="saveState" role="status" aria-live="polite"></span>
+  <span class="grow"></span>
+  <!-- 2026-11-19: every button has its Bliss symbol AND its word (symbols drawn by the engine, data-bliss = BCI ids) -->
+  <div class="tools" role="toolbar" aria-label="Arkiv" data-en-aria="File">
+    <button id="btnOpen" class="tb"><span class="bi" data-bliss="15922"></span><span class="lbl" data-en="Open…">Öppna…</span></button>
+    <button id="btnSave" class="tb"><span class="bi" data-bliss="15143"></span><span class="lbl" data-en="Save">Spara</span></button>
+    <button id="btnSaveAs" class="tb"><span class="bi" data-bliss="15143,23511"></span><span class="lbl" data-en="Save as…">Spara som…</span></button>
+    <button id="btnPptx" class="tb"><span class="bi" data-bliss="23447"></span><span class="lbl">PowerPoint</span></button>
+  </div>
+  <button id="btnPlay" class="tb primary big" title="F5"><span class="bi" data-bliss="16967"></span><span class="lbl" data-en="Show">Visa</span></button>
+</header>
+<main>
+  <aside class="col" aria-labelledby="slidesHead">
+    <h2 id="slidesHead" class="colHead"><span class="bi" data-bliss="15962"></span><span data-en="Slides">Sidor</span> <span id="slideCount"></span></h2>
+    <div id="slides" role="list" aria-labelledby="slidesHead"
+         title="↑/↓ byter sida · Alt+↑/↓ flyttar sidan · Delete tar bort · dra för att flytta"
+         data-en-title="↑/↓ change slide · Alt+↑/↓ move the slide · Delete removes it · drag to move"></div>
+    <div id="slideBtns">
+      <button id="btnAdd" class="tb wide"><span class="bi" data-bliss="15710,15962"></span><span class="lbl" data-en="New slide">Ny sida</span></button>
+      <button id="btnUp" class="tb"><span class="bi" data-bliss="17983"></span><span class="lbl" data-en="Up">Upp</span></button>
+      <button id="btnDown" class="tb"><span class="bi" data-bliss="13869"></span><span class="lbl" data-en="Down">Ner</span></button>
+      <button id="btnDup" class="tb"><span class="bi" data-bliss="13412"></span><span class="lbl" data-en="Copy">Kopiera</span></button>
+      <button id="btnDel" class="tb"><span class="bi" data-bliss="17498"></span><span class="lbl" data-en="Delete">Ta bort</span></button>
+    </div>
+  </aside>
+  <section class="col" aria-label="Sidan" data-en-aria="The slide">
+    <div id="stageWrap">
+      <div id="stage"></div>
+      <!-- an empty slide asks for what it needs; a picture file can be dropped anywhere on it -->
+      <div id="stageCta">
+        <button id="ctaImg" class="tb cta"><span class="bi" data-bliss="16172"></span><span class="lbl" data-en="Add a picture">Lägg till bild</span></button>
+        <button id="ctaTxt" class="tb cta"><span class="bi" data-bliss="18285"></span><span class="lbl" data-en="Write the text">Skriv text</span></button>
+      </div>
+      <div id="dropNote" aria-hidden="true"><span class="bi" data-bliss="16172"></span><span data-en="Drop the picture here">Släpp bilden här</span></div>
+    </div>
+    <div id="fitNote" hidden></div>
+    <div id="hint" data-en="Tip: drag a picture onto the slide, or paste one with Ctrl+V. Click a word to choose another symbol or form.">Tips: dra en bild till sidan eller klistra in den med Ctrl+V. Klicka på ett ord för att välja en annan symbol eller form.</div>
+  </section>
+  <aside class="col" aria-label="Innehåll och utseende" data-en-aria="Content and look">
+    <div id="controls">
+      <h3><span class="bi" data-bliss="16172"></span><span data-en="Picture">Bild</span></h3>
+      <div id="imgRow">
+        <button id="btnImg" class="tb"><span class="bi" data-bliss="16172"></span><span class="lbl" data-en="Choose picture…">Välj bild…</span></button>
+        <button id="btnImgOff" class="tb" title="Ta bort bilden" data-en-title="Remove the picture" style="display:none"><span class="bi" data-bliss="17498"></span><span class="lbl" data-en="Remove">Ta bort</span></button>
+      </div>
+      <!-- Håkan, 2026-10-20: en egen bildmapp — bilderna visas här, klicka för att lägga på sidan -->
+      <div id="dirRow">
+        <button id="btnDir" class="tb"><span class="bi" data-bliss="23511"></span><span class="lbl" data-en="Picture folder choice">Val av bildmapp</span></button>
+        <button id="btnDirRefresh" class="tb" title="Läs mappen igen (nya bilder)" data-en-title="Read the folder again (new pictures)" aria-label="Läs mappen igen" data-en-aria="Read the folder again" hidden>⟳</button>
+      </div>
+      <div id="gallery" hidden></div>
+      <h3><span class="bi" data-bliss="18285"></span><span data-en="Bliss text">Blisstext</span></h3>
+      <textarea id="txt" placeholder="Skriv texten här…" data-en-ph="Write the text here…" spellcheck="false"
+                aria-label="Blisstext" data-en-aria="Bliss text"></textarea>
+      <div id="chips"></div>
+      <div id="chooser" hidden></div>
+      <button id="btnSpeak" class="tb"><span class="bi" data-bliss="16728"></span><span class="lbl" data-en="Read the slide aloud">Läs upp sidan</span></button>
+      <!-- 2026-11-19: each slide has its own look; a new slide starts with the look of the one before -->
+      <details id="secLook" class="sec" open>
+        <summary><span class="bi" data-bliss="13377"></span><span data-en="This slide's look">Den här sidans utseende</span></summary>
+        <div class="secBody">
+          <div class="bgRow"><span data-en="Background colour">Bakgrundsfärg</span>
+            <span id="bgSwatches"></span>
+            <input id="optBg" type="color" value="#ffffff" title="Välj en egen färg" data-en-title="Choose your own colour"
+                   aria-label="Egen bakgrundsfärg" data-en-aria="Own background colour"></div>
+          <div class="bgRow"><span data-en="Background behind the Bliss text">Bakgrund bakom blisstexten</span>
+            <span id="tbgSwatches"></span>
+            <input id="optTextBg" type="color" value="#ffffff" title="Välj en egen färg" data-en-title="Choose your own colour"
+                   aria-label="Egen färg bakom blisstexten" data-en-aria="Own colour behind the Bliss text"></div>
+          <label><span data-en="Picture height">Bildens höjd</span> <input id="optImg" type="range" min="30" max="85" step="1"></label>
+          <button id="btnLookAll" class="tb"><span class="bi" data-bliss="12360"></span><span class="lbl" data-en="Use on all slides">Använd på alla sidor</span></button>
+        </div>
+      </details>
+      <details id="secShow" class="sec">
+        <summary><span class="bi" data-bliss="12360"></span><span data-en="The whole slideshow">Hela bildspelet</span></summary>
+        <div class="secBody">
+          <label><span data-en="Bliss symbols">Blissymboler</span> <input id="optSymbols" type="checkbox" checked></label>
+          <label><span data-en="Words under the symbols">Ord under symbolerna</span> <input id="optLabels" type="checkbox" checked></label>
+          <label><span data-en="Symbol size">Symbolstorlek</span>
+            <select id="optSize">
+              <option value="160" data-en="Very large">Mycket stora</option>
+              <option value="120" data-en="Large">Stora</option>
+              <option value="90" data-en="Medium">Mellan</option>
+              <option value="65" data-en="Small">Små</option>
+            </select></label>
+          <label><span data-en="Space between symbols">Avstånd mellan symbolerna</span> <input id="optGap" type="range" min="1" max="24" step="1"></label>
+          <label><span data-en="Line width">Linjebredd</span> <input id="optPen" type="range" min="15" max="100" step="5"></label>
+          <label><span data-en="Read each slide aloud when showing">Läs upp sidorna vid visning</span> <input id="optSpeak" type="checkbox"></label>
+          <button id="btnList" class="tb"><span class="bi" data-bliss="15220"></span><span class="lbl" data-en="Open your own word list (.wbs)…">Öppna egen ordlista (.wbs)…</span></button>
+        </div>
+      </details>
+      <div id="saveNote"></div>
+    </div>
+  </aside>
+</main>
+<!-- "the slide was removed — Undo" (2026-11-19): removing needs no question, it can be undone -->
+<div id="snack" role="status" hidden><span id="snackMsg"></span><button id="snackUndo" class="tb"><span class="lbl" data-en="Undo">Ångra</span></button></div>
+<div id="show" role="dialog" aria-label="Bildspel"></div><div id="showNo"></div>
+<button id="showSpeak" title="Läs upp sidan (L)" aria-label="Läs upp sidan">🔊</button>
+<dialog id="dlg"><form method="dialog">
+  <p id="dlgMsg"></p>
+  <input id="dlgInput" type="text" autocomplete="off" hidden>
+  <div class="btns"><button id="dlgCancel" value="cancel"></button><button id="dlgOk" value="ok" class="primary">OK</button></div>
+</form></dialog>
+<footer>WinBliss² · <span data-en="slideshow">bildspel</span> · 2026 AnyCom AB · CC BY 4.0 · <span title="Blissymbolics © C.K. Bliss 1949, 1965 · symbols © Blissymbolics Communication International (BCI), distributed under CC BY-SA 4.0 — conforming to the BCI Authorized Vocabulary, blissymbolics.org">Blissymbolics © BCI, CC BY-SA 4.0</span></footer>
+
+<script src="js/shared/lang.js"></script>
+<script src="js/shared/pwa.js"></script>
+<script src="js/shared/window.js"></script>
+<script src="js/shared/speak.js"></script>
+<script src="js/shared/wbs.js"></script>
+<script src="js/shared/shortcuts.js"></script>
+<script src="js/engine/bliss-shapes.js"></script>
+<script src="js/engine/bliss-engine.js"></script>
+<script src="js/data/bliss-data.js"></script>
+<script src="js/data/glosses.js"></script>
+<script src="js/shared/sv-morph.js"></script>
+<script src="js/shared/bliss-grammar.js"></script>
+<script src="js/data/bliss-skriv-data.js"></script>
+<script src="js/data/bliss-synonymer.js"></script>
+<script src="js/data/bliss-harledda.js"></script>
+<script src="js/shared/bliss-skriv.js"></script>
+<script src="js/shared/skriv-glosor.js"></script>
+<script src="js/shared/blisstext.js"></script>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+
+/* Language (PeO, 2026-09-25): follows the suite's wb-lang from the start page. */
+/* Also runs as a claude.ai artifact (Håkan, 2026-10-22): inside that frame
+   storage may throw, alert/confirm are swallowed, downloads go through the
+   viewer's `downloads` capability and folders cannot be opened. */
+const IN_FRAME = (() => { try { return window.self !== window.top; } catch (_) { return true; } })();
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } };
+const LNG = wbLang();
+const tr = (en, sv) => LNG === 'sv' ? sv : en;
+const GL = LNG === 'sv' ? 'sv' : 'en';           // the language words are written in
+document.documentElement.lang = LNG;
+if (LNG === 'en') {
+  document.title = 'WinBliss² — The new slideshow';
+  for (const el of document.querySelectorAll('[data-en]')) el.textContent = el.dataset.en;
+  for (const el of document.querySelectorAll('[data-en-ph]')) el.placeholder = el.dataset.enPh;
+  for (const el of document.querySelectorAll('[data-en-title]')) el.title = el.dataset.enTitle;
+  for (const el of document.querySelectorAll('[data-en-aria]')) el.setAttribute('aria-label', el.dataset.enAria);
+}
+/* the page's own message and yes/no dialog — alert/confirm do nothing in an artifact */
+/* Answers come straight from the buttons, Enter and Esc — not from the
+   dialog's 'close' event, which some embedded views never deliver. */
+function openDlg(msg, { okLabel, cancelLabel, input } = {}) {
+  return new Promise(res => {
+    const d = $('dlg'), inp = $('dlgInput');
+    $('dlgMsg').textContent = msg;
+    inp.hidden = input === undefined; inp.value = input || '';
+    $('dlgOk').textContent = okLabel || 'OK';
+    $('dlgCancel').hidden = cancelLabel === null;
+    $('dlgCancel').textContent = cancelLabel || tr('Cancel', 'Avbryt');
+    let done = false;
+    const finish = (ok) => {
+      if (done) return; done = true;
+      d.querySelector('form').onsubmit = d.oncancel = $('dlgOk').onclick = $('dlgCancel').onclick = null;
+      if (d.open) d.close();
+      res(ok);
+    };
+    $('dlgOk').onclick = (e) => { e.preventDefault(); finish(true); };
+    $('dlgCancel').onclick = (e) => { e.preventDefault(); finish(false); };
+    d.querySelector('form').onsubmit = (e) => { e.preventDefault(); finish(true); };   // Enter in the field
+    d.oncancel = (e) => { e.preventDefault(); finish(false); };                      // Esc
+    d.showModal();
+    if (!inp.hidden) inp.select();
+  });
+}
+const ask = (msg, okLabel, cancelLabel) => openDlg(msg, { okLabel, cancelLabel });
+const say = (msg) => openDlg(msg, { cancelLabel: null });
+/* the same dialog with a text field; resolves the text, or null on cancel */
+const askText = (msg, value, okLabel) =>
+  openDlg(msg, { okLabel, input: value || '' }).then(ok => ok ? $('dlgInput').value.trim() : null);
+const escXml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/* ---- text to Bliss: Skriv's word machinery, shared with Gravyrkort ----
+   js/shared/blisstext.js (lookup, forms, "gå #2", "#12345", remembered picks,
+   the word chips and the chooser). A slide is a state: { text, words }. */
+const { symById, glossOf, IND_CHOICES, indKeys, indToggle, autoLabel, rememberPick, wordEls, svgBox, chipSVG } = BT;
+const parseSlide = (s, inp) => BT.parse(s, inp);
+
+/* ---- the Bliss symbols on buttons and headings (2026-11-19) ----
+   data-bliss="id[,id]" = BCI-AV ids, drawn by the engine in the text colour.
+   The word sits beside it in .lbl, which is also what the language switch
+   and the code that changes a button's text write to. */
+function drawIcons(root = document) {
+  for (const el of root.querySelectorAll('[data-bliss]')) {
+    if (el.firstChild) continue;
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = el.dataset.bliss.split(',').map(id => {
+      const sy = symById(+id);
+      // a heavier pen than in the text: at button size the normal one is a hairline
+      try { return sy ? blissSVG(sy, { unit: 3, strokeUnits: 0.75, color: 'currentColor' }) : ''; } catch (_) { return ''; }
+    }).join('');
+  }
+}
+drawIcons();
+/** The word on a button (its .lbl), or the whole text of a plain button. */
+const lblOf = (btn) => btn.querySelector('.lbl') || btn;
+const setLabel = (btn, text) => { lblOf(btn).textContent = text; };
+// the file buttons may show their symbol only (a narrow window): the word is their tooltip too
+for (const b of document.querySelectorAll('header .tools .tb')) b.title = lblOf(b).textContent;
+$('btnPlay').title = lblOf($('btnPlay')).textContent + ' (F5)';
+/* measured boxes are cached — every thumbnail re-lays out its words */
+const BOX = new Map();
+function boxOf(w) {
+  if (w.skip && !w.plain) return null;                 // left out of the Bliss text (an article, "ska")
+  const key = w.asText ? 't|' + w.token : w.ids[w.pick] + '|' + (w.ind || '');
+  if (BOX.has(key)) return BOX.get(key);
+  const els = wordEls(w);
+  let b = null;
+  if (els.length) {
+    const sb = svgBox(els);
+    // slide ink gets its own class: .bfill is styled document-wide by every inline svg
+    const body = (sb.svg.match(/<\/style>([\s\S]*)<\/svg>/) || [, ''])[1].replace(/class="bfill"/g, 'class="bsl"');
+    b = { body, vx: sb.vx, vy: sb.vy, vw: sb.vw, vh: sb.vh };
+  }
+  BOX.set(key, b);
+  return b;
+}
+
+/* ================= slide layout (one SVG, 1600 × 900) =================
+   Every slide in a show uses the same symbol scale (show.size = slide units
+   per 1000 engine units), so a word is the same size on every slide — Bliss
+   size is semantic. Only text that cannot fit its area is shrunk, and the
+   editor says so. */
+const SW = 1600, SH = 900, FS = 300, LINE_GAP = 140;
+// show.gap: half-units between words; punctuation sits closer (as in Skriv)
+function gapOf(w) {
+  // plain-text words (symbols off) read as a sentence: tighter, the full stop close
+  if (w.plain) return w.punct ? 0.3 : Math.max(1.5, show.gap * 0.4);
+  return w.punct ? Math.max(1, show.gap / 2) : show.gap;
+}
+function lineOf(words, labels) {
+  let cursor = 0, parts = [], labs = [], minY = 1e9, maxY = -1e9, maxX = 0;
+  words.forEach((w, i) => {
+    const b = boxOf(w); if (!b) return;
+    const dx = cursor * 100 + (i === 0 ? 0 : gapOf(w)) * 100 - b.vx;
+    parts.push(`<g transform="translate(${dx.toFixed(1)} 0)">${b.body}</g>`);
+    if (labels && !w.punct) labs.push({ x: dx + b.vx + b.vw / 2, t: w.label || w.token });
+    minY = Math.min(minY, b.vy); maxY = Math.max(maxY, b.vy + b.vh);
+    cursor = (dx + b.vx + b.vw) / 100;
+    maxX = dx + b.vx + b.vw;
+  });
+  if (!parts.length) return null;
+  const textY = Math.max(maxY, 1600) + 400;
+  const texts = labels ? labs.map(l =>
+    `<text x="${l.x.toFixed(1)}" y="${textY}" text-anchor="middle" font-size="${FS}" font-family="Helvetica, Arial, sans-serif" stroke="none" class="bsl">${escXml(l.t)}</text>`).join('') : '';
+  return { body: parts.join('') + texts, w: maxX,
+           top: Math.min(minY, 300), bottom: labels ? textY + FS * 0.3 : maxY };
+}
+/* show.symbols off (Håkan, 2026-10-29): the slide shows the words as plain
+   text — each word as it would read under its symbol (a chosen form included),
+   so the same slide can be shown with or without Bliss */
+const asTextWord = (w) => w.br ? w : { token: w.punct ? w.token : (w.label || w.token), ids: [], pick: 0, ind: '', asText: true, punct: w.punct, plain: true };
+function blockOf(s, wrap) {
+  const lines = [[]];
+  let cursor = 0;
+  const words = show.symbols ? s.words : s.words.map(asTextWord);
+  for (const w of words) {
+    if (w.br) { lines.push([]); cursor = 0; continue; }
+    const b = boxOf(w); if (!b) continue;
+    const cur = lines[lines.length - 1];
+    const gap = cur.length ? gapOf(w) * 100 : 0;
+    if (cur.length && cursor + gap + b.vw > wrap && !w.punct) { lines.push([w]); cursor = b.vw; }
+    else { cur.push(w); cursor += gap + b.vw; }
+  }
+  const ls = lines.filter(l => l.length).map(l => lineOf(l, show.symbols && show.labels)).filter(Boolean);
+  if (!ls.length) return null;
+  const W = Math.max(...ls.map(l => l.w));
+  let y = 0, body = '';
+  for (const l of ls) {
+    body += `<g transform="translate(${((W - l.w) / 2).toFixed(1)} ${(y - l.top).toFixed(1)})">${l.body}</g>`;
+    y += l.bottom - l.top + LINE_GAP;
+  }
+  return { body, W, H: y - LINE_GAP };
+}
+/* where the picture and the text go on a slide */
+function layoutOf(s) {
+  const hasText = s.words.some(w => !w.br);
+  const top = 30, bot = SH - 30, gap = 24, x = 40, w = SW - 80;
+  let img = null, txt = null;
+  if (s.img && hasText) {
+    const ih = (bot - top - gap) * (s.imgPct || show.imgPct) / 100;
+    img = { x, y: top, w, h: ih }; txt = { x, y: top + ih + gap, w, h: bot - top - ih - gap };
+  } else if (s.img) img = { x, y: top, w, h: bot - top };
+  else if (hasText) txt = { x, y: top, w, h: bot - top };
+  const scale = show.size / 1000;
+  const blk = txt ? blockOf(s, txt.w / scale) : null;
+  let vb = null, shrunk = false;
+  if (blk) {
+    // the viewBox has the text area's proportions at the show's scale; only
+    // a block that does not fit grows it (= shrinks the symbols)
+    let vw = txt.w / scale, vh = txt.h / scale;
+    const k = Math.max(1, blk.W / vw, blk.H / vh);
+    shrunk = k > 1.001; vw *= k; vh *= k;
+    vb = { x: -(vw - blk.W) / 2, y: -(vh - blk.H) / 2, w: vw, h: vh };
+  } else if (txt && s.img) img = { x, y: top, w, h: bot - top };
+  return { img, txt: blk ? txt : null, blk, vb, shrunk };
+}
+function slideSVG(s, placeholder) {
+  const L = layoutOf(s);
+  const bg = s.bg || show.bg || '#ffffff', textBg = s.textBg ?? null, ink = inkFor(textBg || bg);
+  let inner = `<rect width="${SW}" height="${SH}" fill="${escXml(bg)}"/>`;
+  if (L.img) inner += `<image href="${escXml(s.img)}" x="${L.img.x}" y="${L.img.y}" width="${L.img.w}" height="${L.img.h}" preserveAspectRatio="xMidYMid meet"/>`;
+  if (L.blk && textBg) {
+    const b = textBand(L);
+    inner += `<rect x="${b.x.toFixed(1)}" y="${b.y.toFixed(1)}" width="${b.w.toFixed(1)}" height="${b.h.toFixed(1)}" rx="22" fill="${escXml(textBg)}"/>`;
+  }
+  if (L.blk) inner += `<svg x="${L.txt.x}" y="${L.txt.y}" width="${L.txt.w}" height="${L.txt.h}"
+      viewBox="${L.vb.x.toFixed(1)} ${L.vb.y.toFixed(1)} ${L.vb.w.toFixed(1)} ${L.vb.h.toFixed(1)}" preserveAspectRatio="xMidYMid meet" overflow="visible">
+      <g stroke="${ink}" stroke-width="${+show.pen || 35}" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
+  if (!L.img && !L.blk && placeholder)
+    inner += `<text x="${SW / 2}" y="${SH / 2}" text-anchor="middle" font-size="44" fill="#9A9AA2"
+      font-family="Atkinson Hyperlegible Next, Atkinson Hyperlegible, sans-serif">${escXml(placeholder)}</text>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SW} ${SH}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:${ink}}</style>${inner}</svg>`;
+}
+/* the coloured tile behind the Bliss text (Håkan, 2026-11-05): the text area's
+   full width, and as high as the symbols and words actually are, with a margin
+   — never reaching up into the picture */
+function textBand(L) {
+  const k = L.txt.w / L.vb.w;                       // slide units per block unit (meet: same both ways)
+  const top = L.txt.y + (0 - L.vb.y) * k, h = L.blk.H * k, pad = 18;
+  const y = Math.max(L.txt.y - 10, top - pad);
+  return { x: L.txt.x - 10, y, w: L.txt.w + 20, h: Math.min(SH - 6 - y, top + h + pad - y) };
+}
+/* the slide's ink follows its background (Håkan, 2026-11-05): black symbols on
+   a light colour, white on a dark one — whichever reads best (WCAG luminance).
+   With a tile behind the text, the tile's colour decides. */
+function inkFor(bg) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(bg || '');
+  if (!m) return '#000';
+  const n = parseInt(m[1], 16);
+  const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * lin(n >> 16 & 255) + 0.7152 * lin(n >> 8 & 255) + 0.0722 * lin(n & 255);
+  return L < 0.179 ? '#fff' : '#000';
+}
+
+/* ================= the show ================= */
+/* Each slide has its own look (2026-11-19): background colour, the tile behind
+   the Bliss text and the picture's height. A new slide starts with the look of
+   the slide it comes after; "Use on all slides" copies it to every slide. The
+   symbol size, line width and spacing stay the same for the whole show — Bliss
+   size is semantic, a word is the same size on every slide. */
+const LOOK_DEFAULT = { bg: '#ffffff', textBg: null, imgPct: 62 };
+const lookOf = (s) => ({ bg: s.bg, textBg: s.textBg ?? null, imgPct: s.imgPct });
+const newSlide = (from) => Object.assign({ text: '', words: [], img: null, imgW: 0, imgH: 0 }, LOOK_DEFAULT, from ? lookOf(from) : {});
+let show = { v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, pen: 35, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, slides: [newSlide()], custom: [] };
+let cur = 0;          // current slide
+let open = -1;        // word whose chooser is open
+
+
+/* what a slide is called: "Sida 2 av 5: Vi tycker om katter" */
+const slideName = (s, i) => tr('Slide', 'Sida') + ` ${i + 1} ` + tr('of', 'av') + ` ${show.slides.length}: ` +
+  (s.text.trim().replace(/\s+/g, ' ') || (s.img ? tr('a picture', 'en bild') : tr('empty', 'tom')));
+function renderSlides() {
+  const box = $('slides');
+  // focus stays on the current thumbnail while the list is redrawn (keyboard use)
+  const hadFocus = box.contains(document.activeElement);
+  box.innerHTML = '';
+  show.slides.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'thumb' + (i === cur ? ' on' : '');
+    b.innerHTML = `<span class="no" aria-hidden="true">${i + 1}</span>${slideSVG(s, '')}`;
+    b.setAttribute('aria-label', slideName(s, i));
+    if (i === cur) b.setAttribute('aria-current', 'true');
+    b.tabIndex = i === cur ? 0 : -1;               // one stop in the tab order; arrows move inside
+    b.title = s.text || tr('Slide', 'Sida') + ' ' + (i + 1);
+    b.draggable = true;
+    b.dataset.i = i;
+    b.onclick = () => go(i);
+    box.appendChild(b);
+  });
+  $('slideCount').textContent = `(${show.slides.length})`;
+  if (hadFocus && box.children[cur]) box.children[cur].focus({ preventScroll: true });
+  if (box.children[cur]) box.children[cur].scrollIntoView({ block: 'nearest' });
+  $('btnUp').disabled = cur === 0;
+  $('btnDown').disabled = cur === show.slides.length - 1;
+  $('btnDel').disabled = show.slides.length < 2 && !show.slides[0].text && !show.slides[0].img;
+}
+function renderStage() {
+  const sl = show.slides[cur];
+  $('stage').innerHTML = slideSVG(sl, '');
+  const hasImg = !!sl.img, hasTxt = sl.words.some(w => !w.br);
+  $('ctaImg').hidden = hasImg; $('ctaTxt').hidden = hasTxt;
+  $('stageCta').hidden = hasImg && hasTxt;
+  $('stageCta').className = hasImg === hasTxt ? '' : hasImg ? 'bottom' : 'top';
+  const fn = $('fitNote');
+  fn.hidden = !layoutOf(show.slides[cur]).shrunk;
+  fn.textContent = tr('⚠ The text does not fit at the chosen size and has been made smaller on this slide — shorten the text, lower the picture or choose smaller symbols.',
+    '⚠ Texten får inte plats i vald storlek och har gjorts mindre på den här sidan — korta texten, sänk bildens höjd eller välj mindre symboler.');
+  const thumb = $('slides').children[cur];
+  if (thumb) {
+    thumb.innerHTML = `<span class="no" aria-hidden="true">${cur + 1}</span>${slideSVG(show.slides[cur], '')}`;
+    thumb.setAttribute('aria-label', slideName(show.slides[cur], cur));
+    thumb.title = show.slides[cur].text || tr('Slide', 'Sida') + ' ' + (cur + 1);
+  }
+}
+function renderImgRow() {
+  const s = show.slides[cur];
+  setLabel($('btnImg'), s.img ? (s.imgName || tr('Picture', 'Bild')) + ' — ' + tr('change…', 'byt…') : tr('Choose picture…', 'Välj bild…'));
+  $('btnImgOff').style.display = s.img ? '' : 'none';
+}
+/* the word chips and the chooser are the shared ones (js/shared/blisstext.js) */
+function renderChips() {
+  BT.renderChips($('chips'), show.slides[cur], open, (i) => { open = open === i ? -1 : i; renderChips(); renderChooser(); });
+}
+function changed() { renderChips(); renderChooser(); renderStage(); autosave(); }
+function renderChooser() {
+  BT.renderChooser($('chooser'), show.slides[cur], open, {
+    change: changed,
+    label: () => { renderStage(); autosave(); },
+    labelDone: renderChips,
+  });
+}
+function renderOptions() {
+  $('showTitle').value = show.title || '';
+  $('optSymbols').checked = show.symbols;
+  $('optLabels').checked = show.labels;
+  // words under the symbols only mean something while there are symbols
+  $('optLabels').disabled = !show.symbols;
+  $('optLabels').closest('label').style.opacity = show.symbols ? '' : '.5';
+  $('optSize').value = String(show.size);
+  const sl = show.slides[cur] || show;            // the slide's own look
+  $('optImg').value = String(sl.imgPct || show.imgPct);
+  $('optGap').value = String(show.gap);
+  $('optPen').value = String(show.pen || 35);
+  $('optSpeak').checked = !!show.speakAuto;
+  $('optBg').value = sl.bg || '#ffffff';
+  for (const b of $('bgSwatches').children) b.classList.toggle('on', b.dataset.bg.toLowerCase() === (sl.bg || '#ffffff').toLowerCase());
+  $('optTextBg').value = sl.textBg || '#ffffff';
+  for (const b of $('tbgSwatches').children) b.classList.toggle('on', b.dataset.bg.toLowerCase() === (sl.textBg || '').toLowerCase());
+  // "Use on all slides" only means something while some slide looks different
+  const one = JSON.stringify(lookOf(sl));
+  $('btnLookAll').disabled = show.slides.every(x => JSON.stringify(lookOf(x)) === one);
+}
+function renderAll() { renderSlides(); renderStage(); renderImgRow(); renderChips(); renderChooser(); }
+function go(i) {
+  cur = Math.max(0, Math.min(show.slides.length - 1, i));
+  open = -1;
+  $('txt').value = show.slides[cur].text;
+  renderAll();
+  renderOptions();
+}
+
+/* ---- slide list buttons ---- */
+$('btnAdd').onclick = () => { show.slides.splice(cur + 1, 0, newSlide(show.slides[cur])); go(cur + 1); autosave(); $('txt').focus(); };
+$('btnDup').onclick = () => {
+  show.slides.splice(cur + 1, 0, JSON.parse(JSON.stringify(show.slides[cur])));
+  go(cur + 1); autosave();
+};
+/* Removing a slide asks nothing — it can be undone for a while (2026-11-19):
+   faster for everyone, and forgiving of a slip of the hand or the switch. */
+let snackT = null, snackUndo = null;
+function snack(msg, undo) {
+  $('snackMsg').textContent = msg;
+  snackUndo = undo;
+  $('snack').hidden = false;
+  clearTimeout(snackT);
+  snackT = setTimeout(hideSnack, 9000);
+}
+function hideSnack() { $('snack').hidden = true; snackUndo = null; clearTimeout(snackT); }
+$('snackUndo').onclick = () => { const u = snackUndo; hideSnack(); if (u) u(); };
+function delSlide() {
+  const i = cur, s = show.slides[i], wasOnly = show.slides.length === 1;
+  show.slides.splice(i, 1);
+  if (!show.slides.length) show.slides.push(newSlide(s));
+  go(Math.min(i, show.slides.length - 1)); autosave();
+  if (!s.text && !s.img) return;                   // an empty slide: nothing worth undoing
+  snack(tr(`Slide ${i + 1} was removed`, `Sida ${i + 1} togs bort`), () => {
+    if (wasOnly) show.slides = [];                 // the empty slide that took its place goes again
+    show.slides.splice(i, 0, s); go(i); autosave();
+  });
+}
+$('btnDel').onclick = delSlide;
+document.addEventListener('keydown', (ev) => {
+  // Ctrl+Z while "Undo" is offered — outside the text fields, which have their own undo
+  if (!snackUndo || !(ev.ctrlKey || ev.metaKey) || ev.key.toLowerCase() !== 'z') return;
+  const t = ev.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+  ev.preventDefault(); $('snackUndo').click();
+});
+/* the slide list from the keyboard: arrows change slide, Alt+arrows move it, Delete removes it */
+$('slides').addEventListener('keydown', (ev) => {
+  const t = ev.target.closest('.thumb'); if (!t) return;
+  const i = +t.dataset.i, n = show.slides.length;
+  const fwd = ['ArrowDown', 'ArrowRight'].includes(ev.key), back = ['ArrowUp', 'ArrowLeft'].includes(ev.key);
+  // Alt+↑/↓ only: Alt+←/→ is the browser's own back and forward
+  if (ev.altKey && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
+    ev.preventDefault(); if (i !== cur) go(i); moveSlide(cur, cur + (ev.key === 'ArrowDown' ? 1 : -1)); return;
+  }
+  if (ev.altKey) return;
+  let j = null;
+  if (fwd) j = i + 1; else if (back) j = i - 1; else if (ev.key === 'Home') j = 0; else if (ev.key === 'End') j = n - 1;
+  if (j !== null) { ev.preventDefault(); if (j >= 0 && j < n) go(j); return; }
+  if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); if (i !== cur) go(i); delSlide(); }
+});
+/* drag a thumbnail to move the slide */
+let dragFrom = null;
+const dropMark = (el, cls) => {
+  for (const x of $('slides').children) x.classList.remove('dropBefore', 'dropAfter');
+  if (el && cls) el.classList.add(cls);
+};
+const across = () => getComputedStyle($('slides')).flexDirection === 'row';   // a strip in a narrow window
+function dropSide(t, ev) {
+  const r = t.getBoundingClientRect();
+  return across() ? (ev.clientX < r.left + r.width / 2 ? 'dropBefore' : 'dropAfter')
+                  : (ev.clientY < r.top + r.height / 2 ? 'dropBefore' : 'dropAfter');
+}
+$('slides').addEventListener('dragstart', (ev) => {
+  const t = ev.target.closest('.thumb'); if (!t) return;
+  dragFrom = +t.dataset.i;
+  ev.dataTransfer.effectAllowed = 'move';
+  ev.dataTransfer.setData('text/plain', tr('Slide', 'Sida') + ' ' + (dragFrom + 1));
+  t.classList.add('dragging');
+});
+$('slides').addEventListener('dragover', (ev) => {
+  if (dragFrom === null) return;
+  const t = ev.target.closest('.thumb'); if (!t) return;
+  ev.preventDefault(); ev.dataTransfer.dropEffect = 'move';
+  dropMark(t, dropSide(t, ev));
+});
+$('slides').addEventListener('drop', (ev) => {
+  if (dragFrom === null) return;
+  const t = ev.target.closest('.thumb'); if (!t) return;
+  ev.preventDefault();
+  const to = +t.dataset.i + (dropSide(t, ev) === 'dropAfter' ? 1 : 0);
+  moveSlide(dragFrom, dragFrom < to ? to - 1 : to);
+});
+$('slides').addEventListener('dragend', () => {
+  dragFrom = null; dropMark(null);
+  for (const x of $('slides').children) x.classList.remove('dragging');
+});
+/* move slide `from` to place `to` (both 0-based); the moved slide stays the current one */
+function moveSlide(from, to) {
+  const n = show.slides.length;
+  if (to < 0 || to >= n || from === to) return;
+  const [s] = show.slides.splice(from, 1);
+  show.slides.splice(to, 0, s);
+  go(to); autosave();
+}
+const move = (d) => moveSlide(cur, cur + d);
+$('btnUp').onclick = () => move(-1);
+$('btnDown').onclick = () => move(1);
+
+/* ---- text ---- */
+$('txt').addEventListener('input', () => {
+  const s = show.slides[cur];
+  s.text = $('txt').value;
+  parseSlide(s, $('txt'));
+  if (open >= s.words.length) open = -1;
+  changed();
+});
+
+/* ---- picture: file or Ctrl+V. Big pictures are scaled to 2000 px so the
+   show file stays a sensible size; PNG stays PNG (keeps transparency). ---- */
+function setImage(file) {
+  if (!file || !/^image\//.test(file.type)) return;
+  const s = show.slides[cur];
+  const rd = new FileReader();
+  rd.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      let url = rd.result, w = img.naturalWidth, h = img.naturalHeight;
+      const k = 2000 / Math.max(w, h);
+      const keepType = /^image\/(png|jpeg|gif)$/.test(file.type);
+      if (k < 1 || !keepType) {
+        const kk = Math.min(1, k);
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(w * kk); cv.height = Math.round(h * kk);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        url = file.type === 'image/jpeg' ? cv.toDataURL('image/jpeg', 0.9) : cv.toDataURL('image/png');
+        w = cv.width; h = cv.height;
+      }
+      Object.assign(s, { img: url, imgW: w, imgH: h, imgName: file.name && file.name !== 'image.png' ? file.name : tr('Pasted picture', 'Inklistrad bild') });
+      renderImgRow(); renderStage(); autosave();
+    };
+    img.src = rd.result;
+  };
+  rd.readAsDataURL(file);
+}
+const imgFile = document.createElement('input');
+imgFile.type = 'file'; imgFile.accept = 'image/*';
+imgFile.onchange = () => { setImage(imgFile.files[0]); imgFile.value = ''; };
+/* ---- picture folder (Håkan, 2026-10-20). A plain file dialog cannot be told
+   where to open, but Chrome/Edge's File System Access API can: the chosen
+   folder's handle is kept in IndexedDB, its pictures show as a gallery, and
+   "Choose picture…" opens there. Other browsers keep the ordinary dialog. ---- */
+const FS_API = 'showDirectoryPicker' in window;
+let imgDir = null, galleryURLs = [];
+const IMG_EXT = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
+function idb(mode, fn) {
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open('wb-bildspel', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
+    rq.onsuccess = () => {
+      const tx = rq.result.transaction('kv', mode);
+      const r = fn(tx.objectStore('kv'));
+      tx.oncomplete = () => res(r && r.result); tx.onerror = () => rej(tx.error);
+    };
+    rq.onerror = () => rej(rq.error);
+  });
+}
+async function renderGallery() {
+  const box = $('gallery');
+  galleryURLs.forEach(u => URL.revokeObjectURL(u)); galleryURLs = [];
+  box.innerHTML = '';
+  if (!imgDir) { box.hidden = true; $('btnDirRefresh').hidden = true; return; }
+  box.hidden = false; $('btnDirRefresh').hidden = false;
+  setLabel($('btnDir'), imgDir.name);
+  $('btnDir').title = tr('Picture folder — click to choose another', 'Bildmapp — klicka för att välja en annan');
+  if (await imgDir.queryPermission({ mode: 'read' }) !== 'granted') {
+    // after a restart the browser asks again — it needs a click to do that
+    const b = document.createElement('button'); b.className = 'msg';
+    b.textContent = tr(`Show the pictures in “${imgDir.name}”`, `Visa bilderna i ”${imgDir.name}”`);
+    b.onclick = async () => { if (await imgDir.requestPermission({ mode: 'read' }) === 'granted') renderGallery(); };
+    box.appendChild(b); return;
+  }
+  const files = [];
+  try { for await (const h of imgDir.values()) if (h.kind === 'file' && IMG_EXT.test(h.name)) files.push(h); }
+  catch (_) { box.innerHTML = `<span class="msg">${tr('The folder could not be read.', 'Mappen gick inte att läsa.')}</span>`; return; }
+  files.sort((a, b) => a.name.localeCompare(b.name, LNG, { numeric: true }));
+  if (!files.length) { box.innerHTML = `<span class="msg">${tr('No pictures in this folder yet.', 'Inga bilder i den här mappen än.')}</span>`; return; }
+  for (const h of files.slice(0, 300)) {
+    const f = await h.getFile();
+    const url = URL.createObjectURL(f); galleryURLs.push(url);
+    const b = document.createElement('button');
+    b.title = tr('Put on this slide: ', 'Lägg på den här sidan: ') + h.name;
+    b.innerHTML = `<img src="${url}" alt="" loading="lazy"><span class="cap">${escXml(h.name.replace(IMG_EXT, ''))}</span>`;
+    b.onclick = async () => setImage(await h.getFile());
+    box.appendChild(b);
+  }
+}
+/* a cancelled dialog is silent; anything else is said out loud (Håkan,
+   2026-10-20: the folder choice failed without a word and the picker then
+   opened somewhere else) */
+function pickerFailed(e, what) {
+  if (e && e.name === 'AbortError') return;
+  say(tr(`${what} did not work in this browser (${e && e.name}: ${e && e.message}). Open WinBliss² in Chrome or Edge.`,
+           `${what} fungerade inte i den här webbläsaren (${e && e.name}: ${e && e.message}). Öppna WinBliss² i Chrome eller Edge.`));
+}
+$('btnDir').onclick = async () => {
+  if (!FS_API) return say(tr('Picture folders work in Chrome and Edge. In this browser, use “Choose picture…”.',
+    'Bildmapp fungerar i Chrome och Edge. I den här webbläsaren använder du ”Välj bild…”.'));
+  let h;
+  try { h = await window.showDirectoryPicker({ mode: 'read', startIn: imgDir || 'pictures' }); }
+  catch (e) { return pickerFailed(e, tr('Choosing a folder', 'Att välja mapp')); }
+  imgDir = h;
+  renderGallery();
+  try { await idb('readwrite', st => st.put(h, 'imgDir')); }
+  catch (e) { say(tr('The folder works now, but could not be remembered for next time.', 'Mappen fungerar nu, men kunde inte sparas till nästa gång.')); }
+};
+$('btnDirRefresh').onclick = () => renderGallery();
+if (FS_API) idb('readonly', st => st.get('imgDir')).then(h => { if (h) { imgDir = h; renderGallery(); } }).catch(() => {});
+
+$('btnImg').onclick = async () => {
+  if (!('showOpenFilePicker' in window)) return imgFile.click();
+  // the folder handle only steers the dialog once reading it is allowed; and
+  // no picker id — a remembered id directory must never win over the folder
+  if (imgDir) try {
+    if (await imgDir.queryPermission({ mode: 'read' }) !== 'granted')
+      await imgDir.requestPermission({ mode: 'read' });
+  } catch (_) {}
+  try {
+    const [h] = await window.showOpenFilePicker({ startIn: imgDir || 'pictures',
+      types: [{ description: tr('Pictures', 'Bilder'), accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'] } }] });
+    setImage(await h.getFile());
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    imgFile.click();               // the ordinary dialog still works
+  }
+};
+$('ctaImg').onclick = () => $('btnImg').click();
+$('ctaTxt').onclick = () => $('txt').focus();
+/* a picture file dragged onto the slide becomes its picture */
+{
+  const wrap = $('stageWrap');
+  const isFile = (ev) => [...(ev.dataTransfer?.types || [])].includes('Files');
+  let depth = 0;
+  wrap.addEventListener('dragenter', (ev) => { if (!isFile(ev)) return; ev.preventDefault(); depth++; wrap.classList.add('dropping'); });
+  wrap.addEventListener('dragover', (ev) => { if (!isFile(ev)) return; ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; });
+  wrap.addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; wrap.classList.remove('dropping'); } });
+  wrap.addEventListener('drop', (ev) => {
+    if (!isFile(ev)) return;
+    ev.preventDefault(); depth = 0; wrap.classList.remove('dropping');
+    const f = [...ev.dataTransfer.files].find(x => /^image\//.test(x.type));
+    if (f) setImage(f);
+  });
+  // a file dropped beside the slide must not make the browser leave the show
+  window.addEventListener('dragover', (ev) => { if (isFile(ev)) ev.preventDefault(); });
+  window.addEventListener('drop', (ev) => { if (isFile(ev)) ev.preventDefault(); });
+}
+$('btnImgOff').onclick = () => {
+  Object.assign(show.slides[cur], { img: null, imgW: 0, imgH: 0, imgName: '' });
+  renderImgRow(); renderStage(); autosave();
+};
+window.addEventListener('paste', (ev) => {
+  const item = [...(ev.clipboardData?.items || [])].find(it => it.kind === 'file' && /^image\//.test(it.type));
+  if (!item) return;
+  ev.preventDefault();
+  setImage(item.getAsFile());
+});
+
+/* ---- the panel's two folding parts remember whether they are open ---- */
+{
+  const KEY = 'wb-bildspel-ui';
+  try {
+    const u = JSON.parse(lsGet(KEY) || '{}');
+    for (const id of ['secLook', 'secShow']) if (typeof u[id] === 'boolean') $(id).open = u[id];
+  } catch (_) {}
+  for (const id of ['secLook', 'secShow']) $(id).addEventListener('toggle', () => {
+    try { localStorage.setItem(KEY, JSON.stringify({ secLook: $('secLook').open, secShow: $('secShow').open })); } catch (_) {}
+  });
+}
+
+/* ---- show options ---- */
+$('showTitle').addEventListener('input', () => { show.title = $('showTitle').value; autosave(); });
+$('optSymbols').addEventListener('change', () => { show.symbols = $('optSymbols').checked; renderOptions(); renderSlides(); renderStage(); autosave(); });
+$('optLabels').addEventListener('change', () => { show.labels = $('optLabels').checked; renderSlides(); renderStage(); autosave(); });
+$('optSize').addEventListener('change', () => { show.size = +$('optSize').value; renderSlides(); renderStage(); autosave(); });
+function setLook(patch) {
+  Object.assign(show.slides[cur], patch);
+  Object.assign(show, patch);                    // the show-wide value older versions of the app read
+  renderOptions(); renderSlides(); renderStage(); autosave();
+}
+$('optImg').addEventListener('input', () => setLook({ imgPct: +$('optImg').value }));
+$('btnLookAll').onclick = () => {
+  const look = lookOf(show.slides[cur]);
+  for (const x of show.slides) Object.assign(x, look);
+  renderSlides(); renderStage(); autosave();
+  flash($('btnLookAll'), tr('✓ Every slide looks like this', '✓ Alla sidor ser ut så här'));
+  setTimeout(renderOptions, 1700);               // then greyed out: nothing differs any more
+};
+$('optGap').addEventListener('input', () => { show.gap = +$('optGap').value; renderSlides(); renderStage(); autosave(); });
+/* line width of the symbols, as on Gravyrkort (Håkan, 2026-11-05): engine units,
+   35 = the standard pen (about 1/23 of a square), up to a bold 100 */
+$('optPen').addEventListener('input', () => { show.pen = +$('optPen').value; renderSlides(); renderStage(); autosave(); });
+$('optSpeak').addEventListener('change', () => { show.speakAuto = $('optSpeak').checked; autosave(); });
+
+/* ---- background colour for the whole show (Håkan, 2026-11-05): a few calm
+   colours that help reading (light yellow and light blue are common choices
+   for low vision), black and dark blue for high contrast, or any colour */
+const BG_SWATCHES = [
+  ['#ffffff', 'Vit', 'White'], ['#fff6c2', 'Ljusgul', 'Light yellow'], ['#dcebfa', 'Ljusblå', 'Light blue'],
+  ['#dff2e1', 'Ljusgrön', 'Light green'], ['#e9e9e9', 'Ljusgrå', 'Light grey'],
+  ['#12233d', 'Mörkblå', 'Dark blue'], ['#000000', 'Svart', 'Black'],
+];
+for (const [c, sv, en] of BG_SWATCHES) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.dataset.bg = c; b.style.background = c;
+  b.title = tr(en, sv); b.setAttribute('aria-label', tr(en, sv));
+  b.onclick = () => setBg(c);
+  $('bgSwatches').appendChild(b);
+}
+function setBg(c) { setLook({ bg: c }); }
+$('optBg').addEventListener('input', () => setBg($('optBg').value));
+/* the tile behind the Bliss text: "none" first (the default), then the same colours */
+for (const [c, sv, en] of [['', 'Ingen', 'None'], ...BG_SWATCHES]) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.dataset.bg = c;
+  if (c) b.style.background = c; else b.className = 'none';
+  b.title = tr(en, sv); b.setAttribute('aria-label', tr(en, sv));
+  b.onclick = () => setTextBg(c || null);
+  $('tbgSwatches').appendChild(b);
+}
+function setTextBg(c) { setLook({ textBg: c }); }
+$('optTextBg').addEventListener('input', () => setTextBg($('optTextBg').value));
+
+/* ---- read aloud (Håkan, 2026-11-04): ONLY the text under the symbols — the
+   same words the slide prints under them ("gick" for gå + dåtid). Never the
+   symbols' own content: punctuation symbols carry no text and are not read;
+   a line break is a pause. */
+function slideSpoken(s) {
+  const lines = [[]];
+  for (const w of (s && s.words) || []) {
+    if (w.br) lines.push([]);
+    else if (!w.punct) lines[lines.length - 1].push((w.label || w.token).replace(/_/g, ' '));
+  }
+  return lines.filter(l => l.length).map(l => l.join(' ')).join('. ');
+}
+let speakWarned = false;
+function speakSlide(s) {
+  const res = wbSpeak(slideSpoken(s));
+  if (res === 'novoice' && !speakWarned) { speakWarned = true; say(wbSpeakProblem(res)); }
+  return res;
+}
+wbSpeakButton($('btnSpeak'), () => slideSpoken(show.slides[cur]), (m) => say(m));
+// Alt+P: the slide being shown, else the slide being edited
+wbSpeakHotkey(() => showing() ? speakSlide(show.slides[pIdx]) : $('btnSpeak').click());
+if (!WB_SPEECH) { $('optSpeak').closest('label').hidden = true; $('showSpeak').hidden = true; }
+
+/* ---- own word list (.wbs) — read by js/shared/wbs.js ---- */
+function useCustom(syms, replace) { BT.useCustom(syms, replace); BOX.clear(); }
+$('btnList').onclick = () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.wbs,.txt';
+  inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return;
+    f.arrayBuffer().then(buf => {
+      const syms = parseWbsText(decodeWbsBuffer(buf)).filter(s => s.e && s.e.length);
+      useCustom(syms, true);
+      setLabel($('btnList'), `${tr('List', 'Lista')}: ${f.name.replace(/\.wbs$/i, '')} (${syms.length} ${tr('words', 'ord')})`);
+      // re-resolve the words that had no symbol before
+      for (const s of show.slides) {
+        s.words = s.words.map(w => (w.asText && !w.ids.length) ? null : w);
+        parseSlide(s);
+      }
+      renderAll(); autosave();
+    });
+  };
+  inp.click();
+};
+
+/* ---- save / open (.wbbild = JSON; pictures travel inside the file).
+   Own-list symbols the show uses are stored with it, so it opens complete
+   without the list. ---- */
+function serialize() {
+  const used = new Set();
+  for (const s of show.slides) for (const w of s.words) if (w.ids) for (const id of w.ids) if (BT.custom.has(id)) used.add(id);
+  show.custom = [...used].map(id => BT.custom.get(id));
+  return JSON.stringify(show, (k, v) => (k === 'futureOf' ? undefined : v));
+}
+/* A show file can come from anyone (mail, USB stick, a shared folder), and its
+   values end up inside the slides' SVG markup. Keep only what the app itself
+   writes: colours as #rrggbb, pictures as base64 data: images, plain numbers.
+   Anything else falls back to the default, so a bad value never becomes markup. */
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+const IMG_DATA = /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+$/i;
+const clampNum = (v, lo, hi, def) => { v = +v; return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def; };
+function cleanShow(o) {
+  o.bg = HEX_COLOR.test(o.bg) ? o.bg : '#ffffff';
+  o.textBg = HEX_COLOR.test(o.textBg) ? o.textBg : null;
+  o.pen = clampNum(o.pen, 15, 100, 35);
+  o.gap = clampNum(o.gap, 1, 24, 8);
+  o.imgPct = clampNum(o.imgPct, 30, 85, 62);
+  o.title = typeof o.title === 'string' ? o.title : '';
+  if (!Array.isArray(o.custom)) o.custom = [];
+  for (const s of o.slides) {
+    s.img = typeof s.img === 'string' && IMG_DATA.test(s.img) ? s.img : null;
+    s.imgW = clampNum(s.imgW, 0, 100000, 0);
+    s.imgH = clampNum(s.imgH, 0, 100000, 0);
+    s.text = typeof s.text === 'string' ? s.text : '';
+    if (!Array.isArray(s.words)) s.words = [];
+    s.bg = HEX_COLOR.test(s.bg) ? s.bg : o.bg;
+    s.textBg = s.textBg === null ? null : HEX_COLOR.test(s.textBg) ? s.textBg : o.textBg;
+    s.imgPct = clampNum(s.imgPct, 30, 85, o.imgPct);
+  }
+  return o;
+}
+function load(obj) {
+  if (!obj || !Array.isArray(obj.slides) || !obj.slides.length) throw new Error('bad');
+  show = Object.assign({ v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, pen: 35, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, custom: [] }, obj);
+  // a show saved before slides had their own look: every slide gets the show's look
+  show.slides = show.slides.map(s => Object.assign(newSlide(lookOf(show)), s && typeof s === 'object' ? s : {}));
+  cleanShow(show);
+  if (![160, 120, 90, 65].includes(show.size)) show.size = 120;
+  if (show.custom.length) useCustom(show.custom);
+  for (const s of show.slides) parseSlide(s);
+  renderOptions(); go(0);
+}
+let saveWarned = false;
+let saveT = null;
+function autosave() {
+  clearTimeout(saveT);
+  saveT = setTimeout(() => {
+    try {
+      localStorage.setItem('wb-bildspel', serialize());
+      $('saveNote').style.display = 'none';
+      // said once, not on every keystroke: a screen reader hears it when it first changes
+      const ok = tr('Saved ✓', 'Sparat ✓');
+      if ($('saveState').textContent !== ok) $('saveState').textContent = ok;
+      $('saveState').title = tr('Kept in this browser ', 'Sparat i den här webbläsaren ') + new Date().toLocaleTimeString(LNG);
+    } catch (_) {
+      if (!saveWarned) {
+        $('saveNote').textContent = tr('The show is too big to keep in the browser — use Save ↓ so nothing is lost.',
+          'Bildspelet är för stort för att sparas i webbläsaren — använd Spara ↓ så att inget försvinner.');
+        $('saveNote').style.display = 'block';
+        $('saveState').textContent = tr('Not saved', 'Inte sparat');
+        saveWarned = true;
+      }
+    }
+  }, 400);
+}
+const fileName = () => (show.title || tr('slideshow', 'bildspel')).replace(/[\\/:*?"<>|]+/g, '').trim() || 'bildspel';
+/* in an artifact the viewer's `downloads` capability saves (it asks first,
+   and only allows known extensions — the show is saved as .json there) */
+async function download(blob, name) {
+  if (IN_FRAME) {
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (!dl) return say(tr('Files cannot be saved from this view.', 'Det går inte att spara filer härifrån.'));
+    try { await dl.save({ filename: name.replace(/\.wbbild$/, '.json'), data: blob }); }
+    catch (e) {
+      if (e && e.code !== 'declined')
+        say(tr('The file was not saved: ', 'Filen sparades inte: ') + (e.message || e.code));
+    }
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+/* ---- Spara / Spara som… / Öppna… (Håkan, 2026-10-30) ----
+   Chrome/Edge (File System Access): "Spara som…" lets you pick the name and
+   the folder; after that, and after "Öppna…", "Spara" writes back into that
+   same file, as in Word. The file is remembered (IndexedDB) across reloads.
+   Elsewhere, and in an artifact, "Spara" downloads a new file and "Spara
+   som…" first asks for the file name. */
+const FS_SAVE = !IN_FRAME && 'showSaveFilePicker' in window;
+const WBBILD_TYPES = [{ description: tr('WinBliss slideshow', 'WinBliss-bildspel'),
+                        accept: { 'application/json': ['.wbbild', '.json'] } }];
+let showFile = null;                          // FileSystemFileHandle of the open show
+function setShowFile(h) {
+  showFile = h;
+  $('btnSave').title = h ? tr('Saves into ', 'Sparar i ') + h.name : tr('Downloads the slideshow as a file', 'Laddar ner bildspelet som en fil');
+  if (FS_SAVE) idb('readwrite', st => h ? st.put(h, 'showFile') : st.delete('showFile')).catch(() => {});
+}
+const showBlob = () => new Blob([serialize()], { type: 'application/json' });
+function flash(btn, text) {
+  const was = lblOf(btn).textContent; setLabel(btn, text); btn.disabled = true;
+  setTimeout(() => { setLabel(btn, was); btn.disabled = false; }, 1600);
+}
+async function writeShow(h) {
+  if (await h.queryPermission({ mode: 'readwrite' }) !== 'granted' &&
+      await h.requestPermission({ mode: 'readwrite' }) !== 'granted') return false;
+  const w = await h.createWritable();
+  await w.write(showBlob()); await w.close();
+  return true;
+}
+async function saveAs() {
+  if (!FS_SAVE) {
+    const name = await askText(tr('File name for the slideshow:', 'Filnamn för bildspelet:'), fileName(), tr('Save', 'Spara'));
+    if (!name) return;
+    const clean = name.replace(/[\\/:*?"<>|]+/g, '').replace(/\.(wbbild|json)$/i, '').trim() || 'bildspel';
+    return download(showBlob(), clean + '.wbbild');
+  }
+  let h;
+  try {
+    h = await window.showSaveFilePicker({ suggestedName: (showFile ? showFile.name : fileName() + '.wbbild'),
+      types: WBBILD_TYPES, startIn: showFile || 'documents' });
+  } catch (e) { return pickerFailed(e, tr('Save as', 'Spara som')); }
+  try {
+    if (!await writeShow(h)) return;
+    setShowFile(h);
+    if (!show.title) { show.title = h.name.replace(/\.(wbbild|json)$/i, ''); renderOptions(); autosave(); }
+    flash($('btnSaveAs'), tr('Saved ✓', 'Sparat ✓'));
+  } catch (e) { say(tr('The file could not be saved: ', 'Filen kunde inte sparas: ') + (e && e.message)); }
+}
+$('btnSaveAs').onclick = saveAs;
+$('btnSave').onclick = async () => {
+  if (!FS_SAVE) return download(showBlob(), fileName() + '.wbbild');
+  if (!showFile) return saveAs();               // the first save asks where, as in Word
+  try {
+    if (await writeShow(showFile)) flash($('btnSave'), tr('Saved ✓', 'Sparat ✓'));
+  } catch (e) {
+    // moved or deleted since: ask for a new place instead
+    say(tr(`“${showFile.name}” could not be saved (${e && e.message}). Choose where to save it.`,
+           `”${showFile.name}” gick inte att spara (${e && e.message}). Välj var den ska sparas.`)).then(saveAs);
+  }
+};
+function openShowText(t, handle) {
+  try { load(JSON.parse(t)); autosave(); setShowFile(handle || null); }
+  catch (_) { say(tr('That file is not a WinBliss slideshow.', 'Filen är inte ett bildspel från WinBliss.')); }
+}
+$('btnOpen').onclick = async () => {
+  if (FS_SAVE && 'showOpenFilePicker' in window) {
+    let h;
+    try { [h] = await window.showOpenFilePicker({ types: WBBILD_TYPES, startIn: showFile || 'documents' }); }
+    catch (e) { return pickerFailed(e, tr('Open', 'Öppna')); }
+    return openShowText(await (await h.getFile()).text(), h);
+  }
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.wbbild,.json';
+  inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return;
+    f.text().then(t => openShowText(t, null));
+  };
+  inp.click();
+};
+// the file the show came from last time, so "Spara" keeps saving into it
+if (FS_SAVE) idb('readonly', st => st.get('showFile')).then(h => { if (h) setShowFile(h); }).catch(() => {});
+
+/* ================= PowerPoint export =================
+   A real .pptx written here, no library: a stored (uncompressed) zip with the
+   minimum PresentationML parts. Each slide gets the picture as-is and the
+   Bliss text as a high-resolution PNG, placed exactly as on screen. The typed
+   text rides along as the Bliss picture's alt text. */
+const CRC = (() => { const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zip(files) {
+  const enc = new TextEncoder(), chunks = [], central = [];
+  let off = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data;
+    const crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
+    h.setUint16(8, 0, true); h.setUint16(10, 0, true); h.setUint16(12, 0x21, true);
+    h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true);
+    h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    chunks.push(h.buffer, name, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+    c.setUint16(10, 0, true); c.setUint16(12, 0, true); c.setUint16(14, 0x21, true);
+    c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true);
+    c.setUint16(28, name.length, true); c.setUint32(42, off, true);
+    central.push(c.buffer, name);
+    off += 30 + name.length + data.length;
+  }
+  const cdSize = central.reduce((a, b) => a + b.byteLength, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+  return new Blob([...chunks, ...central, end.buffer], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+}
+function dataURLBytes(url) {
+  const m = url.match(/^data:([^;,]+)(;base64)?,(.*)$/);
+  const bin = m[2] ? atob(m[3]) : decodeURIComponent(m[3]);
+  const b = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+  return { mime: m[1], bytes: b };
+}
+function blockPNG(L, s) {
+  const ink = inkFor((s && s.textBg) || (s && s.bg) || show.bg);
+  const pxW = 2400, pxH = Math.min(4000, Math.round(pxW * L.vb.h / L.vb.w));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${pxW}" height="${pxH}"
+    viewBox="${L.vb.x} ${L.vb.y} ${L.vb.w} ${L.vb.h}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:${ink}}</style>
+    <g stroke="${ink}" stroke-width="${+show.pen || 35}" stroke-linecap="round" stroke-linejoin="round" fill="none">${L.blk.body}</g></svg>`;
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas'); cv.width = pxW; cv.height = pxH;
+      cv.getContext('2d').drawImage(img, 0, 0, pxW, pxH);
+      cv.toBlob(b => b ? b.arrayBuffer().then(a => res(new Uint8Array(a))) : rej(new Error('png')), 'image/png');
+    };
+    img.onerror = rej;
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+const EMU = 12192000 / SW;              // 16:9 widescreen, 1 slide unit = 7620 EMU
+const fit = (aspect, a) => {            // contain a box of the given w/h aspect in area a
+  let w = a.w, h = a.w / aspect;
+  if (h > a.h) { h = a.h; w = a.h * aspect; }
+  return { x: a.x + (a.w - w) / 2, y: a.y + (a.h - h) / 2, w, h };
+};
+const NSP = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/';
+const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+const GRP = '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>';
+const rels = (list) => XML + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+  list.map(([id, type, target]) => `<Relationship Id="${id}" Type="${REL}${type}" Target="${target}"/>`).join('') + '</Relationships>';
+function pic(id, name, descr, rid, r) {
+  const e = (v) => Math.round(v * EMU);
+  return `<p:pic><p:nvPicPr><p:cNvPr id="${id}" name="${escXml(name)}" descr="${escXml(descr)}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>` +
+    `<p:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
+    `<p:spPr><a:xfrm><a:off x="${e(r.x)}" y="${e(r.y)}"/><a:ext cx="${e(r.w)}" cy="${e(r.h)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
+}
+const THEME = XML + `<a:theme ${NSP.split(' ')[0]} name="WinBliss"><a:themeElements><a:clrScheme name="WinBliss">` +
+  [['dk1', '000000'], ['lt1', 'FFFFFF'], ['dk2', '1B1B1D'], ['lt2', 'ECEBE6'], ['accent1', '28558C'], ['accent2', 'B4436C'],
+   ['accent3', '2E7D46'], ['accent4', 'C9A227'], ['accent5', '6E6E73'], ['accent6', '8E5BA8'], ['hlink', '28558C'], ['folHlink', '6E6E73']]
+    .map(([k, v]) => `<a:${k}><a:srgbClr val="${v}"/></a:${k}>`).join('') +
+  `</a:clrScheme><a:fontScheme name="WinBliss"><a:majorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont>` +
+  `<a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme><a:fmtScheme name="WinBliss">` +
+  `<a:fillStyleLst>${'<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'.repeat(3)}</a:fillStyleLst>` +
+  `<a:lnStyleLst>${'<a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>'.repeat(3)}</a:lnStyleLst>` +
+  `<a:effectStyleLst>${'<a:effectStyle><a:effectLst/></a:effectStyle>'.repeat(3)}</a:effectStyleLst>` +
+  `<a:bgFillStyleLst>${'<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'.repeat(3)}</a:bgFillStyleLst>` +
+  `</a:fmtScheme></a:themeElements></a:theme>`;
+async function exportPptx() {
+  const btn = $('btnPptx'), label = lblOf(btn).textContent;
+  btn.disabled = true; setLabel(btn, tr('Making PowerPoint…', 'Skapar PowerPoint…'));
+  try {
+    const files = [], slideIds = [], media = new Set();
+    for (let i = 0; i < show.slides.length; i++) {
+      const s = show.slides[i], L = layoutOf(s), n = i + 1;
+      // each slide's own background colour (the Bliss picture is transparent over it)
+      const bgHex = (/^#?([0-9a-f]{6})$/i.exec(s.bg || show.bg || '') || [, 'FFFFFF'])[1].toUpperCase();
+      const slideBgXml = `<p:bg><p:bgPr><a:solidFill><a:srgbClr val="${bgHex}"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>`;
+      const rl = [['rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml']];
+      let tree = '', shapeId = 2;
+      if (L.img) {
+        const { mime, bytes } = dataURLBytes(s.img);
+        const ext = mime === 'image/jpeg' ? 'jpeg' : mime === 'image/gif' ? 'gif' : 'png';
+        media.add(ext);
+        files.push({ name: `ppt/media/bild${n}.${ext}`, data: bytes });
+        rl.push(['rId2', 'image', `../media/bild${n}.${ext}`]);
+        tree += pic(shapeId++, tr('Picture', 'Bild'), s.imgName || '', 'rId2', fit((s.imgW || 4) / (s.imgH || 3), L.img));
+      }
+      if (L.blk && s.textBg) {
+        // the tile behind the Bliss text: a rounded rectangle, then the picture on top of it
+        const b = textBand(L), e = (v) => Math.round(v * EMU);
+        const hex = (/^#?([0-9a-f]{6})$/i.exec(s.textBg) || [, 'FFFFFF'])[1].toUpperCase();
+        tree += `<p:sp><p:nvSpPr><p:cNvPr id="${shapeId++}" name="${escXml(tr('Text background', 'Textbakgrund'))}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
+          `<p:spPr><a:xfrm><a:off x="${e(b.x)}" y="${e(b.y)}"/><a:ext cx="${e(b.w)}" cy="${e(b.h)}"/></a:xfrm>` +
+          `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 8000"/></a:avLst></a:prstGeom>` +
+          `<a:solidFill><a:srgbClr val="${hex}"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr></p:sp>`;
+      }
+      if (L.blk) {
+        media.add('png');
+        files.push({ name: `ppt/media/bliss${n}.png`, data: await blockPNG(L, s) });
+        rl.push(['rId3', 'image', `../media/bliss${n}.png`]);
+        tree += pic(shapeId++, 'Bliss', s.text, 'rId3', fit(L.vb.w / L.vb.h, L.txt));
+      }
+      files.push({ name: `ppt/slides/slide${n}.xml`, data: XML +
+        `<p:sld ${NSP}><p:cSld>${slideBgXml}<p:spTree>${GRP}${tree}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>` });
+      files.push({ name: `ppt/slides/_rels/slide${n}.xml.rels`, data: rels(rl) });
+      slideIds.push(n);
+    }
+    const ct = XML + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      [...media].map(e => `<Default Extension="${e}" ContentType="image/${e}"/>`).join('') +
+      '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>' +
+      '<Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/>' +
+      '<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>' +
+      '<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>' +
+      '<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>' +
+      '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+      slideIds.map(n => `<Override PartName="/ppt/slides/slide${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('') +
+      '</Types>';
+    const core = XML + '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">' +
+      `<dc:title>${escXml(show.title || tr('Slideshow', 'Bildspel'))}</dc:title><dc:creator>WinBliss²</dc:creator></cp:coreProperties>`;
+    const pres = XML + `<p:presentation ${NSP} saveSubsetFonts="1"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>` +
+      `<p:sldIdLst>${slideIds.map(n => `<p:sldId id="${255 + n}" r:id="rId${n + 3}"/>`).join('')}</p:sldIdLst>` +
+      '<p:sldSz cx="12192000" cy="6858000"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>';
+    const master = XML + `<p:sldMaster ${NSP}><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>` +
+      `<p:spTree>${GRP}</p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>` +
+      '<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles></p:sldMaster>';
+    const layout = XML + `<p:sldLayout ${NSP} type="blank" preserve="1"><p:cSld name="Blank"><p:spTree>${GRP}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`;
+    files.unshift(
+      { name: '[Content_Types].xml', data: ct },
+      // core-properties lives in the package namespace, not officeDocument's
+      { name: '_rels/.rels', data: rels([['rId1', 'officeDocument', 'ppt/presentation.xml'], ['rId2', 'CORE', 'docProps/core.xml']])
+          .replace(REL + 'CORE', 'http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties') },
+      { name: 'docProps/core.xml', data: core },
+      { name: 'ppt/presentation.xml', data: pres },
+      { name: 'ppt/_rels/presentation.xml.rels', data: rels([['rId1', 'slideMaster', 'slideMasters/slideMaster1.xml'],
+        ['rId2', 'theme', 'theme/theme1.xml'], ['rId3', 'presProps', 'presProps.xml'],
+        ...slideIds.map(n => [`rId${n + 3}`, 'slide', `slides/slide${n}.xml`])]) },
+      { name: 'ppt/presProps.xml', data: XML + `<p:presentationPr ${NSP}/>` },
+      { name: 'ppt/slideMasters/slideMaster1.xml', data: master },
+      { name: 'ppt/slideMasters/_rels/slideMaster1.xml.rels', data: rels([['rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'], ['rId2', 'theme', '../theme/theme1.xml']]) },
+      { name: 'ppt/slideLayouts/slideLayout1.xml', data: layout },
+      { name: 'ppt/slideLayouts/_rels/slideLayout1.xml.rels', data: rels([['rId1', 'slideMaster', '../slideMasters/slideMaster1.xml']]) },
+      { name: 'ppt/theme/theme1.xml', data: THEME },
+    );
+    download(zip(files), fileName() + '.pptx');
+  } catch (err) {
+    say(tr('The PowerPoint file could not be made: ', 'PowerPoint-filen kunde inte skapas: ') + (err && err.message || err));
+  } finally { btn.disabled = false; setLabel(btn, label); }
+}
+$('btnPptx').onclick = exportPptx;
+
+/* ================= presenting =================
+   Full screen; → / Space / PageDown / click = next, ← / PageUp = back,
+   Home / End, Esc ends. Works with a presenter clicker (it sends PageDown). */
+let pIdx = 0;
+const showing = () => $('show').classList.contains('on');
+function pRender() {
+  $('show').innerHTML = slideSVG(show.slides[pIdx], '');
+  $('showNo').textContent = `${pIdx + 1} / ${show.slides.length}`;
+  if (show.speakAuto) speakSlide(show.slides[pIdx]); else wbStopSpeaking();
+}
+function startShow(from = cur) {
+  pIdx = from; pRender();
+  $('show').classList.add('on');
+  try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (_) {}
+}
+$('showSpeak').onclick = () => speakSlide(show.slides[pIdx]);
+if (LNG === 'en') { $('showSpeak').title = 'Read the slide aloud (L)'; $('showSpeak').setAttribute('aria-label', 'Read the slide aloud'); }
+function endShow() {
+  $('show').classList.remove('on');
+  wbStopSpeaking();
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  go(pIdx);
+}
+const pGo = (i) => { if (i < 0 || i >= show.slides.length) return; pIdx = i; pRender(); };
+$('btnPlay').onclick = () => startShow(cur);
+$('show').onclick = () => pIdx < show.slides.length - 1 ? pGo(pIdx + 1) : endShow();
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && showing()) endShow(); });
+document.addEventListener('keydown', (ev) => {
+  if (showing()) {
+    const k = ev.key;
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(k)) { ev.preventDefault(); pGo(pIdx + 1); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) { ev.preventDefault(); pGo(pIdx - 1); }
+    else if (k === 'Home') pGo(0);
+    else if (k === 'End') pGo(show.slides.length - 1);
+    else if (k === 'l' || k === 'L') speakSlide(show.slides[pIdx]);
+    else if (k === 'Escape') endShow();
+    return;
+  }
+  if (ev.key === 'F5') { ev.preventDefault(); startShow(ev.shiftKey ? cur : 0); }
+}, true);
+
+/* ---- boot: the last show from this browser ---- */
+let booted = false;
+try {
+  const saved = JSON.parse(lsGet('wb-bildspel') || 'null');
+  if (saved) { load(saved); booted = true; }
+} catch (_) {}
+if (!booted && IN_FRAME) {
+  // a first-time artifact viewer meets a filled-in slide, not an empty page
+  show.slides[0].text = tr('i like ice cream.', 'jag tycker om glass.');
+  parseSlide(show.slides[0]);
+}
+if (IN_FRAME) {
+  // no start page and no folders in an artifact
+  document.querySelector('.homeLink').hidden = true;
+  $('dirRow').hidden = true;
+}
+renderOptions(); go(cur);
+
+/* ---- text sent from Skriv (Håkan, 2026-11-04) ----
+   Becomes a new slide with the words as chosen in Skriv (symbol, form, as
+   text); an empty current slide is filled instead of adding one more.
+   Arrives either over the 'wb-bildspel' channel (this tab open) or, when
+   Skriv opened this tab, as bildspel.html?from=skriv with the data left in
+   localStorage. */
+function addSlideFromSkriv(data) {
+  if (!data || typeof data.text !== 'string' || !data.text.trim()) return false;
+  if (Array.isArray(data.custom) && data.custom.length) useCustom(data.custom);
+  const s = newSlide(show.slides[cur] || lookOf(show));
+  s.text = data.text;
+  s.words = Array.isArray(data.words) ? data.words : [];
+  parseSlide(s);                         // keeps each word that still reads the same
+  // the word under a symbol with a form ("gå" + dåtid → "gick"), as when written here;
+  // a word the writer typed in by hand stays as it is
+  for (const w of s.words) if (!w.br && !w.asText && w.ind) autoLabel(w);
+  const here = show.slides[cur];
+  if (here && !here.text.trim() && !here.img) show.slides[cur] = s;
+  else { show.slides.push(s); cur = show.slides.length - 1; }
+  go(cur); autosave();
+  return true;
+}
+(() => {
+  const q = new URLSearchParams(location.search);
+  if (q.get('from') !== 'skriv') return;
+  let data = null;
+  try { data = JSON.parse(lsGet('wb-bildspel-fran-skriv') || 'null'); localStorage.removeItem('wb-bildspel-fran-skriv'); } catch (_) {}
+  addSlideFromSkriv(data);
+  q.delete('from');                       // a reload must not add it again
+  history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : ''));
+})();
+if ('BroadcastChannel' in window) {
+  const tabId = Math.random().toString(36).slice(2);
+  const ch = new BroadcastChannel('wb-bildspel');
+  ch.onmessage = (ev) => {
+    const m = ev.data || {};
+    if (m.type === 'ping') ch.postMessage({ type: 'pong', tab: tabId });
+    else if (m.type === 'add' && m.to === tabId) {
+      if (showing()) endShow();             // back to editing, so the new slide is seen
+      if (addSlideFromSkriv(m.data)) { try { window.focus(); } catch (_) {} }
+    }
+  };
+}
+
+/* delade $-genvägar (shortcuts.js) */
+try { wbShortcuts({
+  title: () => tr('The new slideshow', 'Nya bildspelet'),
+  actions: {
+    S: { run: () => $('btnSave').click(), desc: () => tr('save the slideshow (.wbbild)', 'spara bildspelet (.wbbild)') },
+    O: { run: () => $('btnOpen').click(), desc: () => tr('open a slideshow', 'öppna ett bildspel') },
+    H: { run: () => { location.href = 'start.html'; }, desc: () => tr('to the start page', 'till startsidan') },
+  },
+  extra: () => [['F5', tr('show from the first slide (Shift+F5: from this one)', 'visa från första sidan (Skift+F5: från den här)')],
+                ['Ctrl+V', tr('paste a picture onto the slide (or drag it there)', 'klistra in en bild på sidan (eller dra dit den)')],
+                ['↑ ↓ · Home · End', tr('in the slide list: another slide', 'i sidlistan: byt sida')],
+                ['Alt+↑ · Alt+↓', tr('in the slide list: move the slide', 'i sidlistan: flytta sidan')],
+                ['Delete', tr('in the slide list: remove the slide (Ctrl+Z undoes it)', 'i sidlistan: ta bort sidan (Ctrl+Z ångrar)')],
+                ['Alt+P', tr('read the slide aloud / stop reading', 'läs upp sidan / stoppa uppläsningen')],
+                ['L', tr('while showing: read the slide aloud', 'under visning: läs upp sidan')]],
+}); } catch (_) {}
+</script>
+</body>
+</html>

@@ -19,6 +19,8 @@ winbliss-web-beta/
 │  ├─ index.html            Editera och Skriv (index.html?vy=skriv)
 │  ├─ skriv.html            Skriv utan menyer, för MindExpress m.fl. (skickar vidare till index.html?skriv=1)
 │  ├─ bildspel.html         Bildspel — bild överst, blisstext under, PowerPoint-export
+│  ├─ bildspel-ny.html      Nya bildspelet — samma bildspel och filer, nytt arbetssätt (symboler på
+│  │                        knapparna, dra in bilder, ångra); sparar i samma webbläsarlager som Bildspel
 │  ├─ gissa.html            Hänga gubbe
 │  ├─ former.html           Formfamiljer
 │  ├─ gravyr.html           Gravyrkort för laser
