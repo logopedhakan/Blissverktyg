@@ -24,6 +24,7 @@ const SV = [
   ['#wAI', '✨ Tolka'],
   ['#wClip', 'Urklipp ↓'],
   ['#wToShow', '→ Bildspel'],
+  ['#wToShowNy', '→ Nya bildspelet'],
   ['#wToTag', '→ Gravyrkort'],
   ['#wOpenDoc', 'Öppna…'],
   ['#wSaveDoc', 'Spara ↓'],

@@ -376,5 +376,32 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Nya bildspelet: the button symbols are BCI-AV symbols', missing, []);
 }
 
+/* ---------- 9. Skriv -> Bildspel or Nya bildspelet (2026-11-19): the right page gets the text ---------- */
+{
+  const app = read('js/editor/app.js');
+  const i = app.indexOf('function wSendToShow'), src = app.slice(i, app.indexOf("$('wToShow').onclick", i));
+  const run = (open, page) => {
+    // `open`: the slideshow tabs that answer the ping, as their pongs
+    const sent = [], opened = [];
+    const ctx = vm.createContext({
+      W: [{ token: 'hej' }], wShowPayload: () => ({ text: 'hej' }), toast: () => {}, tr: (e, s) => s,
+      localStorage: { setItem() {} }, setTimeout: (f) => f(),
+      window: { open: (u) => { opened.push(u); return {}; } },
+      BroadcastChannel: class { constructor() { this.onmessage = null; }
+        postMessage(m) { if (m.type === 'ping') for (const p of open) this.onmessage({ data: Object.assign({ type: 'pong' }, p) }); else sent.push(m.to); }
+        close() {} },
+    });
+    ctx.window.BroadcastChannel = ctx.BroadcastChannel;
+    vm.runInContext(src.replace("'BroadcastChannel' in window", 'true'), ctx);
+    ctx.wSendToShow(page);
+    return sent.length ? 'add:' + sent[0] : 'open:' + opened[0];
+  };
+  const both = [{ tab: 'NY', page: 'bildspel-ny' }, { tab: 'OLD' }];
+  check('Skriv: each slideshow button reaches its own page when both are open',
+    [run(both, 'bildspel'), run(both, 'bildspel-ny'), run([{ tab: 'OLD' }], 'bildspel-ny'), run([], 'bildspel')],
+    ['add:OLD', 'add:NY', 'open:bildspel-ny.html?from=skriv', 'open:bildspel.html?from=skriv']);
+  check('Nya bildspelet: answers Skriv with its page name', /type: 'pong', tab: tabId, page: 'bildspel-ny'/.test(read('bildspel-ny.html')), true);
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

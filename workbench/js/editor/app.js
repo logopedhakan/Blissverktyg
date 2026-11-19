@@ -2521,28 +2521,39 @@ function wShowPayload() {
   const words = W.map(w => { const c = Object.assign({}, w); delete c.keyOf; delete c.off; delete c.futureOf; return c; });
   return { text: $('wInput').value, words, custom: wCustomSyms(W.filter(w => !w.br && !w.asText && !w.skip).map(w => w.ids[w.pick])) };
 }
-$('wToShow').onclick = () => {
+/* Skriv -> a slideshow, as a new slide (2026-11-19: to Bildspel or to Nya bildspelet).
+   An open slideshow of that kind gets it over the 'wb-bildspel' channel; else
+   the page opens with the text left in localStorage. Both pages listen on the
+   same channel, so a page says which one it is in its answer — Bildspel's
+   answer has no page, Nya bildspelet's says 'bildspel-ny'. */
+function wSendToShow(page) {
   if (!W.some(w => !w.br)) return toast(tr('Write something first', 'Skriv något först'));
   const data = wShowPayload();
+  const name = page === 'bildspel-ny' ? tr('the new slideshow', 'Nya bildspelet') : tr('Slideshow', 'Bildspel');
   const open = () => {
     try { localStorage.setItem('wb-bildspel-fran-skriv', JSON.stringify(data)); }
     catch (_) { return toast(tr('The text could not be handed over (browser storage is full or blocked)', 'Texten kunde inte lämnas över (webbläsarens lagring är full eller spärrad)')); }
-    if (!window.open('bildspel.html?from=skriv', 'wb-bildspel'))
+    if (!window.open(page + '.html?from=skriv', 'wb-' + page))
       toast(tr('The browser blocked the new tab — allow pop-ups for this page', 'Webbläsaren stoppade den nya fliken — tillåt popup-fönster för sidan'));
   };
   if (!('BroadcastChannel' in window)) return open();
   const ch = new BroadcastChannel('wb-bildspel');
   let target = null;
-  ch.onmessage = (ev) => { if (ev.data && ev.data.type === 'pong' && !target) target = ev.data.tab; };
+  ch.onmessage = (ev) => {
+    const m = ev.data;
+    if (m && m.type === 'pong' && !target && (m.page || 'bildspel') === page) target = m.tab;
+  };
   ch.postMessage({ type: 'ping' });
   setTimeout(() => {                                   // well inside the click's pop-up allowance
     if (target) {
       ch.postMessage({ type: 'add', to: target, data });
-      toast(tr('Sent to Slideshow ✓ — a new slide', 'Skickat till Bildspel ✓ — en ny sida'));
+      toast(tr(`Sent to ${name} ✓ — a new slide`, `Skickat till ${name} ✓ — en ny sida`));
     } else open();
     setTimeout(() => ch.close(), 500);
   }, 250);
-};
+}
+$('wToShow').onclick = () => wSendToShow('bildspel');
+$('wToShowNy').onclick = () => wSendToShow('bildspel-ny');
 $('wToTag').onclick = () => {
   // the same hand-over as Bildspel: the text with every word's choice — Gravyrkort
   // writes it into its own Bliss text (Håkan, 2026-11-05)
@@ -2553,6 +2564,7 @@ $('wToTag').onclick = () => {
     toast(tr('The browser blocked the new tab — allow pop-ups for this page', 'Webbläsaren stoppade den nya fliken — tillåt popup-fönster för sidan'));
 };
 $('wToShow').title = tr('The text as a new slide in Slideshow', 'Texten som en ny sida i Bildspel');
+$('wToShowNy').title = tr('The text as a new slide in the new slideshow', 'Texten som en ny sida i Nya bildspelet');
 $('wToTag').title = tr('The symbols onto an engraving tag', 'Symbolerna på ett gravyrkort');
 const W_ATTRIBUTION = 'Blissymbolics © C.K. Bliss 1949, 1965 · Parts herein © Blissymbolics Communication International (BCI), CC BY-SA 4.0 · WinBliss² (AnyCom AB)';
 $('wDoc').onclick = async () => {
