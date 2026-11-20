@@ -346,6 +346,7 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
 
 <script src="js/shared/lang.js"></script>
 <script src="js/shared/styrning.js"></script>
+<script src="js/shared/ikoner.js"></script>
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/speak.js"></script>
@@ -1621,6 +1622,22 @@ try { SC = wbShortcuts({
   ],
 }); } catch (_) {}
 $('btnKeys').onclick = () => SC && SC.openList();
+
+/* a Bliss symbol beside every setting and button (js/shared/ikoner.js, 2026-11-20) */
+wbIcons.put({
+  '.bgRow:has(#optBg)': '13377',
+  '.bgRow:has(#optTextBg)': '13377,12857',
+  '#optImg': '16172,24909',
+  '#optGap': '25996',
+  '#optSymbols': '12857',
+  '#optLabels': '18272,17969',
+  // Symbol size: the select becomes a row of buttons with a heading of its own (above)
+  '.optHead:has(+ #sizeBtns)': '12857,23214',
+  '#optPen': '15214,18250',
+  '#optSpeak': '16728,16967',
+  '#optClickNext': '13152,16172',
+  '#snackUndo': '16500',
+});
 </script>
 </body>
 </html>

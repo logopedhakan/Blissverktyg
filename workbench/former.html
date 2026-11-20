@@ -146,6 +146,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 
 <script src="js/shared/lang.js"></script>
 <script src="js/shared/styrning.js"></script>
+<script src="js/shared/ikoner.js"></script>
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/speak.js"></script>
@@ -617,6 +618,24 @@ wbShortcuts({
   },
   extra: () => [[tr('# + letter', '# + bokstav'), tr('pick a form family (A–Z) in family mode', 'välj formfamilj (A–Z) i familjeläget')],
                 ['Alt+P', tr('read the chosen word (or the suggestions) aloud / stop reading', 'läs upp det valda ordet (eller förslagen) / stoppa uppläsningen')]],
+});
+
+/* a Bliss symbol beside every setting and button (js/shared/ikoner.js, 2026-11-20) */
+wbIcons.put({
+  '#btnClear': '23864',
+  '#speakAll': '16728,17455',
+  '#dSpeak': '16728,18272',
+  '#copyText': '16487,29846',
+  '#dCopy': '16487,16172',
+  '#dCopyTxt': '16487,29846',
+  '#dSkriv': '16759,18285',
+  '#dGravyr': '15922,29092',
+  '#famMode': '20572',
+  '#speakPick': '16728',
+  '#speakHover': '23593,16728',
+  'input[name=mode][value=only]': '12363',
+  'input[name=mode][value=all]': '12360',
+  'input[name=mode][value=any]': '17207',
 });
 </script>
 </body>

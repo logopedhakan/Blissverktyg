@@ -134,6 +134,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 <footer><span data-en="WinBliss² · memory · 2026 AnyCom AB · CC BY 4.0">WinBliss² · memory · 2026 AnyCom AB · CC BY 4.0</span> · <span title="Blissymbolics © C.K. Bliss 1949, 1965 · symbols © Blissymbolics Communication International (BCI), distributed under CC BY-SA 4.0 — conforming to the BCI Authorized Vocabulary, blissymbolics.org">Blissymbolics © BCI, CC BY-SA 4.0</span></footer>
 <script src="js/shared/lang.js"></script>
 <script src="js/shared/styrning.js"></script>
+<script src="js/shared/ikoner.js"></script>
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/wbs.js"></script>
@@ -508,6 +509,21 @@ try { SC = wbShortcuts({
 $('btnKeys').onclick = () => SC && SC.openList();
 
 newGame();
+
+/* a Bliss symbol beside every setting and button (js/shared/ikoner.js, 2026-11-20) */
+wbIcons.put({
+  '#btnNew': '15710,14418',
+  '#optPairs': '15742,15959',
+  '#optKind': '15959',
+  '#optLevel': '18272',
+  '#btnOwn': '14418,18272',
+  '#btnList': '15220',
+  '#optPlayers': '16161',
+  '#optBack': '17957',
+  '#optLabel': '18272,17969',
+  '#optSpeak': '16728',
+  '#btnKeys': '14704',
+});
 </script>
 </body>
 </html>
