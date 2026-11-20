@@ -60,8 +60,9 @@ header{position:relative}
 #installApp{margin-top:12px;font:inherit;font-size:14px;font-weight:600;padding:8px 16px;border-radius:10px;
   border:1px solid var(--accent);background:var(--accent);color:var(--on-accent,#fff);cursor:pointer}
 #installApp[hidden]{display:none}
-#btnSwitch{margin-top:10px;font:inherit;font-size:14px;padding:8px 16px;border-radius:10px;
-  border:1px solid var(--rule);background:var(--panel);color:var(--ink);cursor:pointer}
+#btnSwitch{display:inline-block;margin-top:10px;font:inherit;font-size:15px;padding:9px 18px;border-radius:10px;
+  border:1px solid var(--rule);background:var(--panel);color:var(--ink);cursor:pointer;text-decoration:none}
+#btnSwitch:hover{border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -72,8 +73,8 @@ header{position:relative}
   <h1>WinBliss<sup>2</sup></h1>
   <span class="sub" data-sv="Blissverktyget — välj en del att arbeta i"
         data-en="THE Bliss tool — pick a part to work in">Blissverktyget — välj en del att arbeta i</span>
-  <!-- 2026-11-19: learn which keys or buttons the switches send (js/shared/switch.js), for every part -->
-  <div><button id="btnSwitch" data-sv="Brytare och joystick…" data-en="Switches and joystick…">Brytare och joystick…</button></div>
+  <!-- 2026-11-20: one settings page for steering every part — switches, joystick, eye control, shortcuts -->
+  <div><a id="btnSwitch" href="installningar.html" data-sv="⚙ Styrning och kortkommandon" data-en="⚙ Steering and shortcuts">⚙ Styrning och kortkommandon</a></div>
   <div><button id="installApp" hidden data-sv="⤓ Installera Blissverktyget som app" data-en="⤓ Install Blissverktyget as an app">⤓ Installera Blissverktyget som app</button></div>
 </header>
 <main>
@@ -140,6 +141,7 @@ header{position:relative}
 </footer>
 
 <script src="js/shared/lang.js"></script>
+<script src="js/shared/styrning.js"></script>
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/switch.js"></script>
@@ -161,7 +163,6 @@ function applyStartLang() {
 for (const b of document.querySelectorAll('#langRow button'))
   b.onclick = () => { lang = b.dataset.lang; wbSetLang(lang); applyStartLang(); };
 applyStartLang();
-{ const b = document.getElementById('btnSwitch'); if (window.wbSwitch) b.onclick = () => wbSwitch.open(); else b.hidden = true; }
 // Card icons drawn by the real engine: a Bliss symbol per part, forms for former.html.
 for (const el of document.querySelectorAll('.icon[data-gloss]')) {
   const names = el.dataset.gloss.split(',');

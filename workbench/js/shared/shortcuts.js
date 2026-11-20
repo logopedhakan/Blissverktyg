@@ -19,8 +19,11 @@ function wbShortcuts(cfg) {
   const FN_KEYS = ['C', 'S', 'O', 'H', 'B'];
   // $ B: switches and joystick (js/shared/switch.js), in every part that has it
   const acts = () => Object.assign({}, cfg.actions, window.wbSwitch
-    ? { B: { run: () => window.wbSwitch.open(), desc: () => T('switches and joystick — learn their keys', 'brytare och joystick — lär in deras tangenter') } } : {});
+    ? { B: { run: () => (window.wbStyr ? window.wbStyr.open() : window.wbSwitch.open()),
+             desc: () => T('steering, switches, eye control and shortcuts — the settings', 'styrning, brytare, ögonstyrning och kortkommandon — inställningarna') } } : {});
   let armed = 0;
+  const STYR = () => (typeof window !== 'undefined' && window.wbStyr) || null;
+  const help = () => (cfg.onHelp || openList)();
 
   const toastEl = document.createElement('div');
   toastEl.style.cssText = 'position:fixed;left:50%;bottom:26px;transform:translateX(-50%);' +
@@ -46,8 +49,10 @@ function wbShortcuts(cfg) {
   function openList() {
     const rows = [], fn = [];
     const A = acts();
-    for (const k of FN_KEYS) if (A[k]) fn.push(['$ ' + k, A[k].desc()]);
-    fn.push(['$ ?', T('show this list', 'visa den här listan')]);
+    // an own key or joystick button for it (installningar.html) is shown beside the $ key
+    const also = (id) => { const S = STYR(), o = S && S.own('alla', id); return o ? ' · ' + S.label(o) : ''; };
+    for (const k of FN_KEYS) if (A[k]) fn.push(['$ ' + k + also(k), A[k].desc()]);
+    fn.push(['$ ?' + also('help'), T('show this list', 'visa den här listan')]);
     const extra = cfg.extra ? cfg.extra() : [];
     // a page that sorts its keys under headings gets the $ keys under one of their own, after its own
     if (extra.some(r => r.length === 1)) rows.push(...extra, [T('Step by step: $, then a key', 'Steg för steg: $ och sedan en tangent')], ...fn);
@@ -67,17 +72,35 @@ function wbShortcuts(cfg) {
         : `<tr><td style="padding:3px 14px 3px 0;white-space:nowrap"><b>${esc(k)}</b></td>` +
           `<td style="padding:3px 0;overflow-wrap:anywhere">${esc(d)}</td></tr>`).join('') + '</table>' +
       '<form method="dialog" style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">' +
-      (window.wbSwitch ? '<button type="button" data-switch style="' + BTN + '">' + esc(T('Switches and joystick…', 'Brytare och joystick…')) + '</button>' : '') +
+      (STYR() ? '<button type="button" data-switch style="' + BTN + '">' + esc(T('Steering and shortcuts…', 'Styrning och kortkommandon…')) + '</button>' : '') +
       '<button style="' + BTN + '">' + T('Close', 'Stäng') + '</button></form>';
     const sw = dlg.querySelector('[data-switch]');
-    if (sw) sw.onclick = () => { dlg.close(); window.wbSwitch.open(); };
+    if (sw) sw.onclick = () => { dlg.close(); STYR().open(); };
     dlg.showModal();
     // the close button gets the focus; the list is read from the top
     dlg.querySelector('form button:last-child').focus({ preventScroll: true });
     dlg.scrollTop = 0;
   }
 
+  // own keys for the $ functions and the list, and joystick buttons for them
+  if (STYR()) {
+    for (const k of FN_KEYS) STYR().onPad('alla', k, () => { const a = acts()[k]; if (a && !document.querySelector('dialog[open]')) { toast(a.desc()); a.run(); } });
+    STYR().onPad('alla', 'help', () => { if (!dlg.open) help(); });
+  }
   document.addEventListener('keydown', (ev) => {
+    const S = STYR();
+    if (S && !ev.defaultPrevented && !document.querySelector('dialog[open]')) {
+      for (const k of [...FN_KEYS, 'help']) {
+        const x = S.extraKey('alla', k);
+        if (!x || !S.matches(x, ev)) continue;
+        const a = k === 'help' ? { run: help, desc: () => '' } : acts()[k];
+        if (!a) continue;
+        ev.preventDefault();
+        if (a.desc()) toast(a.desc());
+        a.run();
+        return;
+      }
+    }
     const t = ev.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' ||
               t.isContentEditable)) return;
@@ -122,7 +145,10 @@ function wbButtonKeys(list, opts = {}) {
   const L = wbLang(), T = (en, sv) => (L === 'sv' ? sv : en);
   const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
   const SIGN = { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Escape: 'Esc' };
+  const S = (typeof window !== 'undefined' && window.wbStyr) || null;
+  const tool = opts.tool || null;
   const label = (key) => {
+    if (S) return S.keyLabel(key);
     const p = key.split('+'), k = p.pop(), last = SIGN[k] || k;
     if (MAC) return p.map(m => ({ Alt: '⌥', Ctrl: '⌘', Shift: '⇧' }[m])).join('') + last;
     return [...p.map(m => (m === 'Shift' ? T('Shift', 'Skift') : m)), last].join('+');
@@ -130,10 +156,36 @@ function wbButtonKeys(list, opts = {}) {
   const aria = (key) => key.split('+').map(m => (m === 'Ctrl' ? (MAC ? 'Meta' : 'Control') : m === 'Escape' ? 'Escape' : m)).join('+');
   const typing = (t) => !!t && (t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' ||
     (t.tagName === 'INPUT' && !/^(button|submit|reset|checkbox|radio|range|color|file|image)$/i.test(t.type)));
+  // a shortcut the settings know (WB_KEYMAP): its default key and name come from there
+  // of: 'alla:speak' — a button that shows a shared key, handled elsewhere (speak.js)
+  const known = (it) => (S && (tool || it.of) ? S.item(...(it.of ? it.of.split(':') : [tool, it.id])) : null);
   const items = list.map(it => {
-    const p = it.key.split('+');
-    return Object.assign({ k: { alt: p.includes('Alt'), ctrl: p.includes('Ctrl'), shift: p.includes('Shift'), key: p[p.length - 1] } }, it);
-  });
+    const k = known(it), [kt, kid] = it.of ? it.of.split(':') : [tool, it.id];
+    return Object.assign({}, it, k ? { key: it.key || k.key, name: it.name || (() => (L === 'sv' ? k.sv : k.en)),
+      fixed: !!k.fixed, always: !!k.always, reg: true, kt, kid, elsewhere: !!it.of } : {});
+  }).filter(it => it.key);
+  /* the keys that work now: [the key the page handles itself or we handle, …]
+     handled: the ones this function presses the button for */
+  const handled = (it) => {
+    if (it.elsewhere) return [];
+    if (it.reg) return it.fixed ? [S.extraKey(it.kt, it.kid)].filter(Boolean) : [S.keyFor(it.kt, it.kid)];
+    return it.shown ? [] : [it.key];
+  };
+  const keys = (it) => {
+    if (!it.reg) return [it.key];
+    const out = it.fixed ? [it.key, S.extraKey(it.kt, it.kid)] : [S.keyFor(it.kt, it.kid)];
+    const o = S.own(it.kt, it.kid);
+    if (o && o.pad) out.push(o);
+    return out.filter(Boolean);
+  };
+  const keysText = (it) => keys(it).map(k => (typeof k === 'string' ? label(k) : S.label(k))).join(' / ');
+  const hit = (key, ev) => {
+    if (S) return S.matches(key, ev);
+    const p = key.split('+'), k = { alt: p.includes('Alt'), ctrl: p.includes('Ctrl'), shift: p.includes('Shift'), key: p[p.length - 1] };
+    const ctrl = MAC ? ev.metaKey : ev.ctrlKey;
+    if (ev.altKey !== k.alt || ctrl !== k.ctrl) return false;
+    return /^[A-Z]$/.test(k.key) ? ev.code === 'Key' + k.key && ev.shiftKey === k.shift : ev.key === k.key;
+  };
   // the button's own words: its text, not the Bliss symbol drawn in it
   const words = (el) => {
     let t = '';
@@ -141,41 +193,60 @@ function wbButtonKeys(list, opts = {}) {
     for (let n = w.nextNode(); n; n = w.nextNode()) if (!n.parentElement.closest('svg, style')) t += n.textContent;
     return t;
   };
-  // the tooltip keeps its key when the page changes it (a file name, another language)
+  // the tooltip keeps its key when the page changes it (a file name, another language) and
+  // follows a key changed on the settings page
+  const tips = [];
   const tip = (el, it) => {
-    const suffix = ` (${label(it.key)})`;
-    // a button without a tooltip of its own shows its words: they follow a change of language
     let fromWords = !el.title && !el.getAttribute('aria-label');
+    let applied = '';                                   // the ending this function put on
+    const strip = (t) => (applied && t.endsWith(applied) ? t.slice(0, -applied.length) : t);
     const set = (base) => {
+      const suffix = ` (${keysText(it)})`;
       // a key the page already put in the tooltip ("Läs upp (Alt+P)") is replaced, not repeated
-      base = base.trim().replace(/\s+/g, ' ').replace(/\s*\(([^()]*)\)$/, (all, k) => (k === it.key || k === label(it.key) ? '' : all))
+      base = strip(base).trim().replace(/\s+/g, ' ').replace(/\s*\(([^()]*)\)$/, (all, k) => (k === it.key || k === label(it.key) ? '' : all))
         .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}…)]+$/gu, '');
       // a tooltip that already names the key ("… or Alt+P, to stop") keeps its own words
-      const t = base.includes(it.key) ? base : (base || it.name()) + suffix;
+      const own = !it.reg || keys(it).length === 1;
+      const t = own && base.includes(it.key) ? base : (base || it.name()) + suffix;
+      applied = t.endsWith(suffix) ? suffix : '';
       if (el.title !== t) el.title = t;
     };
     const fix = () => {
-      if (el.title.endsWith(suffix) || el.title.includes(it.key)) return;
+      if (applied && el.title.endsWith(applied)) return;
+      if (el.title.includes(it.key) && !it.reg) return;
       if (el.title) fromWords = false;                 // the page gave it a tooltip of its own
       set(el.title || el.getAttribute('aria-label') || words(el));
     };
-    fix();
+    const ariaSet = () => {
+      const ks = keys(it).filter(k => typeof k === 'string' && !/^\$ /.test(k));
+      if (ks.length) el.setAttribute('aria-keyshortcuts', ks.map(aria).join(' ')); else el.removeAttribute('aria-keyshortcuts');
+    };
+    fix(); ariaSet();
     new MutationObserver(fix).observe(el, { attributes: true, attributeFilter: ['title'] });
     new MutationObserver(() => { if (fromWords) set(words(el)); }).observe(el, { childList: true, subtree: true, characterData: true });
-    el.setAttribute('aria-keyshortcuts', aria(it.key));
+    tips.push(() => { set(fromWords ? words(el) : el.title); ariaSet(); });
   };
   for (const it of items) { const el = document.getElementById(it.id); if (el) tip(el, it); }
+  if (S) S.onChange(() => { for (const f of tips) f(); });
+  // what a key or a joystick button does: the button, if it can be pressed now
+  const fire = (it) => {
+    if (!it.always && opts.paused && opts.paused()) return false;
+    if (document.querySelector('dialog[open]')) return false;
+    const el = document.getElementById(it.id);
+    if (!el || el.disabled || !el.getClientRects().length) return false;
+    if (it.run) it.run(); else el.click();
+    return true;
+  };
+  if (S) for (const it of items) if (it.reg && !it.elsewhere) S.onPad(it.kt, it.kid, () => fire(it));
   document.addEventListener('keydown', (ev) => {
     if (ev.defaultPrevented || ev.repeat || ev.isComposing) return;
-    if (opts.paused && opts.paused()) return;
-    if (document.querySelector('dialog[open]')) return;
-    const ctrl = MAC ? ev.metaKey : ev.ctrlKey;
     for (const it of items) {
-      const k = it.k;
-      if (it.shown || ev.altKey !== k.alt || ctrl !== k.ctrl) continue;
-      const hit = /^[A-Z]$/.test(k.key) ? ev.code === 'Key' + k.key && ev.shiftKey === k.shift : ev.key === k.key;
-      if (!hit) continue;
-      if ((k.key.startsWith('Arrow') || (!k.alt && !k.ctrl && k.key.length === 1)) && typing(ev.target)) return;
+      const key = handled(it).find(k => hit(k, ev));
+      if (!key) continue;
+      const p = key.split('+'), last = p[p.length - 1], mod = p.includes('Alt') || p.includes('Ctrl');
+      if ((last.startsWith('Arrow') || (!mod && (last.length === 1 || last === 'Space'))) && typing(ev.target)) return;
+      if (!it.always && opts.paused && opts.paused()) return;
+      if (document.querySelector('dialog[open]')) return;
       const el = document.getElementById(it.id);
       if (!el || el.disabled || !el.getClientRects().length) return;
       ev.preventDefault();
@@ -185,7 +256,7 @@ function wbButtonKeys(list, opts = {}) {
   });
   return {
     // rows for the shortcut list: [key, what it does]
-    rows: () => items.filter(it => it.inList !== false && document.getElementById(it.id)).map(it => [label(it.key), it.name()]),
+    rows: () => items.filter(it => it.inList !== false && document.getElementById(it.id)).map(it => [keysText(it), it.name()]),
     label,
   };
 }

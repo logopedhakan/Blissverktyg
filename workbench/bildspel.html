@@ -345,6 +345,7 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
 <footer>WinBliss² · <span data-en="slideshow">bildspel</span> · 2026 AnyCom AB · CC BY 4.0 · <span title="Blissymbolics © C.K. Bliss 1949, 1965 · symbols © Blissymbolics Communication International (BCI), distributed under CC BY-SA 4.0 — conforming to the BCI Authorized Vocabulary, blissymbolics.org">Blissymbolics © BCI, CC BY-SA 4.0</span></footer>
 
 <script src="js/shared/lang.js"></script>
+<script src="js/shared/styrning.js"></script>
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/speak.js"></script>
@@ -1587,24 +1588,15 @@ if ('BroadcastChannel' in window) {
 
 /* ---- keys on the important buttons, shown in their tooltips (2026-11-19) ---- */
 let SC = null;
+// the keys and their names live in js/shared/styrning.js (WB_KEYMAP), where they can be changed
 const KEYS = wbButtonKeys([
-  { id: 'btnPlay', key: 'F5', shown: true, name: () => tr('show from the first slide (Shift+F5: from this one)', 'visa från första sidan (Skift+F5: från den här)') },
-  { id: 'btnAdd', key: 'Alt+N', name: () => tr('new slide', 'ny sida') },
-  { id: 'btnDup', key: 'Alt+K', name: () => tr('copy the slide', 'kopiera sidan') },
-  { id: 'btnDel', key: 'Alt+R', name: () => tr('remove the slide', 'ta bort sidan') },
-  { id: 'btnUp', key: 'Alt+ArrowUp', name: () => tr('move the slide up', 'flytta upp sidan') },
-  { id: 'btnDown', key: 'Alt+ArrowDown', name: () => tr('move the slide down', 'flytta ner sidan') },
-  { id: 'btnImg', key: 'Alt+B', name: () => tr('choose a picture', 'välj bild') },
-  { id: 'btnSpeak', key: 'Alt+P', shown: true, name: () => tr('read the slide aloud / stop reading', 'läs upp sidan / stoppa uppläsningen') },
-  { id: 'btnOpen', key: 'Ctrl+O', name: () => tr('open a slideshow', 'öppna ett bildspel') },
-  { id: 'btnSave', key: 'Ctrl+S', name: () => tr('save the slideshow', 'spara bildspelet') },
-  { id: 'btnSaveAs', key: 'Ctrl+Shift+S', name: () => tr('save as…', 'spara som…') },
+  { id: 'btnPlay' }, { id: 'btnAdd' }, { id: 'btnDup' }, { id: 'btnDel' }, { id: 'btnUp' }, { id: 'btnDown' }, { id: 'btnImg' },
+  { id: 'btnSpeak', of: 'alla:speak', name: () => tr('read the slide aloud / stop reading', 'läs upp sidan / stoppa uppläsningen') },
+  { id: 'btnOpen' }, { id: 'btnSave' }, { id: 'btnSaveAs' },
   { id: 'btnKeys', key: '?', run: () => SC && SC.openList(), name: () => tr('all keyboard shortcuts (this list)', 'alla kortkommandon (den här listan)') },
   // on the screen while showing; the show's own keys, listed below
-  { id: 'showPrev', key: 'ArrowLeft', shown: true, inList: false, name: () => '' },
-  { id: 'showNext', key: 'ArrowRight', shown: true, inList: false, name: () => '' },
-  { id: 'showExit', key: 'Escape', shown: true, inList: false, name: () => '' },
-], { paused: showing });
+  { id: 'showPrev', inList: false }, { id: 'showNext', inList: false }, { id: 'showSpeak', inList: false }, { id: 'showExit', inList: false },
+], { tool: 'bildspel', paused: showing });
 
 /* delade $-genvägar (shortcuts.js), and the help button: every key in one list */
 try { SC = wbShortcuts({
