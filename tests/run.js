@@ -598,9 +598,10 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   vm.runInContext(read('js/data/bliss-data.js') + ';this.D = BLISS_DATA;', ctx);
   const known = new Set(ctx.D.map(s => String(s.id)));
   const bad = [], lost = [], none = [];
-  for (const page of ['bildspel.html', 'memory.html', 'gissa.html', 'gravyr.html', 'almanacka.html', 'former.html']) {
-    const t = read(page), i = t.indexOf('wbIcons.put({');
-    if (i < 0 || !t.includes('<script src="js/shared/ikoner.js"></script>')) { none.push(page); continue; }
+  for (const page of ['bildspel.html', 'memory.html', 'gissa.html', 'gravyr.html', 'almanacka.html', 'former.html', 'index.html']) {
+    // Editera and Skriv keep their list in js/editor/ikoner.js
+    const html = read(page), t = page === 'index.html' ? html + read('js/editor/ikoner.js') : html, i = t.indexOf('wbIcons.put({');
+    if (i < 0 || !html.includes('<script src="js/shared/ikoner.js"></script>')) { none.push(page); continue; }
     const body = t.slice(i, t.indexOf('});', i));
     for (const m of body.matchAll(/'([^']+)': '([\d,]+)'/g)) {
       for (const id of m[2].split(',')) if (!known.has(id)) bad.push(page + ' ' + m[1] + ' ' + id);
