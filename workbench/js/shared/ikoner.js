@@ -31,18 +31,18 @@ const wbIcons = (() => {
       '.wbiw{display:inline-flex;align-items:center;gap:.4em}.wbiw > .wbi{margin-right:0}label > input + .wbi{margin-left:.1em}';
     (document.head || document.documentElement).appendChild(st);
   }
-  function make(ids) {
+  function make(ids, cls) {
     const s = document.createElement('span');
-    s.className = 'wbi';
+    s.className = 'wbi' + (cls ? ' ' + cls : '');
     s.dataset.ids = ids;
     s.setAttribute('aria-hidden', 'true');
     s.innerHTML = svg(ids);
     return s;
   }
   const CONTROL = /^(INPUT|SELECT|TEXTAREA)$/;
-  function place(target, ids) {
+  function place(target, ids, cls) {
     if (target.querySelector(':scope > .wbi, :scope > .wbiw > .wbi')) return;
-    const icon = make(ids);
+    const icon = make(ids, cls);
     // a checkbox or radio that comes first keeps its place: [x] symbol words
     const first = [...target.childNodes].find(n => n.nodeType === 1 || n.textContent.trim());
     if (first && first.nodeType === 1 && CONTROL.test(first.tagName) && /^(checkbox|radio)$/.test(first.type)) { first.after(icon); return; }
@@ -57,17 +57,18 @@ const wbIcons = (() => {
     }
     target.prepend(icon);
   }
-  /** { selector: 'BCI-AV ids' } — a setting (its label gets the symbol) or a button, summary, heading. */
-  function put(map) {
+  /** { selector: 'BCI-AV ids' } — a setting (its label gets the symbol) or a button, summary, heading.
+      opts.cls: a class of the page's own for the symbol (Editera: 'bIcon', which its translation keeps). */
+  function put(map, opts = {}) {
     if (typeof document === 'undefined') return;
     css();
     for (const [sel, ids] of Object.entries(map)) {
       for (const el of document.querySelectorAll(sel)) {
         const target = CONTROL.test(el.tagName) ? (el.closest('label') || null) : el;
         if (!target) continue;
-        place(target, ids);
+        place(target, ids, opts.cls);
         // the page rewrites the button's words: the symbol comes back
-        new MutationObserver(() => place(target, ids)).observe(target, { childList: true });
+        new MutationObserver(() => place(target, ids, opts.cls)).observe(target, { childList: true });
       }
     }
   }

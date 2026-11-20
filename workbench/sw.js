@@ -7,7 +7,7 @@
    When you add a file the app needs, add it to CORE and bump VERSION — the
    new version then replaces the old cache on the next visit. */
 'use strict';
-const VERSION = '2026-11-20.4';
+const VERSION = '2026-11-20.5';
 const CACHE = 'blissverktyget-' + VERSION;
 const CORE = [
   'start.html', 'index.html', 'skriv.html', 'bildspel.html', 'bildspel-ny.html', 'gissa.html', 'memory.html', 'installningar.html', 'former.html', 'gravyr.html', 'almanacka.html',
@@ -20,7 +20,7 @@ const CORE = [
   'js/data/bliss-skriv-data.js', 'js/data/bliss-synonymer.js', 'js/data/bliss-harledda.js',
   'js/engine/bliss-shapes.js', 'js/engine/bliss-engine.js',
   'js/data/bliss-data.js', 'js/data/glosses.js',
-  'js/editor/app.js', 'js/editor/i18n.js',
+  'js/editor/app.js', 'js/editor/i18n.js', 'js/editor/ikoner.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
   'icons/apple-touch-icon.png', 'icons/favicon.svg',
 ];
