@@ -592,6 +592,26 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     [true, [], true, true]);
 }
 
+/* ---------- 8f3. a Bliss symbol beside every setting (js/shared/ikoner.js, 2026-11-20) ---------- */
+{
+  const ctx = vm.createContext({});
+  vm.runInContext(read('js/data/bliss-data.js') + ';this.D = BLISS_DATA;', ctx);
+  const known = new Set(ctx.D.map(s => String(s.id)));
+  const bad = [], lost = [], none = [];
+  for (const page of ['bildspel.html', 'memory.html', 'gissa.html', 'gravyr.html', 'almanacka.html', 'former.html']) {
+    const t = read(page), i = t.indexOf('wbIcons.put({');
+    if (i < 0 || !t.includes('<script src="js/shared/ikoner.js"></script>')) { none.push(page); continue; }
+    const body = t.slice(i, t.indexOf('});', i));
+    for (const m of body.matchAll(/'([^']+)': '([\d,]+)'/g)) {
+      for (const id of m[2].split(',')) if (!known.has(id)) bad.push(page + ' ' + m[1] + ' ' + id);
+      for (const id of m[1].matchAll(/#([\w-]+)/g)) if (!t.includes(`id="${id[1]}"`) && !t.includes(`.id = '${id[1]}'`)) lost.push(page + ' ' + m[1]);
+    }
+  }
+  check('symbols: in every part, BCI-AV symbols, on settings that are there', [none, bad, lost], [[], [], []]);
+  // the symbol holds no text: a button's words (read and written back while reading aloud) stay its words
+  check('symbols: no <style> text inside the symbol', /replace\(\/<style>\[\\s\\S\]\*\?<\\\/style>\/g, ''\)/.test(read('js/shared/ikoner.js')), true);
+}
+
 /* ---------- 8g. the keys on the buttons follow the settings (shortcuts.js + styrning.js) ---------- */
 {
   const els = {}, clicked = [];

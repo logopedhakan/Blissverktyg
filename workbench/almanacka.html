@@ -177,6 +177,7 @@ dialog h2{font-size:17px;margin-bottom:10px}
 
 <script src="js/shared/lang.js"></script>
 <script src="js/shared/styrning.js"></script>
+<script src="js/shared/ikoner.js"></script>
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/speak.js"></script>
@@ -598,6 +599,26 @@ wbShortcuts({
     H: { run: () => { location.href = 'start.html'; }, desc: () => tr('to the start page', 'till startsidan') },
   },
   extra: () => [['Alt+P', tr("read today's bookings aloud / stop", 'läs upp dagens bokningar / stoppa')]],
+});
+
+/* a Bliss symbol beside every setting and button (js/shared/ikoner.js, 2026-11-20) */
+wbIcons.put({
+  '#thisWeek': '17744',
+  '#hoverToggle': '23593,16728',
+  '#btnSettings': '25987',
+  '#bDate': '13639',
+  '#bTime': '17732',
+  '#bEnd': '17268',
+  '#btnDelete': '17498',
+  '#btnSpeakBook': '16728',
+  '#btnCancel': '13665',
+  '#btnSave': '15143',
+  '#optLabels': '18272,17969',
+  '#optSize': '12857,23214',
+  '#btnSaveFile': '15143,13109',
+  '#btnOpenFile': '15922,13109',
+  '#btnIcs': '23490,13109',
+  '#btnSetDone': '24844',
 });
 </script>
 </body>

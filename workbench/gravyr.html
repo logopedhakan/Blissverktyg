@@ -104,8 +104,8 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
       <label>Skärram <input id="cutFrame" type="checkbox" checked></label>
       <label class="slider">Hörnradie (mm) <output for="cornerR"></output><input id="cornerR" type="range" min="0" max="30" step="0.5" value="4"></label>
       <!-- Håkan, 2026-09-24: hål för ring på valfri kant — 0/90/180/270 grader, flera går bra -->
-      <div id="holes" style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px">
-        <span>Hål för ring</span>
+      <div id="holes" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px">
+        <span style="white-space:nowrap">Hål för ring</span>
         <span style="display:flex;gap:9px">
           <label title="Ovankant (0°)"><input class="hole" data-side="top" type="checkbox"> ↑</label>
           <label title="Höger (90°)"><input class="hole" data-side="right" type="checkbox"> →</label>
@@ -146,6 +146,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 
 <script src="js/shared/lang.js"></script>
 <script src="js/shared/styrning.js"></script>
+<script src="js/shared/ikoner.js"></script>
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/wbs.js"></script>
@@ -616,6 +617,30 @@ wbShortcuts({
     H: { run: () => { location.href = 'start.html'; }, desc: () => tr('to the start page', 'till startsidan') },
   },
   extra: () => [[tr('the Bliss text', 'Blisstexten'), tr('write — every word becomes its symbol; click a word for symbol, form or text', 'skriv — varje ord blir sin symbol; klicka på ett ord för symbol, böjning eller text')]],
+});
+
+/* a Bliss symbol beside every setting and button (js/shared/ikoner.js, 2026-11-20) */
+wbIcons.put({
+  '#btnList': '15220',
+  '#optSymbols': '12857',
+  '#optLabels': '18272,17969',
+  '#cardFmt': '16940',
+  '#cardW': '18250',
+  '#cardH': '14711',
+  '#cutFrame': '13628,13907',
+  '#cornerR': '25537',
+  '#holes > span:first-child': '14883',
+  '#holeD': '14883,23214',
+  'label:has(> span > #btnBg)': '16172',
+  '#bgLight': '15208',
+  '#symH': '12857,14711',
+  '#gap': '25996',
+  '#penW': '15214,18250',
+  '#posY': '16224',
+  '#posMid': '15464',
+  '#caption': '29846',
+  '#txtH': '29846,14711',
+  '#btnSVG': '26158',
 });
 </script>
 </body>
