@@ -19,7 +19,7 @@
     sessionStorage.setItem('wb-igang', '1');
     if (/[?&]start\b/.test(location.search)) return;
     const last = localStorage.getItem('wb-senast') || '';
-    if (/^(index|bildspel|bildspel-ny|almanacka|gissa|former|gravyr)\.html(\?[\w=&%-]*)?$/.test(last)) {
+    if (/^(index|bildspel|bildspel-ny|almanacka|gissa|memory|former|gravyr)\.html(\?[\w=&%-]*)?$/.test(last)) {
       window.wbGoingBack = true;
       location.replace(last);
     }
@@ -107,6 +107,12 @@ header{position:relative}
       <h2 data-sv="Hänga gubbe" data-en="Hangman">Hänga gubbe</h2>
       <p data-sv="övningen — gissa vilka former som bygger symbolen och sätt dem på plats"
          data-en="the exercise — guess which shapes build the symbol and put them in place">övningen — gissa vilka former som bygger symbolen och sätt dem på plats</p>
+    </a>
+    <a class="card" href="memory.html">
+      <span class="icon" aria-hidden="true" data-gloss="memory,remember"></span>
+      <h2 data-sv="Memory" data-en="Memory">Memory</h2>
+      <p data-sv="vänd två kort i taget och hitta paren — samma symbol, eller symbol och ord"
+         data-en="turn two cards at a time and find the pairs — the same symbol, or a symbol and its word">vänd två kort i taget och hitta paren — samma symbol, eller symbol och ord</p>
     </a>
     <a class="card" href="former.html">
       <span class="icon" aria-hidden="true" data-elements="1"></span>
