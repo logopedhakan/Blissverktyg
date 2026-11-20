@@ -1311,7 +1311,12 @@ function openHelp() {
   else $('helpDlg').showModal();
 }
 $('btnHelp').onclick = openHelp;
-$('helpSwitch').onclick = () => { $('helpDlg').close(); if (window.wbSwitch) wbSwitch.open(); };
+// the help is rebuilt when the language changes (i18n.js): the button is found by its id at the click
+$('helpDlg').addEventListener('click', (ev) => {
+  if (!ev.target.closest('#helpSwitch')) return;
+  $('helpDlg').close();
+  if (window.wbStyr) wbStyr.open();
+});
 $('wHelp').onclick = openHelp;
 document.addEventListener('keydown', (ev) => {
   if (ev.key !== '?' ) return;
@@ -2491,14 +2496,9 @@ $('wOpenDoc').onclick = async () => {
 };
 
 /* keyboard shortcuts in Write mode (Håkan 2026-09-11 — a screen keyboard can
-   send key combos): Ctrl/Cmd+S = save the document, Ctrl/Cmd+O = open one */
-document.addEventListener('keydown', (ev) => {
-  if (!document.body.classList.contains('writing')) return;
-  if (!(ev.metaKey || ev.ctrlKey) || ev.altKey || ev.shiftKey) return;
-  const k = ev.key.toLowerCase();
-  if (k === 's') { ev.preventDefault(); $('wSaveDoc').onclick(); }
-  if (k === 'o') { ev.preventDefault(); $('wOpenDoc').onclick(); }
-});
+   send key combos): Ctrl/Cmd+S saves the document, Ctrl/Cmd+O opens one — since
+   2026-11-20 with the other keys on Write's buttons (wbButtonKeys below), so they
+   can be changed on the settings page */
 
 /* exports share the document pipeline */
 $('wSVG').onclick = () => {
@@ -2868,19 +2868,13 @@ if (typeof wbShortcuts === 'function') {
   const inWriting = () => document.body.classList.contains('writing');
   /* keys on Write's important buttons, shown in their tooltips (2026-11-19);
      only while writing — the editor has its own one-key shortcuts */
+  // the keys and their names live in js/shared/styrning.js (WB_KEYMAP), where they can be changed
   const KEYS = typeof wbButtonKeys === 'function' ? wbButtonKeys([
-    { id: 'wSpeak', key: 'Alt+P', shown: true, name: () => tr('read the text aloud / stop reading', 'läs upp texten / stoppa uppläsningen') },
-    { id: 'wMic', key: 'Alt+M', name: () => tr('dictate', 'diktera') },
-    { id: 'wFam', key: 'Alt+O', name: () => tr('fetch a word from Form families', 'hämta ett ord ur Formfamiljer') },
-    { id: 'wOpenDoc', key: 'Ctrl+O', shown: true, name: () => tr('open a document', 'öppna ett dokument') },
-    { id: 'wSaveDoc', key: 'Ctrl+S', shown: true, name: () => tr('save the document', 'spara dokumentet') },
-    { id: 'wPrint', key: 'Ctrl+P', name: () => tr('print, or save as PDF', 'skriv ut eller spara som PDF') },
-    { id: 'wClip', key: 'Alt+C', name: () => tr('copy the text to the clipboard', 'kopiera texten till urklipp') },
-    { id: 'wToShow', key: 'Alt+B', name: () => tr('the text as a new slide in Slideshow', 'texten som en ny sida i Bildspel') },
-    { id: 'wToTag', key: 'Alt+G', name: () => tr('the symbols onto an engraving tag', 'symbolerna på ett gravyrkort') },
+    { id: 'wSpeak', of: 'alla:speak', name: () => tr('read the text aloud / stop reading', 'läs upp texten / stoppa uppläsningen') },
+    { id: 'wMic' }, { id: 'wFam' }, { id: 'wOpenDoc' }, { id: 'wSaveDoc' }, { id: 'wPrint' }, { id: 'wClip' }, { id: 'wToShow' }, { id: 'wToTag' },
     { id: 'btnHelp', key: '?', shown: true, name: () => tr('all keyboard shortcuts (this list)', 'alla kortkommandon (den här listan)') },
     { id: 'wHelp', key: '?', shown: true, inList: false, name: () => '' },
-  ], { paused: () => !inWriting() }) : null;
+  ], { tool: 'skriv', paused: () => !inWriting() }) : null;
   SC = wbShortcuts({
     title: () => inWriting() ? 'WinBliss — Skriv' : 'WinBliss — Editera',
     onHelp: openHelp,

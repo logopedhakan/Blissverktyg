@@ -1,13 +1,18 @@
 /* WinBliss² — switches and joysticks, the same in every part (2026-11-19).
    A switch interface sends keys (Space and Enter, F7/F8, 1/2 …) or shows up
-   as a joystick (a game controller). Here the person, or whoever helps, teaches
-   the app which key or button is which:
+   as a joystick (a game controller). On the settings page (installningar.html)
+   the person, or whoever helps, teaches the app which key or button is which:
      Stega        (step)    moves to the next button, like Tab
      Bekräfta     (confirm) presses it, like Enter
      Stega bakåt  (back)    the button before (optional)
-   The choice is kept in this browser ('wb-brytare') and works in every part.
+   The choice is kept in this browser ('wb-brytare') and works in every part —
+   a change reaches open tabs at once.
    A joystick works without learning: the stick and the cross step (right/down
-   forward, left/up back) and its first button confirms; learned buttons win.
+   forward, left/up back) and its first button confirms; learned buttons win,
+   and a joystick button given to a shortcut (js/shared/styrning.js) does that.
+   One switch (2026-11-20, styrning 'brytare1'): the buttons are stepped through
+   by themselves, a while on each, and the switch chooses; after some rounds
+   without a press it rests until the next press.
    Tab, Enter and Space keep doing what they always do; a learned key that
    types a character is left to text fields, so writing still works.
    A page can steer it: wbSwitch.scope() -> the elements to step between (or
@@ -37,6 +42,12 @@ const wbSwitch = (() => {
   }
   let cfg = clean((() => { try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (_) { return null; } })());
   const save = () => { try { localStorage.setItem(STORE, JSON.stringify(cfg)); } catch (_) {} };
+  addEventListener('storage', (e) => {
+    if (e.key !== STORE && e.key !== null) return;
+    try { cfg = clean(JSON.parse(localStorage.getItem(STORE) || 'null')); } catch (_) {}
+  });
+  const styr = () => (typeof window !== 'undefined' && window.wbStyr) || null;
+  const scanOn = () => !!styr() && styr().settings.mode === 'brytare1';
 
   const KEY_NAME = { ' ': () => T('Space', 'Mellanslag'), Enter: () => 'Enter', Tab: () => 'Tab', Backspace: () => T('Backspace', 'Backsteg'),
     ArrowUp: () => '↑', ArrowDown: () => '↓', ArrowLeft: () => '←', ArrowRight: () => '→', Escape: () => 'Esc' };
@@ -88,21 +99,75 @@ const wbSwitch = (() => {
   }
   function act(role) {
     if (api.hook && api.hook(role)) return;
+    if (scanOn()) {
+      // one switch: it chooses; a second switch learned as Step still steps by hand
+      if (role === 'confirm' || !cfg.confirm) scanSwitch(); else { move(role === 'back' ? -1 : 1); scanBegin(); }
+      return;
+    }
     if (role === 'confirm') press(); else move(role === 'back' ? -1 : 1);
   }
 
-  /* ---- learning ---- */
-  let learning = null;                              // { role, done(input) }
+  /* ---- one switch: stepping by itself (scanning) ---- */
+  let scanT = null, scanLeft = 0, scanResting = false;
+  function scanSchedule(ms) { clearTimeout(scanT); scanT = scanOn() ? setTimeout(scanTick, ms) : null; }
+  function scanTick() {
+    if (!scanOn()) return;
+    const st = styr().settings.scan;
+    // another window in use, a key being learned, or writing in a text field: wait
+    if (document.hidden || !document.hasFocus() || learning || typing(document.activeElement)) { scanSchedule(st.ms); return; }
+    if (scanLeft <= 0) {
+      if (!scanResting) { scanResting = true; styr().say(T('Resting — press the switch to step again', 'Vilar — tryck på brytaren för att stega igen')); }
+      return;
+    }
+    move(1); scanLeft--;
+    scanSchedule(st.ms);
+  }
+  function scanBegin() {
+    if (!scanOn()) { clearTimeout(scanT); return; }
+    scanResting = false;
+    scanLeft = styr().settings.scan.rounds * Math.max(1, stops().length);
+    scanSchedule(styr().settings.scan.ms);
+  }
+  function scanSwitch() {
+    const a = document.activeElement;
+    if (scanResting || !a || a === document.body || typing(a)) { move(1); scanBegin(); return; }
+    press();
+    // where it goes on: from the button chosen, or from the first one again
+    if (styr().settings.scan.restart && document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    scanBegin();
+  }
+  if (typeof document !== 'undefined') {
+    const go = () => scanBegin();
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
+    setTimeout(() => { if (styr()) styr().onChange(() => scanBegin()); }, 0);
+  }
+
+  /* ---- learning: the next key or joystick input goes to whoever asked (the settings page) ---- */
+  let learning = null;                              // { chord, done(input | null) }
   let swallowUp = null;                             // the code whose keyup must not reach the page
+  let learnT = null;
   function learned(x) {
     const l = learning; learning = null;
     clearTimeout(learnT);
-    if (!l) return;
-    for (const r of ROLES) if (r !== l.role && cfg[r] && (x.pad ? samePad(cfg[r], x) : !cfg[r].pad && cfg[r].key === x.key && cfg[r].code === x.code)) delete cfg[r];
-    cfg[l.role] = x; save();
-    l.done(x);
+    if (l) l.done(x);
   }
-  let learnT = null;
+  /** The next input: a key { code, key } (chord: { key: 'Alt+N' }) or a joystick input; null after Esc or 15 s. */
+  function capture(done, opts = {}) {
+    clearTimeout(learnT);
+    learning = { chord: !!opts.chord, done };
+    learnT = setTimeout(() => learned(null), opts.ms || 15000);
+    startPolling();
+  }
+  const cancelCapture = () => { if (learning) learned(null); };
+  /** Learn a switch: the input becomes the role's (and no longer any other role's). */
+  function setRole(role, x) {
+    if (!ROLES.includes(role)) return;
+    if (x) for (const r of ROLES) if (r !== role && cfg[r] && (x.pad ? samePad(cfg[r], x) : !cfg[r].pad && cfg[r].key === x.key && cfg[r].code === x.code)) delete cfg[r];
+    if (x) cfg[role] = cleanInput(x); else delete cfg[role];
+    save();
+  }
+  function forget() { cfg = clean({ stick: cfg.stick }); save(); }
+  function setStick(on) { cfg.stick = !!on; save(); }
 
   /* ---- keys ---- */
   addEventListener('keydown', (ev) => {
@@ -110,11 +175,21 @@ const wbSwitch = (() => {
       if (MODIFIERS.includes(ev.key)) return;       // wait for the key itself
       ev.preventDefault(); ev.stopImmediatePropagation();
       swallowUp = ev.code || ev.key;
-      if (ev.key === 'Escape') { const l = learning; learning = null; clearTimeout(learnT); l.done(null); return; }
+      if (ev.key === 'Escape' && !ev.altKey && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey) { learned(null); return; }
+      if (learning.chord) { const k = styr() ? styr().keyOf(ev) : null; if (k) learned({ key: k }); return; }
       learned({ code: ev.code || '', key: ev.key });
       return;
     }
     if (ev.altKey || ev.ctrlKey || ev.metaKey) return; // a chord is another key
+    // one switch that sends Enter or Space: while resting it only starts the stepping again
+    if (scanOn() && (ev.key === 'Enter' || ev.key === ' ') && !typing(ev.target) && !ROLES.some(r => sameKey(cfg[r], ev))) {
+      if (scanResting) { ev.preventDefault(); move(1); scanBegin(); return; }
+      setTimeout(() => {
+        if (styr().settings.scan.restart && document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        scanBegin();
+      }, 0);
+      return;
+    }
     const role = ROLES.find(r => sameKey(cfg[r], ev));
     if (!role || native(role, cfg[role])) return;
     if (typing(ev.target) && typesChar(cfg[role])) return;
@@ -132,13 +207,16 @@ const wbSwitch = (() => {
   function padInput(x, std) {
     if (learning) { learned(x); return; }
     if (!document.hasFocus()) return;               // two windows side by side: only the one in use
+    if (styr() && styr().padAction(x)) return;      // a joystick button given to a shortcut
     const role = ROLES.find(r => samePad(cfg[r], x));
     if (role) { act(role); return; }
     // not learned: the first button confirms, until Confirm is learned on the joystick
     if (x.pad === 'button' && x.i === 0 && !(cfg.confirm && cfg.confirm.pad)) { act('confirm'); return; }
     if (!cfg.stick) return;
-    if (x.pad === 'axis' && x.i < 2) act(x.dir > 0 ? 'step' : 'back');
-    else if (std && x.pad === 'button' && x.i >= 12 && x.i <= 15) act(x.i === 13 || x.i === 15 ? 'step' : 'back');
+    // the stick and the cross step by hand (with one switch too: the stepping goes on from there)
+    const d = x.pad === 'axis' && x.i < 2 ? x.dir : std && x.pad === 'button' && x.i >= 12 && x.i <= 15 ? (x.i === 13 || x.i === 15 ? 1 : -1) : 0;
+    if (!d) return;
+    if (scanOn()) { move(d); scanBegin(); } else act(d > 0 ? 'step' : 'back');
   }
   function poll() {
     const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
@@ -163,102 +241,15 @@ const wbSwitch = (() => {
     const p = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean)[0] : null;
     return p ? p.id.replace(/\s*\(.*$/, '').slice(0, 60) : null;
   }
+  const padListeners = [];
+  function padStatus() { for (const f of padListeners) try { f(padName()); } catch (_) {} }
 
-  /* ---- the dialog ---- */
-  let dlg = null;
-  function padStatus() {
-    if (!dlg || !dlg.open) return;
-    const n = padName();
-    dlg.querySelector('[data-pad]').textContent = n ? T('Joystick connected: ', 'Joystick ansluten: ') + n
-      : T('No joystick found — connect it and press one of its buttons.', 'Ingen joystick hittad — anslut den och tryck på en av dess knappar.');
-  }
-  function build() {
-    dlg = document.createElement('dialog');
-    dlg.id = 'wbSwitchDlg';
-    dlg.setAttribute('aria-labelledby', 'wbSwitchHead');
-    dlg.style.cssText = 'border:1px solid var(--rule,#ccc);border-radius:14px;padding:18px 22px;margin:auto;' +
-      'background:var(--panel,#fff);color:var(--ink,#1b1b1d);width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;font-size:14px;line-height:1.45';
-    document.body.appendChild(dlg);
-    dlg.addEventListener('close', () => { if (learning) { learning = null; clearTimeout(learnT); } });
-  }
-  const BTN = 'font:inherit;padding:7px 13px;border:1px solid var(--rule,#ccc);border-radius:9px;background:var(--panel-2,#f4f3ef);color:inherit;cursor:pointer;min-height:40px';
-  function render() {
-    const note = (t) => { const n = dlg.querySelector('[data-note]'); n.textContent = t; };
-    dlg.innerHTML = `<h2 id="wbSwitchHead" style="margin:0 0 6px;font-size:17px"></h2>
-      <p data-intro style="margin:0 0 12px;color:var(--dim,#555)"></p>
-      <table style="border-collapse:collapse;width:100%"></table>
-      <p data-note role="status" aria-live="polite" style="min-height:1.45em;margin:10px 0;font-weight:600"></p>
-      <fieldset style="border:1px solid var(--rule,#ccc);border-radius:10px;padding:8px 12px 12px;margin:0 0 12px">
-        <legend data-try style="padding:0 6px"></legend>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <button type="button" data-t="1" style="${BTN}">1</button><button type="button" data-t="2" style="${BTN}">2</button><button type="button" data-t="3" style="${BTN}">3</button>
-          <span data-tried role="status" aria-live="polite"></span></div></fieldset>
-      <p data-pad style="margin:0 0 6px;color:var(--dim,#555)"></p>
-      <label style="display:flex;gap:8px;align-items:center;margin:0 0 14px"><input type="checkbox" data-stick><span data-stick-l></span></label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-        <button type="button" data-forget style="${BTN}"></button><span style="flex:1"></span>
-        <button type="button" data-close style="${BTN};background:var(--accent,#28558C);color:var(--on-accent,#fff);border-color:var(--accent,#28558C)"></button></div>`;
-    dlg.querySelector('#wbSwitchHead').textContent = T('Switches and joystick', 'Brytare och joystick');
-    dlg.querySelector('[data-intro]').textContent = T(
-      'Teach the app which keys or buttons your switches send. Step moves to the next button, Confirm presses it. Kept in this browser, in every part.',
-      'Lär Blissverktyget vilka tangenter eller knappar dina brytare skickar. Stega flyttar till nästa knapp, Bekräfta trycker på den. Sparas i den här webbläsaren och gäller alla delar.');
-    const table = dlg.querySelector('table');
-    for (const r of ROLES) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<th scope="row" style="text-align:left;padding:5px 10px 5px 0;white-space:nowrap"></th>
-        <td data-cur style="padding:5px 10px 5px 0;width:100%"></td>
-        <td style="padding:5px 0;white-space:nowrap"><button type="button" data-learn style="${BTN}"></button></td>`;
-      tr.querySelector('th').textContent = ROLE_NAME[r]() + (r === 'back' ? T(' (optional)', ' (valfri)') : '');
-      const cur = tr.querySelector('[data-cur]'), b = tr.querySelector('[data-learn]');
-      const show = () => { cur.textContent = nameOf(cfg[r]); b.textContent = T('Learn', 'Lär in'); b.setAttribute('aria-label', T('Learn ', 'Lär in ') + ROLE_NAME[r]()); };
-      show();
-      b.onclick = () => {
-        b.textContent = T('Press now…', 'Tryck nu…');
-        note(T(`Press the switch for ${ROLE_NAME[r]()} now. Esc cancels.`, `Tryck på brytaren för ${ROLE_NAME[r]()} nu. Esc avbryter.`));
-        clearTimeout(learnT);
-        learnT = setTimeout(() => { if (learning) { learning = null; show(); note(T('Nothing was pressed — try again.', 'Inget trycktes — försök igen.')); } }, 15000);
-        learning = { role: r, done: (x) => {
-          for (const row of table.rows) row.dispatchEvent(new Event('wb-refresh'));
-          if (!x) { note(T('Cancelled.', 'Avbrutet.')); return; }
-          note(native(r, x) ? T(`${nameOf(x)}: what that key always does — it works as before.`, `${nameOf(x)}: det tangenten alltid gör — det fungerar som förut.`)
-            : typesChar(x) ? T(`${ROLE_NAME[r]()}: ${nameOf(x)}. It types a character, so in text fields it types as usual — an F key (F1–F12) works everywhere, if the switch can send one.`,
-                               `${ROLE_NAME[r]()}: ${nameOf(x)}. Den skriver ett tecken, så i textrutor skriver den som vanligt — en F-tangent (F1–F12) fungerar överallt, om brytaren kan skicka det.`)
-            : T(`${ROLE_NAME[r]()}: ${nameOf(x)}. Try it on 1 2 3 below.`, `${ROLE_NAME[r]()}: ${nameOf(x)}. Prova på 1 2 3 nedan.`));
-        } };
-      };
-      tr.addEventListener('wb-refresh', show);
-      table.appendChild(tr);
-    }
-    dlg.querySelector('[data-try]').textContent = T('Try it', 'Prova');
-    for (const b of dlg.querySelectorAll('[data-t]'))
-      b.onclick = () => { dlg.querySelector('[data-tried]').textContent = T('✓ Confirmed: ', '✓ Bekräftat: ') + b.dataset.t; };
-    const stick = dlg.querySelector('[data-stick]');
-    stick.checked = cfg.stick;
-    dlg.querySelector('[data-stick-l]').textContent = T('The joystick\'s stick steps (right/down forward, left/up back)', 'Joystickens spak stegar (höger/ner framåt, vänster/upp bakåt)');
-    stick.onchange = () => { cfg.stick = stick.checked; save(); };
-    const forget = dlg.querySelector('[data-forget]');
-    forget.textContent = T('Forget the switches', 'Glöm brytarna');
-    forget.onclick = () => {
-      cfg = clean({ stick: cfg.stick }); save();
-      for (const row of table.rows) row.dispatchEvent(new Event('wb-refresh'));
-      note(T('Forgotten — Tab and Enter work as always.', 'Glömt — Tab och Enter fungerar som vanligt.'));
-    };
-    const close = dlg.querySelector('[data-close]');
-    close.textContent = T('Done', 'Klar');
-    close.onclick = () => dlg.close();
-    padStatus();
-  }
-  function open() {
-    if (!dlg) build();
-    render();
-    if (!dlg.open) dlg.showModal();
-    padStatus();
-    startPolling();
-    const first = dlg.querySelector('[data-learn]');
-    if (first) first.focus();
-  }
+  /** The settings page (all of steering lives there). */
+  function open() { if (styr()) styr().open(); }
 
-  const api = { open, nameOf, clean, get config() { return cfg; }, scope: null, hook: null };
+  const api = { open, nameOf, clean, get config() { return cfg; }, scope: null, hook: null,
+    ROLES, ROLE_NAME, capture, cancelCapture, setRole, forget, setStick, padName, onPadChange: (f) => padListeners.push(f),
+    native, typesChar, move, press };
   return api;
 })();
 if (typeof window !== 'undefined') window.wbSwitch = wbSwitch;

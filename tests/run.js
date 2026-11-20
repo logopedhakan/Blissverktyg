@@ -468,12 +468,14 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   // Skriv (2026-11-19): its own keys, only while writing; help in the header and, embedded, in the tools row
   const app = read('js/editor/app.js'), idx = read('index.html');
   check('keys: Skriv has keys on its buttons, only while writing, and help shows its list',
-    [/wbButtonKeys\(\[[\s\S]*?\{ id: 'wToShow', key: 'Alt\+B'[\s\S]*?\], \{ paused: \(\) => !inWriting\(\) \}\)/.test(app),
+    [/wbButtonKeys\(\[[\s\S]*?\{ id: 'wToShow' \}[\s\S]*?\], \{ tool: 'skriv', paused: \(\) => !inWriting\(\) \}\)/.test(app),
      /function openHelp\(\) \{[\s\S]*?classList\.contains\('writing'\) && SC\) SC\.openList\(\)/.test(app),
      /id="wHelp"/.test(idx), /body\.embed #wHelp\{display:inline-block\}/.test(idx)],
     [true, true, true, true]);
   const cut = (src, a0, b0) => src.slice(src.indexOf(a0), src.indexOf(b0, src.indexOf(a0)));
-  const skrivKeys = [...cut(app, 'wbButtonKeys([', '], { paused').matchAll(/key: '([^']+)'/g)].map(m => m[1]).filter(k => k !== '?');
+  const styrSrc = read('js/shared/styrning.js');
+  const MAP = vm.runInContext(styrSrc.slice(styrSrc.indexOf('const WB_KEYMAP'), styrSrc.indexOf('const wbStyr')) + 'WB_KEYMAP', vm.createContext({}));
+  const skrivKeys = MAP.find(g => g.tool === 'skriv').keys.map(k => k.key);
   check('keys: no key twice in Skriv, none taken by the window keys (Alt+1/2/3/V/H)',
     [new Set(skrivKeys).size === skrivKeys.length, skrivKeys.some(k => /^Alt\+[123VH]$/.test(k))], [true, false]);
   // a tooltip that already names its key keeps its own words
@@ -499,10 +501,106 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('switch: a bad stored setting is dropped, never markup', JSON.stringify(load({ step: { key: X + X + X }, confirm: { pad: 'button', i: -1 }, back: { pad: 'axis', i: 0, dir: 2 }, junk: 1 }).S.config),
     JSON.stringify({ stick: true }));
   check('switch: nothing stored, nothing learned', JSON.stringify(load().S.config), JSON.stringify({ stick: true }));
-  check('switch: keys are heard before the page, keyups too', Object.keys(load().handlers).sort(), ['gamepadconnected', 'gamepaddisconnected', 'keydown', 'keyup']);
+  check('switch: keys are heard before the page, keyups too', Object.keys(load().handlers).sort(), ['gamepadconnected', 'gamepaddisconnected', 'keydown', 'keyup', 'storage']);
   // in every part, and in the app offline
   const parts = ['index.html', 'bildspel.html', 'gissa.html', 'memory.html', 'former.html', 'gravyr.html', 'almanacka.html', 'start.html'];
   check('switch: in every part, and kept offline', [parts.filter(p => !read(p).includes('<script src="js/shared/switch.js"></script>')), /'js\/shared\/switch\.js'/.test(read('sw.js'))], [[], true]);
+}
+
+/* ---------- 8f. styrning (js/shared/styrning.js, 2026-11-20): one way to steer, for every part ---------- */
+{
+  const src = read('js/shared/styrning.js');
+  const load = (stored, platform = 'Win32') => {
+    const handlers = {}, store = { 'wb-styrning': stored === undefined ? null : JSON.stringify(stored) };
+    const ctx = vm.createContext({ console, setTimeout, clearTimeout, wbLang: () => 'sv', navigator: { platform },
+      localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } },
+      addEventListener: (t, f) => { (handlers[t] = handlers[t] || []).push(f); } });
+    vm.runInContext(globalize(src, ['wbStyr', 'WB_KEYMAP']), ctx);
+    return { S: ctx.wbStyr, MAP: ctx.WB_KEYMAP, handlers, store };
+  };
+  const { S, MAP, handlers, store } = load();
+  const ev = (o) => Object.assign({ key: '', code: '', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false }, o);
+  check('styrning: a key press in words',
+    [S.keyOf(ev({ key: 'n', code: 'KeyN', altKey: true })), S.keyOf(ev({ key: 'S', code: 'KeyS', ctrlKey: true, shiftKey: true })),
+     S.keyOf(ev({ key: 'F5', code: 'F5' })), S.keyOf(ev({ key: '?', code: 'Minus', shiftKey: true })), S.keyOf(ev({ key: ' ', code: 'Space' })),
+     S.keyOf(ev({ key: 'Alt', code: 'AltLeft', altKey: true })), S.keyOf(ev({ key: 'ArrowUp', code: 'ArrowUp', altKey: true }))],
+    ['Alt+N', 'Ctrl+Shift+S', 'F5', '?', 'Space', null, 'Alt+ArrowUp']);
+  check('styrning: ⌘ is Ctrl on a Mac', load(undefined, 'MacIntel').S.keyOf(ev({ key: 's', code: 'KeyS', metaKey: true })), 'Ctrl+S');
+  check('styrning: a key matches only itself',
+    [S.matches('Alt+N', ev({ key: '~', code: 'KeyN', altKey: true })), S.matches('Alt+N', ev({ key: 'n', code: 'KeyN', altKey: true, shiftKey: true })),
+     S.matches('F2', ev({ key: 'F2', code: 'F2' })), S.matches('F2', ev({ key: 'F2', code: 'F2', shiftKey: true })), S.matches('$ S', ev({ key: 'S', code: 'KeyS' }))],
+    [true, false, true, false, false]);
+  const X = '<img src=x onerror=alert(1)>';
+  const c = S.clean({ mode: 'evil', scan: { ms: 1, rounds: 99 }, dwell: { ms: 'x', ring: false }, strong: 'yes',
+    keys: { 'skriv:wMic': { key: 'F9' }, 'skriv:nope': { key: 'F2' }, 'bildspel:btnAdd': { key: X }, 'memory:btnNew': { pad: 'button', i: 3 }, 'gissa:btnHint': { pad: 'axis', i: 0, dir: 5 } } });
+  check('styrning: what is stored is checked, never markup',
+    [c.mode, c.scan.ms, c.scan.rounds, c.dwell.ms, c.dwell.ring, c.strong, JSON.stringify(c.keys)],
+    ['standard', 500, 9, 1000, false, false, JSON.stringify({ 'skriv:wMic': { key: 'F9' }, 'memory:btnNew': { pad: 'button', i: 3 } })]);
+  S.save({ keys: { 'bildspel:btnAdd': { key: 'F2' }, 'alla:speak': { key: 'F9' }, 'memory:btnNew': { pad: 'button', i: 3 } } });
+  check('styrning: an own key replaces the standard, an always-key gets one more, a joystick button leaves the key',
+    [S.keyFor('bildspel', 'btnAdd'), S.extraKey('bildspel', 'btnAdd'), S.keyFor('alla', 'speak'), S.extraKey('alla', 'speak'), S.keyFor('memory', 'btnNew')],
+    ['F2', null, 'Alt+P', 'F9', 'Alt+N']);
+  check('styrning: a key already in use, in the part or in every part',
+    [S.conflicts('bildspel', 'btnDup', { key: 'F2' }).map(x => x.id), S.conflicts('bildspel', 'btnDup', { key: 'Alt+N' }).map(x => x.id),
+     S.conflicts('bildspel', 'btnDup', { key: 'F9' }).map(x => x.id), S.conflicts('memory', 'btnNew', { key: 'Alt+R' }).map(x => x.id),
+     S.conflicts('skriv', 'wMic', { pad: 'button', i: 3 }).map(x => x.id), S.conflicts('memory', 'btnNew', { key: 'Alt+N' }).map(x => x.id)],
+    [['btnAdd'], [], ['speak'], [], [], []]);
+  check('styrning: keys that must stay what they are',
+    ['Tab', 'Enter', 'Space', 'Escape', 'ArrowUp', 'Alt+1', 'Alt+V', 'Ctrl+C', 'Ctrl+Z', '$', 'Alt+ArrowUp', 'F2', 'Alt+N', 'Ctrl+Shift+S'].map(k => S.reserved(k)),
+    [true, true, true, true, true, true, true, true, true, true, false, false, false, false]);
+  let ran = 0; S.onPad('memory', 'btnNew', () => { ran++; });
+  check('styrning: a joystick button does its shortcut', [S.padAction({ pad: 'button', i: 3 }), S.padAction({ pad: 'button', i: 4 }), ran], [true, false, 1]);
+  let heard = 0; S.onChange(() => { heard++; });
+  store['wb-styrning'] = JSON.stringify({ mode: 'oga' });
+  handlers.storage.forEach(f => f({ key: 'wb-styrning' }));
+  check('styrning: a change in another tab holds here at once', [S.settings.mode, heard, S.keyFor('bildspel', 'btnAdd')], ['oga', 1, 'Alt+N']);
+  // the list itself: every button is on its page, no key twice in a part, none that must stay what it is
+  const pageOf = { skriv: 'index.html', bildspel: 'bildspel.html', memory: 'memory.html', gissa: 'gissa.html' };
+  const missing = [], twice = [], bad = [];
+  const alla = MAP.find(g => g.tool === 'alla').keys.map(k => k.key);
+  for (const g of MAP) {
+    if (pageOf[g.tool]) for (const k of g.keys) if (!read(pageOf[g.tool]).includes(`id="${k.id}"`)) missing.push(g.tool + ':' + k.id);
+    const ks = g.keys.map(k => k.key).concat(g.tool === 'alla' ? [] : alla);
+    for (const k of new Set(ks)) if (ks.filter(x => x === k).length > 1) twice.push(g.tool + ':' + k);
+    for (const k of g.keys) if (!k.fixed && S.reserved(k.key)) bad.push(g.tool + ':' + k.id);
+  }
+  check('styrning: the shortcut list matches the pages', [missing, twice, bad], [[], [], []]);
+  // the pages: the module before the keys, the settings page offline, a way there from everywhere
+  const parts = ['index.html', 'bildspel.html', 'gissa.html', 'memory.html', 'former.html', 'gravyr.html', 'almanacka.html', 'start.html', 'installningar.html'];
+  const order = parts.filter(p => { const t = read(p), a = t.indexOf('js/shared/styrning.js'), b = t.indexOf('js/shared/switch.js'); return a < 0 || a > b; });
+  check('styrning: in every part before the switches, the settings page offline and linked from the start page',
+    [order, /'installningar\.html'/.test(read('sw.js')), /'js\/shared\/styrning\.js'/.test(read('sw.js')), /href="installningar\.html"/.test(read('start.html'))],
+    [[], true, true, true]);
+}
+
+/* ---------- 8g. the keys on the buttons follow the settings (shortcuts.js + styrning.js) ---------- */
+{
+  const els = {}, clicked = [];
+  const el = (id, title) => (els[id] = { id, title, textContent: title, tagName: 'BUTTON', disabled: false, attrs: {},
+    setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k] ?? null; }, removeAttribute(k) { delete this.attrs[k]; },
+    getClientRects: () => [1], click() { clicked.push(id); } });
+  el('btnAdd', 'Ny sida'); el('btnPlay', 'Visa'); el('btnSpeak', 'Läs upp');
+  const store = { 'wb-styrning': JSON.stringify({ keys: { 'bildspel:btnAdd': { key: 'F2' }, 'bildspel:btnPlay': { pad: 'button', i: 2 } } }) };
+  const handlers = {}; let onKey = null;
+  const ctx = vm.createContext({ console, setTimeout, clearTimeout, wbLang: () => 'sv', navigator: { platform: 'Win32' }, MutationObserver: class { observe() {} },
+    localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } },
+    addEventListener: (t, f) => { (handlers[t] = handlers[t] || []).push(f); },
+    document: { getElementById: (id) => els[id] || null, addEventListener: (t, f) => { if (t === 'keydown') onKey = f; }, querySelector: () => null } });
+  ctx.window = ctx;
+  vm.runInContext(globalize(read('js/shared/styrning.js'), ['wbStyr', 'WB_KEYMAP']) + '\n' + read('js/shared/shortcuts.js'), ctx);
+  const K = ctx.wbButtonKeys([{ id: 'btnAdd' }, { id: 'btnPlay' }, { id: 'btnSpeak', of: 'alla:speak', name: () => 'läs' }], { tool: 'bildspel' });
+  const press = (o) => { let p = false; onKey(Object.assign({ key: '', code: '', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, target: { tagName: 'BODY' }, preventDefault() { p = true; } }, o)); return p; };
+  press({ key: 'n', code: 'KeyN', altKey: true });       // the standard key, replaced: nothing
+  press({ key: 'F2', code: 'F2' });                       // the own key
+  press({ key: 'F5', code: 'F5' });                       // always the page's own (not pressed here)
+  ctx.wbStyr.padAction({ pad: 'button', i: 2 });          // the joystick button for Show
+  check('keys: the own key replaces the standard, a joystick button presses its button', clicked, ['btnAdd', 'btnPlay']);
+  check('keys: the tooltips and the list show the keys that work',
+    [els.btnAdd.title, els.btnPlay.title, els.btnAdd.attrs['aria-keyshortcuts'], K.rows().map(r => r[0])],
+    ['Ny sida (F2)', 'Visa (F5 / joystickknapp 3)', 'F2', ['F2', 'F5 / joystickknapp 3', 'Alt+P']]);
+  store['wb-styrning'] = JSON.stringify({});
+  handlers.storage.forEach(f => f({ key: 'wb-styrning' }));
+  check('keys: a key reset in another tab is back in the tooltip at once', [els.btnAdd.title, els.btnPlay.title], ['Ny sida (Alt+N)', 'Visa (F5)']);
 }
 
 /* ---------- 8e. Memory (memory.html, 2026-11-19): pairs of Bliss cards ---------- */

@@ -23,6 +23,7 @@ winbliss-web-beta/
 │  ├─ bildspel-ny.html      skickar vidare till bildspel.html (gamla adressen för Nya bildspelet)
 │  ├─ gissa.html            Hänga gubbe
 │  ├─ memory.html           Memory — hitta paren: samma symbol, eller symbol och ord
+│  ├─ installningar.html    Styrning och kortkommandon — gäller alla delar (js/shared/styrning.js)
 │  ├─ former.html           Formfamiljer
 │  ├─ gravyr.html           Gravyrkort för laser
 │  ├─ manifest.webmanifest  appens namn, ikoner och genvägar

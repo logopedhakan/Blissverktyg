@@ -12,7 +12,7 @@ const SV = [
   ['#btnExportList', 'Exportera lista…'],
   ['#btnWrite', '✎ Skriv'],
   ['#btnHelp', '? Hjälp'],
-  ['#helpSwitch', 'Brytare och joystick…'],
+  ['#helpSwitch', 'Styrning och kortkommandon…'],
   ['#wHelp', '? Hjälp'],
   ['#wtList', 'Lista'],
   ['#wtChips', 'Ordval'],
@@ -153,7 +153,8 @@ const HELP_SV = `
       </table>
     </section>
   </div>
-  <form method="dialog" style="display:flex;justify-content:flex-end;margin-top:16px">
+  <form method="dialog" style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+    <button type="button" id="helpSwitch">Styrning och kortkommandon…</button>
     <button value="done" class="primary" autofocus>Klar</button>
   </form>`;
 

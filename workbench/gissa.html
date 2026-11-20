@@ -172,6 +172,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 <footer>WinBliss² · en övning på Håkan Larssons idé · 2026 AnyCom AB · CC BY 4.0 · <span title="Blissymbolics © C.K. Bliss 1949, 1965 · symbols © Blissymbolics Communication International (BCI), distributed under CC BY-SA 4.0 — conforming to the BCI Authorized Vocabulary, blissymbolics.org">Blissymbolics © BCI, CC BY-SA 4.0</span></footer>
 
 <script src="js/shared/lang.js"></script>
+<script src="js/shared/styrning.js"></script>
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/wbs.js"></script>
@@ -852,6 +853,8 @@ newWord();
    svg's default size, not the real box) — redraw whenever the box changes */
 new ResizeObserver(() => renderBoard()).observe($('board'));
 
+/* keys on New word and Hint (2026-11-20) — set in js/shared/styrning.js (WB_KEYMAP), changeable */
+const KEYS = wbButtonKeys([{ id: 'btnNext' }, { id: 'btnHint' }], { tool: 'gissa' });
 /* delade $-genvägar (shortcuts.js) */
 wbShortcuts({
   title: () => tr('Hangman', 'Hänga gubbe'),
@@ -860,6 +863,7 @@ wbShortcuts({
     H: { run: () => { location.href = 'start.html'; }, desc: () => tr('to the start page', 'till startsidan') },
   },
   extra: () => [
+    ...KEYS.rows(),
     [tr('# + letter', '# + bokstav'), tr('pick a form family (A–Y) — in family mode this is the guess', 'välj formfamilj (A–Y) — i familjeläget är det gissningen')],
     [tr('Arrows + Enter', 'Pilar + Enter'), tr('place a found shape on the grid', 'placera en hittad form på rutnätet')],
   ],

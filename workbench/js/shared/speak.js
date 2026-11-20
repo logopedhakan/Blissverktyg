@@ -120,11 +120,17 @@ function wbSetRate(r) { wbTal.rate = Math.min(1.6, Math.max(0.5, +r || 0.9)); wb
    (which types π) works too. */
 function wbSpeakHotkey(start) {
   if (!WB_SPEECH) return;
+  const go = () => { if (wbSpeaking()) wbStopSpeaking(); else start(); };
+  const S = window.wbStyr || null;
   document.addEventListener('keydown', (e) => {
+    // an own key for reading aloud (installningar.html), beside Alt+P
+    const own = S && S.extraKey('alla', 'speak');
+    if (own && S.matches(own, e) && !document.querySelector('dialog[open]')) { e.preventDefault(); go(); return; }
     if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.code !== 'KeyP') return;
     e.preventDefault();
-    if (wbSpeaking()) wbStopSpeaking(); else start();
+    go();
   });
+  if (S) S.onPad('alla', 'speak', go);
 }
 // Chrome loads its voice list lazily: ask early so it is ready at the first click
 if (WB_SPEECH) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); }
