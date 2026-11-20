@@ -11,98 +11,115 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="css/wb-base.css">
 <style>
-body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15.5px;line-height:1.45}
-header{display:flex;align-items:baseline;gap:14px;padding:12px 18px;flex-wrap:wrap}
-header h1{font-size:21px}
+body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.4}
+/* Bliss symbols, drawn by the engine in the text colour (data-bliss = BCI-AV ids) */
+.bi{display:inline-flex;align-items:center;gap:3px;line-height:0;flex:none;vertical-align:middle}
+.bi svg{height:22px;width:auto;display:block}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap}
+header h1{font-size:22px;display:flex;align-items:center;gap:10px}
+header h1 .bi svg{height:34px}
 header .sub{color:var(--dim);font-size:14px}
-main{max-width:920px;margin:0 auto;padding:0 18px 40px;display:flex;flex-direction:column;gap:16px}
-section{background:var(--panel);border:1px solid var(--rule);border-radius:16px;padding:16px 18px}
-section h2{font-size:18px;margin:0 0 4px}
-section > p.intro{color:var(--dim);margin:0 0 12px}
-h3{font-size:15px;margin:14px 0 6px}
-button{font:inherit;color:var(--ink);background:var(--panel-2);border:1px solid var(--rule);border-radius:10px;padding:7px 13px;cursor:pointer;min-height:42px}
+main{max-width:920px;margin:0 auto;padding:0 18px 40px;display:flex;flex-direction:column;gap:14px}
+section{background:var(--panel);border:1px solid var(--rule);border-radius:16px;padding:14px 18px}
+section h2{font-size:19px;margin:0 0 6px;display:flex;align-items:center;gap:10px}
+section h2 .bi svg{height:30px}
+section > p.intro{color:var(--dim);margin:0 0 10px}
+h3{font-size:16px;margin:16px 0 4px;display:flex;align-items:center;gap:8px}
+button{font:inherit;color:var(--ink);background:var(--panel-2);border:1px solid var(--rule);border-radius:10px;padding:6px 12px;cursor:pointer;
+  min-height:44px;display:inline-flex;align-items:center;gap:7px}
 button:hover{border-color:var(--accent)}
-button:disabled{opacity:.45;cursor:default}
+button:disabled{opacity:.4;cursor:default}
+button .bi svg{height:22px}
 button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);font-weight:600}
 button.learning{background:var(--sel);border-color:var(--sel);color:#fff}
-select{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);min-height:40px}
-/* the ways to steer: big choices */
-#modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;border:0;padding:0;margin:0}
+select{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);min-height:42px}
+/* the ways to steer: big choices, the symbol first */
+#modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;border:0;padding:0;margin:0}
 #modes legend{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.mode{display:flex;gap:10px;align-items:flex-start;border:2px solid var(--rule);border-radius:14px;padding:12px;cursor:pointer;background:var(--panel-2)}
+.mode{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;border:3px solid var(--rule);
+  border-radius:16px;padding:36px 10px 12px;cursor:pointer;background:var(--panel-2)}
 .mode:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
-.mode input{width:22px;height:22px;margin-top:2px;flex:none;accent-color:var(--accent)}
-.mode b{display:block;font-size:16px}
-.mode span{color:var(--dim);font-size:14px}
+.mode:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:2px}
+.mode input{position:absolute;top:10px;left:10px;width:22px;height:22px;margin:0;accent-color:var(--accent)}
+.mode .bi svg{height:46px}
+.mode b{font-size:17px}
+.mode span.d{color:var(--dim);font-size:14px}
 table{border-collapse:collapse;width:100%}
-th,td{text-align:left;padding:7px 10px 7px 0;vertical-align:middle;border-bottom:1px solid var(--rule)}
-th[scope=col]{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);font-weight:600}
+th,td{text-align:left;padding:6px 10px 6px 0;vertical-align:middle;border-bottom:1px solid var(--rule)}
+th[scope=row]{font-weight:600}
+th[scope=row] .bi{margin-right:10px}
+th[scope=row] .bi svg{height:28px}
 td.cur{font-weight:600}
-td.cur small{font-weight:400;color:var(--dim)}
+td.cur small{font-weight:400;color:var(--dim);margin-left:4px}
 td.act{white-space:nowrap;text-align:right}
 td.act button{margin-left:6px}
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.row > label:first-child{display:flex;gap:8px;align-items:center;min-width:150px}
 .row label{display:flex;gap:8px;align-items:center}
-input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent)}
-input[type=range]{width:min(320px,60vw);accent-color:var(--accent)}
-output{font-weight:600;min-width:4.5em;display:inline-block}
-.note{min-height:1.45em;margin:10px 0 0;font-weight:600}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
+input[type=range]{width:min(300px,55vw);accent-color:var(--accent)}
+output{font-weight:600;min-width:4em;display:inline-block}
+.note{min-height:1.4em;margin:8px 0 0;font-weight:600}
 .note.bad{color:var(--sel)} .note.good{color:var(--ok)}
 .try{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border:1px dashed var(--rule);border-radius:12px;padding:10px 12px;margin-top:10px}
-.try button{min-width:72px;min-height:56px;font-size:18px}
+.try > span:first-child{display:flex;gap:6px;align-items:center;font-weight:600}
+.try button{min-width:72px;min-height:56px;font-size:18px;justify-content:center}
 .dim{color:var(--dim)}
-details.tool{border:1px solid var(--rule);border-radius:12px;padding:6px 12px;margin-top:10px;background:var(--panel)}
-details.tool > summary{cursor:pointer;font-weight:600;font-size:16px;padding:6px 0}
+details.tool{border:1px solid var(--rule);border-radius:12px;padding:4px 12px;margin-top:8px;background:var(--panel)}
+details.tool > summary{cursor:pointer;font-weight:600;font-size:16.5px;padding:6px 0;display:flex;align-items:center;gap:10px}
+details.tool > summary .bi svg{height:26px}
+details.tool > summary .n{font-weight:400;color:var(--dim);font-size:14px}
 #bottom{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap}
+#bottom button{min-height:52px;font-size:17px;padding:8px 18px}
 footer{padding:3px 12px 8px;font-size:11px;color:var(--dim);text-align:center}
-@media (max-width:640px){td.act{white-space:normal}td.act button{margin:3px 0 3px 6px}}
+@media (max-width:640px){td.act{white-space:normal}td.act button{margin:3px 0 3px 6px}.row > label:first-child{min-width:0}
+  #modes{grid-template-columns:1fr 1fr}.mode .bi svg{height:36px}.mode{padding-top:32px}}
 </style>
 </head>
 <body>
 <header>
   <a class="homeLink" href="start.html" id="homeLink">⌂ Start</a>
-  <h1 id="title">Styrning och kortkommandon</h1>
-  <span class="sub" id="sub">gäller alla delar av Blissverktyget i den här webbläsaren</span>
+  <h1><span class="bi" data-bliss="25987,23553"></span><span id="title"></span></h1>
+  <span class="sub" id="sub"></span>
 </header>
 <main>
   <section aria-labelledby="hMode">
-    <h2 id="hMode"></h2>
+    <h2><span id="hMode"></span></h2>
     <p class="intro" id="iMode"></p>
     <fieldset id="modes"><legend id="lMode"></legend></fieldset>
     <p class="note" id="nMode" role="status" aria-live="polite"></p>
   </section>
 
   <section aria-labelledby="hSw">
-    <h2 id="hSw"></h2>
+    <h2><span class="bi" data-bliss="23670,23549"></span><span id="hSw"></span></h2>
     <p class="intro" id="iSw"></p>
-    <table id="roles"><thead><tr><th scope="col" id="cRole"></th><th scope="col" id="cInput"></th><th scope="col"><span class="dim" id="cDo"></span></th></tr></thead><tbody></tbody></table>
+    <table id="roles"><tbody></tbody></table>
     <p class="note" id="nSw" role="status" aria-live="polite"></p>
     <p class="dim" id="padState"></p>
     <div class="row"><label><input type="checkbox" id="optStick"> <span id="lStick"></span></label></div>
-    <h3 id="hScan"></h3>
-    <p class="dim" id="iScan" style="margin:0"></p>
-    <div class="row"><label for="optScanMs" id="lScanMs"></label><input type="range" id="optScanMs" min="500" max="6000" step="100"><output id="oScanMs" for="optScanMs"></output></div>
-    <div class="row"><label for="optRounds" id="lRounds"></label><select id="optRounds"></select></div>
-    <div class="row"><label for="optRestart" id="lRestart"></label><select id="optRestart"></select></div>
-    <div class="try" id="trySw" role="group"><span id="lTrySw"></span><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><span id="oTrySw" role="status" aria-live="polite"></span></div>
+    <h3><span class="bi" data-bliss="8497,23670"></span><span id="hScan"></span></h3>
+    <div class="row"><label for="optScanMs"><span class="bi" data-bliss="17732"></span><span id="lScanMs"></span></label><input type="range" id="optScanMs" min="500" max="6000" step="100"><output id="oScanMs" for="optScanMs"></output></div>
+    <div class="row"><label for="optRounds"><span class="bi" data-bliss="24249"></span><span id="lRounds"></span></label><select id="optRounds"></select></div>
+    <div class="row"><label for="optRestart"><span class="bi" data-bliss="13178"></span><span id="lRestart"></span></label><select id="optRestart"></select></div>
+    <div class="try" id="trySw" role="group" aria-labelledby="lTrySw"><span><span class="bi" data-bliss="17787"></span><span id="lTrySw"></span></span><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><span id="oTrySw" role="status" aria-live="polite"></span></div>
   </section>
 
   <section aria-labelledby="hEye">
-    <h2 id="hEye"></h2>
+    <h2><span class="bi" data-bliss="14133"></span><span id="hEye"></span></h2>
     <p class="intro" id="iEye"></p>
-    <div class="row"><label for="optDwell" id="lDwell"></label><input type="range" id="optDwell" min="400" max="4000" step="100"><output id="oDwell" for="optDwell"></output></div>
+    <div class="row"><label for="optDwell"><span class="bi" data-bliss="16496"></span><span id="lDwell"></span></label><input type="range" id="optDwell" min="400" max="4000" step="100"><output id="oDwell" for="optDwell"></output></div>
     <div class="row"><label><input type="checkbox" id="optRing"> <span id="lRing"></span></label></div>
     <div class="row"><label><input type="checkbox" id="optPause"> <span id="lPause"></span></label></div>
-    <div class="try" id="tryEye" role="group"><span id="lTryEye"></span><button type="button">A</button><button type="button">B</button><button type="button">C</button><span id="oTryEye" role="status" aria-live="polite"></span></div>
+    <div class="try" id="tryEye" role="group" aria-labelledby="lTryEye"><span><span class="bi" data-bliss="17787"></span><span id="lTryEye"></span></span><button type="button">A</button><button type="button">B</button><button type="button">C</button><span id="oTryEye" role="status" aria-live="polite"></span></div>
   </section>
 
   <section aria-labelledby="hLook">
-    <h2 id="hLook"></h2>
+    <h2><span class="bi" data-bliss="16747"></span><span id="hLook"></span></h2>
     <div class="row"><label><input type="checkbox" id="optStrong"> <span id="lStrong"></span></label></div>
   </section>
 
   <section aria-labelledby="hKeys">
-    <h2 id="hKeys"></h2>
+    <h2><span class="bi" data-bliss="23553"></span><span id="hKeys"></span></h2>
     <p class="intro" id="iKeys"></p>
     <p class="note" id="nKeys" role="status" aria-live="polite"></p>
     <div id="tools"></div>
@@ -113,11 +130,14 @@ footer{padding:3px 12px 8px;font-size:11px;color:var(--dim);text-align:center}
     <button type="button" id="btnDone" class="primary"></button>
   </div>
 </main>
-<footer>WinBliss² · 2026 AnyCom AB · CC BY 4.0</footer>
+<footer>WinBliss² · 2026 AnyCom AB · CC BY 4.0 · Blissymbolics © BCI, CC BY-SA 4.0</footer>
 <script src="js/shared/lang.js"></script>
 <script src="js/shared/styrning.js"></script>
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/switch.js"></script>
+<script src="js/engine/bliss-shapes.js"></script>
+<script src="js/engine/bliss-engine.js"></script>
+<script src="js/data/bliss-data.js"></script>
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
@@ -130,80 +150,100 @@ const put = (patch) => ST.save(Object.assign({}, S(), patch));
 const note = (id, t, cls) => { $(id).textContent = t; $(id).className = 'note' + (cls ? ' ' + cls : ''); };
 const secs = (ms) => (ms / 1000).toLocaleString(LNG === 'sv' ? 'sv-SE' : 'en-GB', { maximumFractionDigits: 1 }) + ' s';
 
-/* ---- the words ---- */
+/* ---- Bliss symbols: BCI-AV ids, drawn in the text colour ---- */
+const SYM = {
+  learn: '15184', remove: '17498', change: '13152', add: '12338', reset: '16500', done: '24844', all: '12360',
+  step: '15714', choose: '13178', back: '16500',
+  standard: '23593,23555', brytare2: '8498,23670', brytare1: '8497,23670', oga: '14133',
+  alla: '12360', skriv: '18285', bildspel: '16172', memory: '23589', gissa: '14418',
+};
+const byId = new Map(BLISS_DATA.map(s => [s.id, s]));
+function drawIcons(root = document) {
+  for (const el of root.querySelectorAll('[data-bliss]')) {
+    if (el.firstChild) continue;
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = el.dataset.bliss.split(',').map(id => {
+      const sy = byId.get(+id);
+      try { return sy ? blissSVG(sy, { unit: 3, strokeUnits: 0.75, color: 'currentColor' }) : ''; } catch (_) { return ''; }
+    }).join('');
+  }
+}
+const icon = (ids) => `<span class="bi" data-bliss="${ids}"></span>`;
+/** A button with its symbol and its word; aria: the longer name for screen readers. */
+function setBtn(b, ids, text, aria) {
+  b.innerHTML = icon(ids) + '<span class="lbl"></span>';
+  b.querySelector('.lbl').textContent = text;
+  if (aria) b.setAttribute('aria-label', aria); else b.removeAttribute('aria-label');
+  drawIcons(b);
+}
+
+/* ---- the words: short ---- */
 document.title = 'WinBliss² — ' + tr('Steering and shortcuts', 'Styrning och kortkommandon');
 const TEXT = {
-  homeLink: tr('⌂ Start', '⌂ Start'),
   title: tr('Steering and shortcuts', 'Styrning och kortkommandon'),
-  sub: tr('holds for every part of Blissverktyget in this browser — open parts follow at once', 'gäller alla delar av Blissverktyget i den här webbläsaren — öppna delar följer med direkt'),
+  sub: tr('holds in every part, at once', 'gäller alla delar, direkt'),
   hMode: tr('How do you steer?', 'Hur styr du?'),
-  iMode: tr('The mouse, touch and the keyboard always work too. The choice holds in every part.', 'Mus, pekskärm och tangentbord fungerar alltid också. Valet gäller i alla delar.'),
+  iMode: tr('The mouse and the keyboard always work too.', 'Mus och tangentbord fungerar alltid också.'),
   lMode: tr('How do you steer?', 'Hur styr du?'),
   hSw: tr('Switches and joystick', 'Brytare och joystick'),
-  iSw: tr('Teach Blissverktyget which keys or buttons your switches send: press Learn and then the switch. A joystick (a game controller) works at once: the stick steps and its first button chooses.',
-          'Lär Blissverktyget vilka tangenter eller knappar dina brytare skickar: tryck Lär in och sedan på brytaren. En joystick (handkontroll) fungerar direkt: spaken stegar och första knappen väljer.'),
-  cRole: tr('Switch', 'Brytare'), cInput: tr('Key or button', 'Tangent eller knapp'), cDo: '',
-  lStick: tr("The joystick's stick and cross step (right/down forward, left/up back)", 'Joystickens spak och styrkors stegar (höger/ner framåt, vänster/upp bakåt)'),
-  hScan: tr('One switch: stepping by itself', 'En brytare: stegar av sig själv'),
-  iScan: tr('With One switch chosen above, the buttons are marked one at a time and the switch chooses the marked one.', 'När En brytare är valt ovan markeras knapparna en i taget, och brytaren väljer den markerade.'),
-  lScanMs: tr('Time on each button', 'Tid på varje knapp'),
-  lRounds: tr('Rounds before it rests', 'Varv innan den vilar'),
+  iSw: tr('Press Learn, then the switch. A joystick works at once.', 'Tryck Lär in, sedan på brytaren. En joystick fungerar direkt.'),
+  lStick: tr('The stick and the cross step', 'Spak och styrkors stegar'),
+  hScan: tr('One switch', 'En brytare'),
+  lScanMs: tr('Time per button', 'Tid per knapp'),
+  lRounds: tr('Rounds, then rest', 'Varv, sedan vila'),
   lRestart: tr('After a choice', 'Efter ett val'),
-  lTrySw: tr('Try it:', 'Prova:'),
+  lTrySw: tr('Try', 'Prova'),
   hEye: tr('Eye control', 'Ögonstyrning'),
-  iEye: tr('Look at a button and rest your eyes there: a ring fills, then the button is pressed. To press the same button again, look away first. The pause button in the lower left corner stops it while you read.',
-           'Titta på en knapp och vila blicken där: en ring fylls, sedan trycks knappen. För att trycka samma knapp igen tittar du bort först. Pausknappen nere till vänster stoppar medan du läser.'),
+  iEye: tr('Rest your eyes on a button until the ring is full.', 'Vila blicken på en knapp tills ringen är full.'),
   lDwell: tr('Resting time', 'Vilotid'),
-  lRing: tr('Show the ring that fills', 'Visa ringen som fylls'),
+  lRing: tr('Show the ring', 'Visa ringen'),
   lPause: tr('Show the pause button', 'Visa pausknappen'),
-  lTryEye: tr('Try it:', 'Prova:'),
-  hLook: tr('Seeing where you are', 'Se var du är'),
-  lStrong: tr('A clear marking — a thick yellow and black ring on the button in turn', 'Tydlig markering — en tjock gul och svart ring runt knappen som är på tur'),
+  lTryEye: tr('Try', 'Prova'),
+  hLook: tr('See where you are', 'Se var du är'),
+  lStrong: tr('Clear marking (a yellow ring)', 'Tydlig markering (gul ring)'),
   hKeys: tr('Keyboard shortcuts', 'Kortkommandon'),
-  iKeys: tr('Press Change, then the key, key combination or joystick button you want. Esc cancels. Keys marked "always" keep working; yours is then an extra one.',
-            'Tryck Ändra och sedan den tangent, tangentkombination eller joystickknapp du vill använda. Esc avbryter. Tangenter märkta "alltid" fortsätter att fungera; din blir då en extra.'),
-  btnReset: tr('Reset everything', 'Återställ allt'),
-  btnDone: tr('Done', 'Klar'),
+  iKeys: tr('Press Change, then the key or joystick button. Esc cancels.', 'Tryck Ändra, sedan tangenten eller joystickknappen. Esc avbryter.'),
 };
 for (const [id, t] of Object.entries(TEXT)) if ($(id)) $(id).textContent = t;
 $('homeLink').title = tr('To the start page', 'Till startsidan');
+setBtn($('btnReset'), SYM.all + ',' + SYM.reset, tr('Reset everything', 'Återställ allt'));
+setBtn($('btnDone'), SYM.done, tr('Done', 'Klar'));
 
 /* ---- how do you steer ---- */
 const MODES = [
-  ['standard', tr('Mouse, touch and keyboard', 'Mus, pekskärm och tangentbord'), tr('as usual', 'som vanligt')],
-  ['brytare2', tr('Two switches', 'Två brytare'), tr('one steps to the next button, the other chooses', 'en stegar till nästa knapp, den andra väljer')],
-  ['brytare1', tr('One switch', 'En brytare'), tr('the buttons are stepped through by themselves, the switch chooses', 'knapparna stegas igenom av sig själva, brytaren väljer')],
-  ['oga', tr('Eye control', 'Ögonstyrning'), tr('look at a button and rest there', 'titta på en knapp och vila där')],
+  ['standard', tr('Mouse and keyboard', 'Mus och tangentbord'), tr('as usual', 'som vanligt')],
+  ['brytare2', tr('Two switches', 'Två brytare'), tr('step + choose', 'stega + välj')],
+  ['brytare1', tr('One switch', 'En brytare'), tr('steps by itself, you choose', 'stegar själv, du väljer')],
+  ['oga', tr('Eye control', 'Ögonstyrning'), tr('look and rest', 'titta och vila')],
 ];
 for (const [v, name, desc] of MODES) {
   const l = document.createElement('label');
   l.className = 'mode';
-  l.innerHTML = '<input type="radio" name="mode"><div><b></b><span></span></div>';
+  l.innerHTML = '<input type="radio" name="mode">' + icon(SYM[v]) + '<b></b><span class="d"></span>';
   l.querySelector('input').value = v;
   l.querySelector('b').textContent = name;
-  l.querySelector('span').textContent = desc;
+  l.querySelector('span.d').textContent = desc;
   l.querySelector('input').onchange = () => {
-    const was = S().mode;
     const patch = { mode: v };
     // a switch or the eyes: the clear marking comes along (it can be turned off below)
-    if (was === 'standard' && v !== 'standard' && !S().strong) patch.strong = true;
+    if (S().mode === 'standard' && v !== 'standard' && !S().strong) patch.strong = true;
     put(patch);
-    note('nMode', modeNote(v) + (patch.strong ? ' ' + tr('The clear marking is on too.', 'Tydlig markering är också påslagen.') : ''), 'good');
+    note('nMode', modeNote(v) + (patch.strong ? ' ' + tr('Clear marking: on.', 'Tydlig markering: på.') : ''), 'good');
   };
   $('modes').appendChild(l);
 }
 function modeNote(v) {
   const c = SW.config;
-  if (v === 'brytare2' && !(c.step && c.confirm)) return tr('Two switches — learn Step and Choose below (a joystick works at once).', 'Två brytare — lär in Stega och Välj nedan (en joystick fungerar direkt).');
-  if (v === 'brytare1' && !c.confirm && !c.step) return tr('One switch — learn Choose below, or use Enter, Space or a joystick button.', 'En brytare — lär in Välj nedan, eller använd Enter, Mellanslag eller en joystickknapp.');
-  if (v === 'brytare1') return tr('One switch — the stepping starts by itself; the switch chooses.', 'En brytare — stegningen startar av sig själv; brytaren väljer.');
-  if (v === 'oga') return tr('Eye control — rest on a button to press it. Pause sits in the lower left corner.', 'Ögonstyrning — vila på en knapp för att trycka på den. Paus finns nere till vänster.');
-  if (v === 'brytare2') return tr('Two switches — on.', 'Två brytare — på.');
-  return tr('Mouse, touch and keyboard.', 'Mus, pekskärm och tangentbord.');
+  if (v === 'brytare2' && !(c.step && c.confirm)) return tr('Learn Step and Choose below.', 'Lär in Stega och Välj nedan.');
+  if (v === 'brytare1' && !c.confirm && !c.step) return tr('Learn Choose below — or use Enter, Space or a joystick.', 'Lär in Välj nedan — eller använd Enter, Mellanslag eller joystick.');
+  if (v === 'brytare1') return tr('The stepping starts by itself.', 'Stegningen startar av sig själv.');
+  if (v === 'oga') return tr('Pause is in the lower left corner.', 'Paus finns nere till vänster.');
+  return tr('On.', 'På.');
 }
 
 /* ---- switches ---- */
-const ROLE_LABEL = { step: tr('Step', 'Stega'), confirm: tr('Choose', 'Välj'), back: tr('Step back (optional)', 'Stega bakåt (valfri)') };
+const ROLE_LABEL = { step: tr('Step', 'Stega'), confirm: tr('Choose', 'Välj'), back: tr('Back', 'Bakåt') };
+const ROLE_SYM = { step: SYM.step, confirm: SYM.choose, back: SYM.back };
 let busy = null;                                   // the button waiting for a press
 function stopBusy() { if (busy) { busy.classList.remove('learning'); busy = null; } SW.cancelCapture(); }
 function renderRoles() {
@@ -212,25 +252,26 @@ function renderRoles() {
   for (const r of SW.ROLES) {
     const row = tb.insertRow();
     row.innerHTML = '<th scope="row"></th><td class="cur"></td><td class="act"><button type="button" data-l></button><button type="button" data-x></button></td>';
-    row.cells[0].textContent = ROLE_LABEL[r];
-    row.cells[1].textContent = SW.config[r] ? SW.nameOf(SW.config[r]) : tr('not learned', 'inte inlärd');
+    row.cells[0].innerHTML = icon(ROLE_SYM[r]) + '<span></span>';
+    row.cells[0].lastChild.textContent = ROLE_LABEL[r] + (r === 'back' ? tr(' (if you want)', ' (om du vill)') : '');
+    row.cells[1].textContent = SW.config[r] ? SW.nameOf(SW.config[r]) : '—';
+    if (!SW.config[r]) row.cells[1].setAttribute('aria-label', tr('not learned', 'inte inlärd'));
     const l = row.querySelector('[data-l]'), x = row.querySelector('[data-x]');
-    l.textContent = tr('Learn', 'Lär in');
-    l.setAttribute('aria-label', tr('Learn ', 'Lär in ') + ROLE_LABEL[r]);
-    x.textContent = tr('Remove', 'Ta bort');
-    x.setAttribute('aria-label', tr('Remove ', 'Ta bort ') + ROLE_LABEL[r]);
+    setBtn(l, SYM.learn, tr('Learn', 'Lär in'), tr('Learn ', 'Lär in ') + ROLE_LABEL[r]);
+    setBtn(x, SYM.remove, tr('Remove', 'Ta bort'), tr('Remove ', 'Ta bort ') + ROLE_LABEL[r]);
     x.disabled = !SW.config[r];
-    x.onclick = () => { SW.setRole(r, null); renderRoles(); note('nSw', tr('Removed.', 'Borttagen.')); };
+    x.onclick = () => { SW.setRole(r, null); renderRoles(); note('nSw', tr(`${ROLE_LABEL[r]}: removed.`, `${ROLE_LABEL[r]}: borttagen.`)); };
     l.onclick = () => learnRole(r, l);
   }
+  drawIcons($('roles'));
 }
 function learnRole(r, btn) {
   stopBusy();
-  busy = btn; btn.classList.add('learning'); btn.textContent = tr('Press now…', 'Tryck nu…');
-  note('nSw', tr(`Press the switch for ${ROLE_LABEL[r]} now. Esc cancels.`, `Tryck på brytaren för ${ROLE_LABEL[r]} nu. Esc avbryter.`));
+  busy = btn; btn.classList.add('learning'); setBtn(btn, SYM.learn, tr('Press now…', 'Tryck nu…'));
+  note('nSw', tr(`Press the switch for ${ROLE_LABEL[r]}. Esc cancels.`, `Tryck på brytaren för ${ROLE_LABEL[r]}. Esc avbryter.`));
   SW.capture((x) => {
     busy = null;
-    if (!x) { renderRoles(); note('nSw', tr('Cancelled — nothing was changed.', 'Avbrutet — inget ändrades.')); return; }
+    if (!x) { renderRoles(); note('nSw', tr('Cancelled.', 'Avbrutet.')); return; }
     // a joystick button or a key given to a shortcut is the switch's now
     const taken = [];
     for (const g of WB_KEYMAP) for (const k of g.keys) {
@@ -242,34 +283,32 @@ function learnRole(r, btn) {
     SW.setRole(r, x);
     renderRoles(); renderKeys();
     const n = SW.nameOf(x);
-    note('nSw', (SW.native(r, x) ? tr(`${n}: what that key always does — it works as before.`, `${n}: det tangenten alltid gör — det fungerar som förut.`)
-      : SW.typesChar(x) ? tr(`${ROLE_LABEL[r]}: ${n}. It types a character, so in text fields it types as usual — an F key (F1–F12) works everywhere, if the switch can send one.`,
-                             `${ROLE_LABEL[r]}: ${n}. Den skriver ett tecken, så i textrutor skriver den som vanligt — en F-tangent (F1–F12) fungerar överallt, om brytaren kan skicka det.`)
-      : tr(`${ROLE_LABEL[r]}: ${n}. Try it on the buttons below.`, `${ROLE_LABEL[r]}: ${n}. Prova på knapparna nedan.`)) +
-      (taken.length ? ' ' + tr('It no longer does: ', 'Den gör inte längre: ') + taken.join(', ') + '.' : ''), 'good');
+    note('nSw', `${ROLE_LABEL[r]}: ${n} ✓` +
+      (SW.native(r, x) ? tr(' (works as always)', ' (fungerar som vanligt)')
+        : SW.typesChar(x) ? tr(' — types in text fields; an F key works everywhere.', ' — skriver i textrutor; en F-tangent fungerar överallt.') : '') +
+      (taken.length ? ' ' + tr('No longer: ', 'Inte längre: ') + taken.join(', ') + '.' : ''), 'good');
   });
 }
 function padState(name) {
-  $('padState').textContent = name ? tr('Joystick connected: ', 'Joystick ansluten: ') + name
-    : tr('No joystick found — connect it and press one of its buttons.', 'Ingen joystick hittad — anslut den och tryck på en av dess knappar.');
+  $('padState').textContent = name ? tr('Joystick: ', 'Joystick: ') + name : tr('No joystick — connect it and press a button.', 'Ingen joystick — anslut och tryck på en knapp.');
 }
 SW.onPadChange(padState); padState(SW.padName());
 $('optStick').onchange = () => SW.setStick($('optStick').checked);
 for (let n = 1; n <= 9; n++) $('optRounds').add(new Option(String(n), String(n)));
-$('optRestart').add(new Option(tr('go on from the button chosen', 'fortsätt från knappen som valdes'), 'no'));
-$('optRestart').add(new Option(tr('start again from the first button', 'börja om från första knappen'), 'yes'));
+$('optRestart').add(new Option(tr('go on from there', 'fortsätt därifrån'), 'no'));
+$('optRestart').add(new Option(tr('start from the top', 'börja om'), 'yes'));
 $('optScanMs').oninput = () => { $('oScanMs').textContent = secs(+$('optScanMs').value); };
 $('optScanMs').onchange = () => put({ scan: Object.assign({}, S().scan, { ms: +$('optScanMs').value }) });
 $('optRounds').onchange = () => put({ scan: Object.assign({}, S().scan, { rounds: +$('optRounds').value }) });
 $('optRestart').onchange = () => put({ scan: Object.assign({}, S().scan, { restart: $('optRestart').value === 'yes' }) });
-for (const b of $('trySw').querySelectorAll('button')) b.onclick = () => { $('oTrySw').textContent = tr('✓ Chosen: ', '✓ Valt: ') + b.textContent; };
+for (const b of $('trySw').querySelectorAll('button')) b.onclick = () => { $('oTrySw').textContent = '✓ ' + b.textContent; };
 
 /* ---- eye control ---- */
 $('optDwell').oninput = () => { $('oDwell').textContent = secs(+$('optDwell').value); };
 $('optDwell').onchange = () => put({ dwell: Object.assign({}, S().dwell, { ms: +$('optDwell').value }) });
 $('optRing').onchange = () => put({ dwell: Object.assign({}, S().dwell, { ring: $('optRing').checked }) });
 $('optPause').onchange = () => put({ dwell: Object.assign({}, S().dwell, { pause: $('optPause').checked }) });
-for (const b of $('tryEye').querySelectorAll('button')) b.onclick = () => { $('oTryEye').textContent = tr('✓ Pressed: ', '✓ Tryckt: ') + b.textContent; };
+for (const b of $('tryEye').querySelectorAll('button')) b.onclick = () => { $('oTryEye').textContent = '✓ ' + b.textContent; };
 $('optStrong').onchange = () => put({ strong: $('optStrong').checked });
 
 /* ---- shortcuts ---- */
@@ -283,64 +322,62 @@ function renderKeys() {
     d.className = 'tool'; d.dataset.tool = g.tool; d.open = open.has(g.tool);
     const sum = document.createElement('summary');
     const owned = g.keys.filter(k => ST.own(g.tool, k.id)).length;
-    sum.textContent = (LNG === 'sv' ? g.sv : g.en) + (owned ? tr(` · ${owned} of your own`, ` · ${owned} egna`) : '');
+    sum.innerHTML = icon(SYM[g.tool] || SYM.all) + '<span></span><span class="n"></span>';
+    sum.children[1].textContent = LNG === 'sv' ? g.sv : g.en;
+    sum.children[2].textContent = owned ? tr(`${owned} of your own`, `${owned} egna`) : '';
     d.appendChild(sum);
     const t = document.createElement('table');
-    t.innerHTML = `<thead><tr><th scope="col">${tr('Does', 'Gör')}</th><th scope="col">${tr('Key', 'Tangent')}</th><th scope="col"><span class="dim"></span></th></tr></thead><tbody></tbody>`;
+    t.innerHTML = '<tbody></tbody>';
     for (const k of g.keys) {
       const name = LNG === 'sv' ? k.sv : k.en, o = ST.own(g.tool, k.id);
       const row = t.tBodies[0].insertRow();
       row.innerHTML = '<th scope="row"></th><td class="cur"></td><td class="act"><button type="button" data-c></button><button type="button" data-r></button></td>';
       row.cells[0].textContent = name;
-      const cur = row.cells[1];
-      if (k.fixed) {
-        cur.textContent = ST.keyLabel(k.key) + ' ';
-        const sm = document.createElement('small'); sm.textContent = tr('(always)', '(alltid)'); cur.appendChild(sm);
+      const cur = row.cells[1], small = (txt) => { const sm = document.createElement('small'); sm.textContent = txt; cur.appendChild(sm); };
+      if (k.fixed || (o && o.pad)) {
+        cur.textContent = ST.keyLabel(k.key);
         if (o) cur.append(' + ' + ST.label(o));
-      } else if (o && o.pad) cur.textContent = ST.keyLabel(k.key) + ' + ' + ST.label(o);
-      else cur.textContent = ST.keyLabel(o ? o.key : k.key) + (o ? '' : ' ');
-      if (!k.fixed && !o) { const sm = document.createElement('small'); sm.textContent = tr('(standard)', '(standard)'); cur.appendChild(sm); }
+        if (k.fixed) small(tr('always', 'alltid'));
+      } else {
+        cur.textContent = ST.keyLabel(o ? o.key : k.key);
+        if (o) small(tr('yours', 'egen'));
+      }
       const c = row.querySelector('[data-c]'), r = row.querySelector('[data-r]');
-      c.textContent = k.fixed ? tr('Add', 'Lägg till') : tr('Change', 'Ändra');
-      c.setAttribute('aria-label', c.textContent + ': ' + name);
-      r.textContent = tr('Reset', 'Återställ');
-      r.setAttribute('aria-label', tr('Reset: ', 'Återställ: ') + name);
+      const cText = k.fixed ? tr('Add', 'Lägg till') : tr('Change', 'Ändra');
+      setBtn(c, k.fixed ? SYM.add : SYM.change, cText, cText + ': ' + name);
+      setBtn(r, SYM.reset, tr('Reset', 'Återställ'), tr('Reset: ', 'Återställ: ') + name);
       r.disabled = !o;
-      r.onclick = () => { ST.setOwn(g.tool, k.id, null); renderKeys(); note('nKeys', tr(`${name}: back to ${ST.keyLabel(k.key)}.`, `${name}: tillbaka till ${ST.keyLabel(k.key)}.`), 'good'); };
+      r.onclick = () => { ST.setOwn(g.tool, k.id, null); renderKeys(); note('nKeys', `${name}: ${ST.keyLabel(k.key)} ✓`, 'good'); };
       c.onclick = () => learnKey(g, k, c);
     }
     d.appendChild(t);
     host.appendChild(d);
   }
+  drawIcons(host);
 }
 function learnKey(g, k, btn) {
   stopBusy();
-  const name = LNG === 'sv' ? k.sv : k.en, part = LNG === 'sv' ? g.sv : g.en;
-  busy = btn; btn.classList.add('learning'); btn.textContent = tr('Press now…', 'Tryck nu…');
-  note('nKeys', tr(`${name}: press the key, the key combination or the joystick button. Esc cancels.`, `${name}: tryck tangenten, tangentkombinationen eller joystickknappen. Esc avbryter.`));
+  const name = LNG === 'sv' ? k.sv : k.en;
+  busy = btn; btn.classList.add('learning'); setBtn(btn, k.fixed ? SYM.add : SYM.change, tr('Press now…', 'Tryck nu…'));
+  note('nKeys', tr(`${name}: press the key or the joystick button. Esc cancels.`, `${name}: tryck tangenten eller joystickknappen. Esc avbryter.`));
   SW.capture((x) => {
     busy = null;
     const done = (t, cls) => { renderKeys(); note('nKeys', t, cls); const again = $('tools').querySelector(`details[data-tool="${g.tool}"]`); if (again) again.open = true; };
-    if (!x) return done(tr('Cancelled — nothing was changed.', 'Avbrutet — inget ändrades.'));
+    if (!x) return done(tr('Cancelled.', 'Avbrutet.'));
     const b = x.pad ? x : { key: x.key };
-    if (!x.pad && !ST.okKey(b.key)) return done(tr(`${b.key} cannot be used as a shortcut.`, `${b.key} går inte att använda som kortkommando.`), 'bad');
-    if (!x.pad && ST.reserved(b.key)) return done(tr(`${ST.keyLabel(b.key)} is kept for moving, choosing, writing or the window — choose another.`,
-      `${ST.keyLabel(b.key)} behövs för att flytta, välja, skriva eller för fönstret — välj en annan.`), 'bad');
-    if (!x.pad && !k.fixed && b.key === k.key) { ST.setOwn(g.tool, k.id, null); return done(tr(`${name}: ${ST.keyLabel(k.key)}, the standard key.`, `${name}: ${ST.keyLabel(k.key)}, standardtangenten.`), 'good'); }
-    const roles = SW.config;
-    const all = ST.conflicts(g.tool, k.id, b, roles);
+    if (!x.pad && !ST.okKey(b.key)) return done(tr(`${b.key} cannot be used.`, `${b.key} går inte att använda.`), 'bad');
+    if (!x.pad && ST.reserved(b.key)) return done(tr(`${ST.keyLabel(b.key)} is needed for moving, choosing or writing — choose another.`,
+      `${ST.keyLabel(b.key)} behövs för att flytta, välja eller skriva — välj en annan.`), 'bad');
+    if (!x.pad && !k.fixed && b.key === k.key) { ST.setOwn(g.tool, k.id, null); return done(`${name}: ${ST.keyLabel(k.key)} ✓`, 'good'); }
+    const all = ST.conflicts(g.tool, k.id, b, SW.config);
     const sw = all.find(c => c.role);
-    if (sw) return done(tr(`${ST.label(b)} is the switch ${ROLE_LABEL[sw.role]} — remove it there first, or choose another.`,
-      `${ST.label(b)} är brytaren ${ROLE_LABEL[sw.role]} — ta bort den där först, eller välj en annan.`), 'bad');
-    const busyWith = all.filter(c => !c.role);
-    if (busyWith.length) {
-      const c = busyWith[0];
-      return done(tr(`${ST.label(b)} is already used for “${c.name}” (${c.part}) — change that one first, or choose another.`,
-        `${ST.label(b)} används redan för ”${c.name}” (${c.part}) — ändra den först, eller välj en annan.`), 'bad');
-    }
+    if (sw) return done(tr(`${ST.label(b)} is the switch ${ROLE_LABEL[sw.role]} — choose another.`, `${ST.label(b)} är brytaren ${ROLE_LABEL[sw.role]} — välj en annan.`), 'bad');
+    const other = all.find(c => !c.role);
+    if (other) return done(tr(`${ST.label(b)} is already “${other.name}” (${other.part}) — choose another.`,
+      `${ST.label(b)} är redan ”${other.name}” (${other.part}) — välj en annan.`), 'bad');
     ST.setOwn(g.tool, k.id, b);
-    done(tr(`${name} (${part}): ${ST.label(b)}`, `${name} (${part}): ${ST.label(b)}`) + (k.fixed ? tr(`, besides ${ST.keyLabel(k.key)}.`, `, utöver ${ST.keyLabel(k.key)}.`) : '.') +
-      (x.pad && x.i === 0 && x.pad === 'button' ? ' ' + tr('Joystick button 1 no longer chooses — learn Choose on another button.', 'Joystickknapp 1 väljer inte längre — lär in Välj på en annan knapp.') : ''), 'good');
+    done(`${name}: ${ST.label(b)} ✓` + (k.fixed ? tr(` (and ${ST.keyLabel(k.key)})`, ` (och ${ST.keyLabel(k.key)})`) : '') +
+      (x.pad === 'button' && x.i === 0 ? ' ' + tr('Joystick button 1 no longer chooses.', 'Joystickknapp 1 väljer inte längre.') : ''), 'good');
   }, { chord: true });
 }
 
@@ -360,14 +397,15 @@ function render() {
 ST.onChange(render);
 addEventListener('storage', (e) => { if (e.key === 'wb-brytare' && !busy) setTimeout(() => { renderRoles(); $('optStick').checked = SW.config.stick; }, 0); });
 render();
+drawIcons();
 
 $('btnReset').onclick = () => {
-  if (!confirm(tr('Reset the way of steering, the switches and every shortcut to the standard?', 'Återställa styrsättet, brytarna och alla kortkommandon till standard?'))) return;
+  if (!confirm(tr('Reset everything to the standard?', 'Återställa allt till standard?'))) return;
   stopBusy();
   ST.save({});
   SW.forget(); SW.setStick(true);
   render();
-  note('nMode', tr('Everything is back to the standard.', 'Allt är tillbaka till standard.'), 'good');
+  note('nMode', tr('Back to the standard ✓', 'Tillbaka till standard ✓'), 'good');
 };
 // opened from a part: close the tab and go back to it; else to the start page
 $('btnDone').onclick = () => {

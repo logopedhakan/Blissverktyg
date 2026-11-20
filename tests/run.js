@@ -573,6 +573,20 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     [[], true, true, true]);
 }
 
+/* ---------- 8f2. the settings page speaks Bliss too: every symbol on it is a BCI-AV symbol ---------- */
+{
+  const page = read('installningar.html');
+  const ids = new Set([...page.matchAll(/data-bliss="([\d,]+)"/g)].flatMap(m => m[1].split(',')));
+  const sym = page.slice(page.indexOf('const SYM = {'), page.indexOf('};', page.indexOf('const SYM = {')));
+  for (const m of sym.matchAll(/'([\d,]+)'/g)) for (const id of m[1].split(',')) ids.add(id);
+  const ctx = vm.createContext({});
+  vm.runInContext(read('js/data/bliss-data.js') + ';this.D = BLISS_DATA;', ctx);
+  const known = new Set(ctx.D.map(s => String(s.id)));
+  check('installningar: the symbols are BCI-AV symbols, and the engine is there to draw them',
+    [ids.size > 20, [...ids].filter(id => !known.has(id)), /src="js\/engine\/bliss-engine\.js"/.test(page), /src="js\/data\/bliss-data\.js"/.test(page)],
+    [true, [], true, true]);
+}
+
 /* ---------- 8g. the keys on the buttons follow the settings (shortcuts.js + styrning.js) ---------- */
 {
   const els = {}, clicked = [];
