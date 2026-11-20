@@ -47,8 +47,11 @@ select{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--rul
 table{border-collapse:collapse;width:100%}
 th,td{text-align:left;padding:6px 10px 6px 0;vertical-align:middle;border-bottom:1px solid var(--rule)}
 th[scope=row]{font-weight:600}
-th[scope=row] .bi{margin-right:10px}
+/* the symbol column has one width, so the words and the keys line up in every table */
+th[scope=row]{width:52%}
+th[scope=row] > .bi{display:inline-flex;justify-content:center;min-width:76px;margin-right:10px}
 th[scope=row] .bi svg{height:28px}
+td.cur{width:20%}
 td.cur{font-weight:600}
 td.cur small{font-weight:400;color:var(--dim);margin-left:4px}
 td.act{white-space:nowrap;text-align:right}
@@ -84,7 +87,7 @@ footer{padding:3px 12px 8px;font-size:11px;color:var(--dim);text-align:center}
 </header>
 <main>
   <section aria-labelledby="hMode">
-    <h2><span id="hMode"></span></h2>
+    <h2><span class="bi" data-bliss="25987"></span><span id="hMode"></span></h2>
     <p class="intro" id="iMode"></p>
     <fieldset id="modes"><legend id="lMode"></legend></fieldset>
     <p class="note" id="nMode" role="status" aria-live="polite"></p>
@@ -95,8 +98,8 @@ footer{padding:3px 12px 8px;font-size:11px;color:var(--dim);text-align:center}
     <p class="intro" id="iSw"></p>
     <table id="roles"><tbody></tbody></table>
     <p class="note" id="nSw" role="status" aria-live="polite"></p>
-    <p class="dim" id="padState"></p>
-    <div class="row"><label><input type="checkbox" id="optStick"> <span id="lStick"></span></label></div>
+    <p class="dim" id="padState" style="display:flex;gap:8px;align-items:center"></p>
+    <div class="row"><label><input type="checkbox" id="optStick"><span class="bi" data-bliss="23549"></span><span id="lStick"></span></label></div>
     <h3><span class="bi" data-bliss="8497,23670"></span><span id="hScan"></span></h3>
     <div class="row"><label for="optScanMs"><span class="bi" data-bliss="17732"></span><span id="lScanMs"></span></label><input type="range" id="optScanMs" min="500" max="6000" step="100"><output id="oScanMs" for="optScanMs"></output></div>
     <div class="row"><label for="optRounds"><span class="bi" data-bliss="24249"></span><span id="lRounds"></span></label><select id="optRounds"></select></div>
@@ -108,14 +111,14 @@ footer{padding:3px 12px 8px;font-size:11px;color:var(--dim);text-align:center}
     <h2><span class="bi" data-bliss="14133"></span><span id="hEye"></span></h2>
     <p class="intro" id="iEye"></p>
     <div class="row"><label for="optDwell"><span class="bi" data-bliss="16496"></span><span id="lDwell"></span></label><input type="range" id="optDwell" min="400" max="4000" step="100"><output id="oDwell" for="optDwell"></output></div>
-    <div class="row"><label><input type="checkbox" id="optRing"> <span id="lRing"></span></label></div>
-    <div class="row"><label><input type="checkbox" id="optPause"> <span id="lPause"></span></label></div>
+    <div class="row"><label><input type="checkbox" id="optRing"><span class="bi" data-bliss="16675"></span><span id="lRing"></span></label></div>
+    <div class="row"><label><input type="checkbox" id="optPause"><span class="bi" data-bliss="16497"></span><span id="lPause"></span></label></div>
     <div class="try" id="tryEye" role="group" aria-labelledby="lTryEye"><span><span class="bi" data-bliss="17787"></span><span id="lTryEye"></span></span><button type="button">A</button><button type="button">B</button><button type="button">C</button><span id="oTryEye" role="status" aria-live="polite"></span></div>
   </section>
 
   <section aria-labelledby="hLook">
     <h2><span class="bi" data-bliss="16747"></span><span id="hLook"></span></h2>
-    <div class="row"><label><input type="checkbox" id="optStrong"> <span id="lStrong"></span></label></div>
+    <div class="row"><label><input type="checkbox" id="optStrong"><span class="bi" data-bliss="18291,16675"></span><span id="lStrong"></span></label></div>
   </section>
 
   <section aria-labelledby="hKeys">
@@ -290,7 +293,9 @@ function learnRole(r, btn) {
   });
 }
 function padState(name) {
-  $('padState').textContent = name ? tr('Joystick: ', 'Joystick: ') + name : tr('No joystick — connect it and press a button.', 'Ingen joystick — anslut och tryck på en knapp.');
+  $('padState').innerHTML = icon('23549') + '<span></span>';
+  $('padState').lastChild.textContent = name ? tr('Joystick: ', 'Joystick: ') + name : tr('No joystick — connect it and press a button.', 'Ingen joystick — anslut och tryck på en knapp.');
+  drawIcons($('padState'));
 }
 SW.onPadChange(padState); padState(SW.padName());
 $('optStick').onchange = () => SW.setStick($('optStick').checked);
@@ -332,7 +337,8 @@ function renderKeys() {
       const name = LNG === 'sv' ? k.sv : k.en, o = ST.own(g.tool, k.id);
       const row = t.tBodies[0].insertRow();
       row.innerHTML = '<th scope="row"></th><td class="cur"></td><td class="act"><button type="button" data-c></button><button type="button" data-r></button></td>';
-      row.cells[0].textContent = name;
+      row.cells[0].innerHTML = icon(k.b || '') + '<span></span>';
+      row.cells[0].lastChild.textContent = name;
       const cur = row.cells[1], small = (txt) => { const sm = document.createElement('small'); sm.textContent = txt; cur.appendChild(sm); };
       if (k.fixed || (o && o.pad)) {
         cur.textContent = ST.keyLabel(k.key);

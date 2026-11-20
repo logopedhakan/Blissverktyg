@@ -582,6 +582,11 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   const ctx = vm.createContext({});
   vm.runInContext(read('js/data/bliss-data.js') + ';this.D = BLISS_DATA;', ctx);
   const known = new Set(ctx.D.map(s => String(s.id)));
+  // every shortcut in the list has its symbol too (js/shared/styrning.js, b:)
+  const st = read('js/shared/styrning.js'), map = st.slice(st.indexOf('const WB_KEYMAP'), st.indexOf('const wbStyr'));
+  const rows = [...map.matchAll(/\{ id: '(\w+)'(, b: '([\d,]+)')?/g)];
+  check('installningar: every shortcut has a symbol', rows.filter(m => !m[3]).map(m => m[1]), []);
+  for (const m of rows) if (m[3]) for (const id of m[3].split(',')) ids.add(id);
   check('installningar: the symbols are BCI-AV symbols, and the engine is there to draw them',
     [ids.size > 20, [...ids].filter(id => !known.has(id)), /src="js\/engine\/bliss-engine\.js"/.test(page), /src="js\/data\/bliss-data\.js"/.test(page)],
     [true, [], true, true]);
