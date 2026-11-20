@@ -179,7 +179,12 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 /* step buttons beside the sliders: no dragging or arrow keys needed */
 .stepper{display:inline-flex;align-items:center;gap:6px}
 .stepper .tb{min-width:42px;min-height:42px;padding:0;font-size:22px;font-weight:700}
-#controls .stepper input[type=range]{width:110px}
+/* a slider row: its words (and symbol) on one line, − slider + across the whole width below —
+   side by side they did not fit the panel and the + went outside it (2026-11-20) */
+#controls label:has(.stepper){flex-wrap:wrap;row-gap:4px}
+#controls label:has(.stepper) > :first-child{flex:1 0 100%}
+#controls .stepper{flex:1 0 100%;min-width:0}
+#controls .stepper input[type=range]{flex:1;width:auto;min-width:0}
 /* symbol size as four buttons */
 .optHead{font-size:13.5px}
 /* the shared ⌂ Start link and window buttons are small elsewhere — here big enough for the eyes */

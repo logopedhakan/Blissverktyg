@@ -26,9 +26,9 @@ const wbIcons = (() => {
     if (document.getElementById('wbIconsCss')) return;
     const st = document.createElement('style');
     st.id = 'wbIconsCss';
-    st.textContent = '.wbi{display:inline-flex;align-items:center;gap:2px;line-height:0;flex:none;vertical-align:middle;margin-right:.4em}' +
+    st.textContent = '.wbi{display:inline-flex;align-items:center;gap:2px;line-height:0;flex:none;vertical-align:middle;margin-right:.6em}' +
       '.wbi svg{height:1.5em;width:auto;display:block}.wbi .bfill{fill:currentColor}' +
-      '.wbiw{display:inline-flex;align-items:center;gap:.4em}.wbiw > .wbi{margin-right:0}label > input + .wbi{margin-left:.1em}';
+      '.wbiw{display:inline-flex;align-items:center;gap:.6em}.wbiw > .wbi{margin-right:0}label > input + .wbi{margin-left:.3em}';
     (document.head || document.documentElement).appendChild(st);
   }
   function make(ids, cls) {
