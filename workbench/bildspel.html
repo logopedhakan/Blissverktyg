@@ -69,7 +69,7 @@ button:disabled{opacity:.45;cursor:default}
 .thumb.dropBefore{box-shadow:0 -4px 0 0 var(--accent)}
 .thumb.dropAfter{box-shadow:0 4px 0 0 var(--accent)}
 .thumb .no{font-size:12px;color:var(--dim);width:16px;text-align:right;padding-top:2px}
-.thumb svg{width:100%;height:auto;display:block;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.thumb svg{width:min(100%, calc(130px * var(--slide-ar, 1.78)));height:auto;display:block;margin:0 auto;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 #slideBtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 #slideBtns .tb{padding:5px 6px;font-size:13.5px;gap:5px}
 #slideBtns .bi svg{height:20px}
@@ -193,6 +193,12 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
 #sizeBtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 #sizeBtns .tb{font-size:14px}
 #sizeBtns .tb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+/* the slides' format (2026-11-26): each button shows its shape */
+#formatBtns{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
+#formatBtns .tb{flex-direction:column;gap:5px;padding:7px 4px;font-size:13px;line-height:1.15;min-height:76px}
+#formatBtns .shape{display:block;border:2.5px solid currentColor;border-radius:3px;background:var(--panel-2)}
+#formatBtns .tb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+#formatBtns .tb[aria-pressed="true"] .shape{background:transparent}
 /* background colour of the slides: swatches + a free colour */
 .bgRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
 .bgRow > span:first-child{flex:1 0 100%}
@@ -219,7 +225,7 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
   main{grid-template-columns:1fr}
   #slides{flex-direction:row;overflow-x:auto;max-height:none}
   .thumb{min-width:140px}
-  #stageWrap{aspect-ratio:16/9;flex:none}
+  #stageWrap{aspect-ratio:var(--slide-ar, 16/9);flex:none}
 }
 </style>
 </head>
@@ -311,6 +317,8 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
       <details id="secShow" class="sec">
         <summary><span class="bi" data-bliss="12360"></span><span data-en="The whole slideshow">Hela bildspelet</span></summary>
         <div class="secBody">
+          <span id="formatHead" class="optHead" data-en="Format of the slides">Sidornas format</span>
+          <div id="formatBtns" role="group" aria-labelledby="formatHead"></div>
           <label><span data-en="Bliss symbols">Blissymboler</span> <input id="optSymbols" type="checkbox" checked></label>
           <label><span data-en="Words under the symbols">Ord under symbolerna</span> <input id="optLabels" type="checkbox" checked></label>
           <label><span data-en="Symbol size">Symbolstorlek</span>
@@ -470,12 +478,23 @@ function boxOf(w) {
   return b;
 }
 
-/* ================= slide layout (one SVG, 1600 × 900) =================
+/* ================= slide layout (one SVG, 1600 × 900 — or another format) =================
    Every slide in a show uses the same symbol scale (show.size = slide units
    per 1000 engine units), so a word is the same size on every slide — Bliss
    size is semantic. Only text that cannot fit its area is shrunk, and the
    editor says so. */
-const SW = 1600, SH = 900, FS = 300, LINE_GAP = 140;
+const FS = 300, LINE_GAP = 140;
+/* the slides' format (2026-11-26): the whole show has one, as a PowerPoint file does.
+   The short side is always 900 slide units, so the symbols keep their size on a
+   wide screen whatever the format; the long side follows the shape. */
+const FORMATS = {
+  '16:9': { w: 1600, h: 900, en: 'Landscape 16:9', sv: 'Liggande 16:9' },
+  '4:3': { w: 1200, h: 900, en: 'Landscape 4:3', sv: 'Liggande 4:3' },
+  '1:1': { w: 900, h: 900, en: 'Square', sv: 'Kvadrat' },
+  '3:4': { w: 900, h: 1200, en: 'Portrait 3:4', sv: 'Stående 3:4' },
+  '9:16': { w: 900, h: 1600, en: 'Portrait 9:16', sv: 'Stående 9:16' },
+};
+const slideSize = () => { const f = FORMATS[show.format] || FORMATS['16:9']; return [f.w, f.h]; };
 // gap: the slide's half-units between words (s.gap); punctuation sits closer (as in Skriv)
 function gapOf(w, gap) {
   // plain-text words (symbols off) read as a sentence: tighter, the full stop close
@@ -542,6 +561,7 @@ function blockOf(s, wrap) {
 /* where the picture and the text go on a slide */
 function layoutOf(s) {
   const hasText = s.words.some(w => !w.br);
+  const [SW, SH] = slideSize();
   const top = 30, bot = SH - 30, gap = 24, x = 40, w = SW - 80;
   let img = null, txt = null;
   if (s.img && hasText) {
@@ -563,7 +583,7 @@ function layoutOf(s) {
   return { img, txt: blk ? txt : null, blk, vb, shrunk };
 }
 function slideSVG(s, placeholder) {
-  const L = layoutOf(s);
+  const L = layoutOf(s), [SW, SH] = slideSize();
   const bg = s.bg || show.bg || '#ffffff', textBg = s.textBg ?? null, ink = inkFor(textBg || bg);
   let inner = `<rect width="${SW}" height="${SH}" fill="${escXml(bg)}"/>`;
   if (L.img) inner += `<image href="${escXml(s.img)}" x="${L.img.x}" y="${L.img.y}" width="${L.img.w}" height="${L.img.h}" preserveAspectRatio="xMidYMid meet"/>`;
@@ -583,6 +603,7 @@ function slideSVG(s, placeholder) {
    as the symbols and words actually are, with a margin — never reaching up into
    the picture or out over the slide's edge (2026-11-26: no longer the full width) */
 function textBand(L) {
+  const SH = slideSize()[1];
   const k = L.txt.w / L.vb.w;                       // slide units per block unit (meet: same both ways)
   const top = L.txt.y + (0 - L.vb.y) * k, h = L.blk.H * k, pad = 18;
   const left = L.txt.x + (0 - L.vb.x) * k, w = L.blk.W * k, side = 28;
@@ -610,7 +631,7 @@ function inkFor(bg) {
 const LOOK_DEFAULT = { bg: '#ffffff', textBg: null, imgPct: 62, gap: 8 };
 const lookOf = (s) => ({ bg: s.bg, textBg: s.textBg ?? null, imgPct: s.imgPct, gap: s.gap });
 const newSlide = (from) => Object.assign({ text: '', words: [], img: null, imgW: 0, imgH: 0 }, LOOK_DEFAULT, from ? lookOf(from) : {});
-let show = { v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, pen: 35, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, slides: [newSlide()], custom: [] };
+let show = { v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, pen: 35, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, format: '16:9', slides: [newSlide()], custom: [] };
 let cur = 0;          // current slide
 let open = -1;        // word whose chooser is open
 
@@ -687,6 +708,7 @@ function renderOptions() {
   $('optLabels').closest('label').style.opacity = show.symbols ? '' : '.5';
   $('optSize').value = String(show.size);
   if ($('sizeBtns')) syncSizeBtns();
+  syncFormat();
   const sl = show.slides[cur] || show;            // the slide's own look
   $('optImg').value = String(sl.imgPct || show.imgPct);
   $('optGap').value = String(sl.gap || show.gap);
@@ -1016,6 +1038,21 @@ for (const [id, step] of [['optImg', 5], ['optGap', 1], ['optPen', 1]]) {
   lab.replaceWith(Object.assign(document.createElement('span'), { className: 'optHead', textContent: lab.querySelector('span').textContent }));
   sel.hidden = true; box.after(sel);
 }
+{
+  const box = $('formatBtns');
+  for (const [k, f] of Object.entries(FORMATS)) {
+    const b = document.createElement('button'), r = 34 / Math.max(f.w, f.h);
+    b.type = 'button'; b.className = 'tb'; b.dataset.v = k;
+    b.innerHTML = `<span class="shape" style="width:${Math.round(f.w * r)}px;height:${Math.round(f.h * r)}px" aria-hidden="true"></span><span class="lbl">${tr(f.en, f.sv)}</span>`;
+    b.onclick = () => { show.format = k; renderOptions(); renderSlides(); renderStage(); autosave(); };
+    box.appendChild(b);
+  }
+}
+function syncFormat() {
+  for (const b of $('formatBtns').children) b.setAttribute('aria-pressed', String(b.dataset.v === (show.format || '16:9')));
+  const [w, h] = slideSize();
+  document.documentElement.style.setProperty('--slide-ar', String(w / h));
+}
 function syncSizeBtns() {
   for (const b of $('sizeBtns').children) b.setAttribute('aria-pressed', String(b.dataset.v === $('optSize').value));
 }
@@ -1147,6 +1184,7 @@ function serialize() {
    writes: colours as #rrggbb, pictures as base64 data: images, plain numbers.
    Anything else falls back to the default, so a bad value never becomes markup. */
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+const FORMAT_OK = /^(16:9|4:3|1:1|3:4|9:16)$/;
 const IMG_DATA = /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+$/i;
 const clampNum = (v, lo, hi, def) => { v = +v; return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def; };
 function cleanShow(o) {
@@ -1156,6 +1194,7 @@ function cleanShow(o) {
   o.gap = clampNum(o.gap, 1, 24, 8);
   o.imgPct = clampNum(o.imgPct, 30, 85, 62);
   o.title = typeof o.title === 'string' ? o.title : '';
+  o.format = FORMAT_OK.test(o.format) ? o.format : '16:9';
   if (!Array.isArray(o.custom)) o.custom = [];
   for (const s of o.slides) {
     s.img = typeof s.img === 'string' && IMG_DATA.test(s.img) ? s.img : null;
@@ -1172,7 +1211,7 @@ function cleanShow(o) {
 }
 function load(obj) {
   if (!obj || !Array.isArray(obj.slides) || !obj.slides.length) throw new Error('bad');
-  show = Object.assign({ v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, pen: 35, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, custom: [] }, obj);
+  show = Object.assign({ v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, pen: 35, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, format: '16:9', custom: [] }, obj);
   // a show saved before slides had their own look: every slide gets the show's look
   show.slides = show.slides.map(s => Object.assign(newSlide(lookOf(show)), s && typeof s === 'object' ? s : {}));
   cleanShow(show);
@@ -1361,7 +1400,7 @@ function blockPNG(L, s) {
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   });
 }
-const EMU = 12192000 / SW;              // 16:9 widescreen, 1 slide unit = 7620 EMU
+const EMU = 7620;                       // 1 slide unit: 1600 units = 12192000 EMU, PowerPoint's 16:9 width
 const fit = (aspect, a) => {            // contain a box of the given w/h aspect in area a
   let w = a.w, h = a.w / aspect;
   if (h > a.h) { h = a.h; w = a.h * aspect; }
@@ -1446,7 +1485,7 @@ async function exportPptx() {
       `<dc:title>${escXml(show.title || tr('Slideshow', 'Bildspel'))}</dc:title><dc:creator>WinBliss²</dc:creator></cp:coreProperties>`;
     const pres = XML + `<p:presentation ${NSP} saveSubsetFonts="1"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>` +
       `<p:sldIdLst>${slideIds.map(n => `<p:sldId id="${255 + n}" r:id="rId${n + 3}"/>`).join('')}</p:sldIdLst>` +
-      '<p:sldSz cx="12192000" cy="6858000"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>';
+      `<p:sldSz cx="${slideSize()[0] * EMU}" cy="${slideSize()[1] * EMU}"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`;
     const master = XML + `<p:sldMaster ${NSP}><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>` +
       `<p:spTree>${GRP}</p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>` +
       '<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles></p:sldMaster>';
@@ -1639,6 +1678,7 @@ wbIcons.put({
   '#optLabels': '18272,17969',
   // Symbol size: the select becomes a row of buttons with a heading of its own (above)
   '.optHead:has(+ #sizeBtns)': '12857,23214',
+  '#formatHead': '15962,16940',
   '#optPen': '15214,18250',
   '#optSpeak': '16728,16967',
   '#optClickNext': '13152,16172',
