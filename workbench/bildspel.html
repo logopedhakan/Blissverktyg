@@ -22,10 +22,11 @@
 #dirRow[hidden],#dlgCancel[hidden]{display:none}
 body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;
   background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
-#showTitle{font:inherit;font-size:14.5px;padding:8px 10px;border:1px solid var(--rule);border-radius:9px;
-  background:var(--panel);color:var(--ink);width:140px;min-height:40px}
-#saveState{font-size:12.5px;color:var(--dim);white-space:nowrap}
-header .tools{display:flex;gap:6px}
+/* the show's name heads the slide list (2026-11-26): the top bar keeps one row at 1366 px */
+#docRow{display:flex;flex-direction:column;gap:2px}
+#showTitle{font:inherit;font-size:15px;font-weight:700;padding:8px 10px;width:100%;min-width:0;min-height:var(--target);
+  border-radius:var(--r2)}
+#saveState{font-size:12.5px;color:var(--dim);white-space:nowrap;min-height:1.3em;padding-left:4px}
 /* Buttons with a Bliss symbol AND a word (2026-11-19): the symbol for the
    Bliss reader, the word for everyone else — both always there. Targets at
    least 40 px high. */
@@ -36,42 +37,62 @@ header .tools{display:flex;gap:6px}
 .tb .lbl{white-space:nowrap}
 #btnPlay.big{font-size:17px;padding:8px 20px;min-height:48px}
 #btnPlay.big .bi svg{height:28px}
-/* a narrower window (a 1280 px laptop): the file buttons show their symbol only — the word stays
-   their name for a screen reader and their tooltip */
+/* Arkiv (2026-11-26): the four file buttons as one group, symbol AND word always shown. In a
+   narrower window (a 1280 px laptop) the word goes under the symbol instead of beside it. */
+header .tools{display:inline-flex;align-items:stretch;flex:none;border:1px solid var(--line);border-radius:var(--r2);
+  background:var(--panel);overflow:hidden}
+header .tools > .tb{border:0;border-radius:0;min-height:var(--target);padding:6px 11px;gap:6px;font-size:14px}
+header .tools > .tb + .tb{border-left:1px solid var(--rule)}
+body > header > .tb{min-height:var(--target)}
+header .tools .bi svg{height:21px}
+/* the group clips its edge: the focus ring goes inside the button */
+header .tools > .tb:focus-visible{outline-offset:-4px}
 @media (max-width:1360px){
-  header .tools .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-  header .tools .tb{padding:6px 9px}
+  header .tools > .tb{flex-direction:column;gap:2px;padding:4px 9px;font-size:12.5px;line-height:1.1}
+  header .tools .bi svg{height:18px}
 }
-main{flex:1;display:grid;grid-template-columns:200px 1fr 350px;gap:14px;padding:0 18px 12px;min-height:0}
+/* a tablet's width (1024 px): Läs vid muspekare shows its symbol only (hovertal.js) — a little
+   less room around the buttons keeps Help on the same row */
+@media (max-width:1180px){
+  body > header:not(.hero){column-gap:8px}
+  header .tools > .tb{padding:4px 7px}
+  #btnPlay.big{padding:8px 14px}
+}
+main{flex:1;display:grid;grid-template-columns:210px 1fr 350px;gap:14px;padding:0 18px 12px;min-height:0}
 .colHead{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:700;color:var(--ink)}
 .colHead #slideCount{font-weight:400;color:var(--dim)}
 .colHead .bi svg{height:20px}
-.col{display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
+.col{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
 /* the slide strip scrolls sideways in a narrow window — it must not widen the page (320 px: 470) */
 #slides,#stageWrap,#controls{min-width:0}
-.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);font-weight:600}
 /* slide list */
-#slides{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:8px;
-  background:var(--panel-2);border-radius:12px;padding:8px}
-.thumb{display:flex;gap:6px;align-items:flex-start;padding:4px;border:2px solid transparent;border-radius:9px;background:transparent;cursor:grab}
+/* slide list (2026-11-26): a card like the panel on the right; each slide a tile, the chosen one framed in the accent */
+#slides{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:var(--s2);
+  background:var(--panel-2);border:1px solid var(--rule);border-radius:var(--r3);padding:var(--s2)}
+.thumb{display:flex;gap:6px;align-items:flex-start;flex:none;padding:6px 6px 6px 4px;border:2px solid transparent;border-radius:var(--r2);
+  background:transparent;cursor:grab}
 .thumb.on{border-color:var(--accent);background:var(--accent-soft)}
-.thumb:hover{border-color:var(--rule)}
-.thumb.on:hover{border-color:var(--accent)}
+.thumb:hover{border-color:var(--line);background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.thumb.on:hover{border-color:var(--accent);background:var(--accent-soft)}
 .thumb.dragging{opacity:.45}
 /* where a dragged slide will land: a line above or below the thumbnail */
 .thumb.dropBefore{box-shadow:0 -4px 0 0 var(--accent)}
 .thumb.dropAfter{box-shadow:0 4px 0 0 var(--accent)}
-.thumb .no{font-size:12px;color:var(--dim);width:16px;text-align:right;padding-top:2px}
+.thumb .no{font-size:12.5px;color:var(--dim);width:18px;text-align:right;padding-top:2px;flex:none}
+.thumb.on .no{color:var(--ink);font-weight:700}
 .thumb svg{width:min(100%, calc(130px * var(--slide-ar, 1.78)));height:auto;display:block;margin:0 auto;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
-#slideBtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-#slideBtns .tb{padding:5px 6px;font-size:13.5px;gap:5px}
+/* the slide buttons: New slide on top, wide and in the accent (Show stays the one primary); then two by two */
+#slideBtns{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2)}
+#slideBtns .tb{min-height:var(--target);padding:5px 6px;font-size:14px;gap:5px}
 #slideBtns .bi svg{height:20px}
-#btnAdd{grid-column:1/-1;font-weight:700;font-size:15px}
+#btnAdd{grid-column:1/-1;min-height:48px;font-weight:700;font-size:15.5px;border:2px solid var(--accent);background:var(--accent-soft);color:var(--ink)}
+#btnAdd:hover{background:color-mix(in srgb,var(--accent) 22%,var(--panel))}
+#btnAdd .bi svg{height:24px}
 #btnDel:not(:disabled):hover{border-color:var(--sel);color:var(--sel)}
 /* stage */
 #stageWrap{flex:1;min-height:0;position:relative;display:flex}
 #stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
-  background:var(--panel-2);border-radius:14px;padding:18px;outline:3px dashed transparent;outline-offset:-10px;
+  background:var(--panel-2);border:1px solid var(--rule);border-radius:var(--r3);padding:18px;outline:3px dashed transparent;outline-offset:-10px;
   transition:outline-color .15s}
 #stageWrap.dropping #stage{outline-color:var(--accent);background:var(--accent-soft)}
 /* what an empty slide needs, right where it is missing */
@@ -96,15 +117,17 @@ main{flex:1;display:grid;grid-template-columns:200px 1fr 350px;gap:14px;padding:
   filter:drop-shadow(0 2px 10px rgba(0,0,0,.18))}
 #hint{font-size:12px;color:var(--dim)}
 /* controls */
-#controls{display:flex;flex-direction:column;gap:9px;overflow-y:auto;min-height:0;padding-right:2px}
+/* the panel as Memory's (2026-11-26): one calm card, its parts as white cards in it */
+#controls{display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0;
+  background:var(--panel-2);border:1px solid var(--rule);border-radius:var(--r3);padding:12px}
 /* nothing in the panel may shrink: when room runs out (a small screen, or
    zoomed in) the panel scrolls instead. Before, the picture gallery was the
    one part that could shrink, and it collapsed to a sliver (Håkan, 2026-10-30) */
 #controls > *{flex-shrink:0}
-#controls h3{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink);text-transform:uppercase;letter-spacing:.04em;margin-top:6px}
+#controls h3{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink);text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
 #controls h3 .bi svg{height:20px}
 /* the panel in three parts: the slide's content (always open), its look, and the whole show */
-#controls details.sec{border:1px solid var(--rule);border-radius:12px;background:var(--panel)}
+#controls details.sec{border:1px solid var(--rule);border-radius:var(--r2);background:var(--panel);box-shadow:var(--shadow-1)}
 #controls details.sec > summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 12px;cursor:pointer;
   font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;list-style:none;border-radius:12px}
 #controls details.sec > summary::-webkit-details-marker{display:none}
@@ -114,14 +137,15 @@ main{flex:1;display:grid;grid-template-columns:200px 1fr 350px;gap:14px;padding:
 #controls details.sec[open] > summary::after{transform:rotate(45deg)}
 #controls details.sec > summary .bi svg{height:20px}
 #controls details.sec > summary:hover{background:var(--panel-2)}
-#controls .secBody{display:flex;flex-direction:column;gap:10px;padding:4px 12px 12px}
+#controls .secBody{display:flex;flex-direction:column;gap:12px;padding:4px 12px 14px}
 @media (prefers-reduced-motion: reduce){#controls details.sec > summary::after{transition:none}}
-#controls label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px}
+#controls label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px;min-height:32px}
 #controls select,#controls input[type=range]{font:inherit;font-size:13px}
 #controls input[type=checkbox]{width:22px;height:22px}
 #controls input[type=range]{min-height:32px;width:150px}
 #controls select{min-height:36px}
 #controls > .tb,#controls .secBody > .tb{width:100%}
+#imgRow .tb,#dirRow .tb,#controls .secBody > .tb{min-height:var(--target)}
 #imgRow{display:flex;gap:6px}
 #imgRow #btnImg{flex:1;min-width:0;justify-content:flex-start}
 #imgRow #btnImg .lbl,#dirRow #btnDir .lbl{overflow:hidden;text-overflow:ellipsis}
@@ -133,7 +157,7 @@ main{flex:1;display:grid;grid-template-columns:200px 1fr 350px;gap:14px;padding:
    (Håkan, 2026-10-30); more pictures scroll inside it. The file name shows
    on hover (title) rather than under each thumbnail. */
 #gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:6px;
-  max-height:4cm;overflow-y:auto;background:var(--panel-2);border-radius:8px;padding:4px}
+  max-height:4cm;overflow-y:auto;background:var(--panel);border:1px solid var(--rule);border-radius:var(--r1);padding:4px}
 #gallery[hidden]{display:none}
 #gallery button{padding:1px;border-radius:5px;display:flex;align-items:center;justify-content:center;min-width:0}
 #gallery img{width:100%;height:44px;object-fit:contain;display:block}
@@ -171,7 +195,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 #showCtl .bi svg{height:26px}
 /* step buttons beside the sliders: no dragging or arrow keys needed */
 .stepper{display:inline-flex;align-items:center;gap:6px}
-.stepper .tb{min-width:42px;min-height:42px;padding:0;font-size:22px;font-weight:700}
+.stepper .tb{min-width:var(--target);min-height:var(--target);padding:0;font-size:22px;font-weight:700;border-radius:var(--r2)}
 /* a slider row: its words (and symbol) on one line, − slider + across the whole width below —
    side by side they did not fit the panel and the + went outside it (2026-11-20) */
 #controls label:has(.stepper){flex-wrap:wrap;row-gap:4px}
@@ -180,43 +204,56 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 #controls .stepper input[type=range]{flex:1;width:auto;min-width:0}
 /* symbol size as four buttons */
 .optHead{font-size:13.5px}
-/* the shared ⌂ Start link and window buttons are small elsewhere — here big enough for the eyes */
-header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8px}
-#sizeBtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-#sizeBtns .tb{font-size:14px}
-#sizeBtns .tb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
-/* the slides' format (2026-11-26): each button shows its shape */
-#formatBtns{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
-#formatBtns .tb{flex-direction:column;gap:5px;padding:7px 4px;font-size:13px;line-height:1.15;min-height:76px}
-#formatBtns .shape{display:block;border:2.5px solid currentColor;border-radius:3px;background:var(--panel-2)}
-#formatBtns .tb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
-#formatBtns .tb[aria-pressed="true"] .shape{background:transparent}
-/* where the Bliss text goes (2026-11-26): under the picture, or on it, at the bottom or the top;
-   each button shows the slide in small */
-#posBtns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-#posBtns .tb{flex-direction:column;gap:5px;padding:7px 4px;font-size:12.5px;line-height:1.15;min-height:74px;text-align:center}
-#posBtns .tb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+/* choices as big buttons with pictures, as in Memory (2026-11-26): where the text goes, the
+   format and the symbol size. The chosen one is filled with the accent. */
+.choices{display:grid;gap:6px;grid-template-columns:repeat(3,minmax(0,1fr))}
+#sizeBtns.choices{grid-template-columns:repeat(4,minmax(0,1fr))}
+.choice{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;min-width:0;min-height:70px;padding:7px 3px 6px;
+  border-width:2px;border-radius:var(--r2);font-size:12.5px;font-weight:700;line-height:1.15;text-align:center;
+  transition:transform .12s,box-shadow .12s,background-color .12s,border-color .12s}
 /* the words may take two lines: "På bilden, nederst" is wider than a third of the panel */
-#posBtns .tb .lbl{white-space:normal;overflow-wrap:anywhere;min-width:0}
-#posBtns .tb{min-width:0}
+.choice .lbl{white-space:normal;overflow-wrap:anywhere;min-width:0}
+.choice:hover{transform:translateY(-1px)}
+.choice[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);
+  box-shadow:0 3px 10px color-mix(in srgb,var(--accent) 40%,transparent)}
+.choice:focus-visible{outline:3px solid var(--sel);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.choice{transition:none}.choice:hover{transform:none}}
+/* the slides' format: each button shows its shape */
+#formatBtns .shape{display:block;border:2.5px solid currentColor;border-radius:3px;background:var(--panel-2)}
+#formatBtns .choice[aria-pressed="true"] .shape{background:transparent}
+/* the symbol size: the same symbol, as big as it gets */
+#sizeBtns .pic{display:flex;align-items:flex-end;justify-content:center;height:30px}
+#sizeBtns .pic svg{width:auto;display:block}
+#sizeBtns .pic .bfill{fill:currentColor}
 .posPic{position:relative;width:46px;height:30px;border:2px solid currentColor;border-radius:4px;overflow:hidden;flex:none}
 .posPic .pic{position:absolute;left:0;right:0;top:0;background:color-mix(in srgb,currentColor 35%,transparent)}
 .posPic .bar{position:absolute;left:7px;right:7px;height:7px;border-radius:2px;background:currentColor}
-/* background colour of the slides: swatches + a free colour */
-.bgRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
-.bgRow > span:first-child{flex:1 0 100%}
-#bgSwatches,#tbgSwatches{display:flex;gap:7px;flex-wrap:wrap}
-#bgSwatches button,#tbgSwatches button{width:38px;height:38px;padding:0;border-radius:8px;border:2px solid var(--rule)}
-#bgSwatches button.on,#bgSwatches button:focus-visible,
-#tbgSwatches button.on,#tbgSwatches button:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+/* background colour of the slides (2026-11-26): the swatches and the free colour in one even grid,
+   five a row, each a 44 px target; the chosen one wears a ring and a ✓ that shows on any colour */
+.bgRow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;font-size:13.5px}
+.bgRow > :first-child{grid-column:1/-1}
+#bgSwatches,#tbgSwatches{display:contents}
+#bgSwatches button,#tbgSwatches button,#optBg,#optTextBg{position:relative;width:100%;min-width:0;height:var(--target);padding:0;
+  border-radius:var(--r1);border:1px solid var(--line)}
+#bgSwatches button.on,#tbgSwatches button.on{border:2px solid var(--accent);box-shadow:0 0 0 2px var(--accent)}
+#bgSwatches button.on::after,#tbgSwatches button.on::after{content:"✓";position:absolute;inset:0;margin:auto;width:24px;height:24px;
+  border-radius:50%;background:var(--accent);color:var(--on-accent,#fff);font-size:15px;font-weight:800;line-height:24px;text-align:center;
+  box-shadow:0 0 0 2px var(--panel)}
 /* "no text background": a white tile struck through */
 #tbgSwatches button.none{background:linear-gradient(to top right,transparent 44%,#c33 44%,#c33 56%,transparent 56%),#fff !important}
-#optBg,#optTextBg{width:44px;height:38px;padding:0 2px;border:1px solid var(--rule);border-radius:7px;background:var(--panel);cursor:pointer}
+/* the free colour: its colour in a rainbow frame — "any colour" */
+#optBg,#optTextBg{padding:5px;cursor:pointer;background:conic-gradient(#e0413a,#e8b323,#3fae4f,#2f8fd8,#8b4fd1,#e0413a)}
+#optBg::-webkit-color-swatch-wrapper,#optTextBg::-webkit-color-swatch-wrapper{padding:0}
+#optBg::-webkit-color-swatch,#optTextBg::-webkit-color-swatch{border:none;border-radius:4px}
+#optBg::-moz-color-swatch,#optTextBg::-moz-color-swatch{border:none;border-radius:4px}
 /* zoomed in or a small window: the slides become a strip on top, and the
    slide and the panel (picture folder included) stay side by side on screen */
 @media (max-width:900px) and (min-width:601px){
   main{grid-template-columns:1fr 280px;grid-template-rows:auto minmax(0,1fr)}
-  main > aside:first-child{grid-column:1/-1;flex-direction:row;align-items:stretch}
+  main > aside:first-child{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:stretch}
+  #docRow{flex:1 0 100%;flex-direction:row;align-items:center;gap:10px}
+  #showTitle{max-width:320px}
+  #slides{flex:1 1 0}
   #slides{flex-direction:row;overflow-x:auto;padding:6px}
   .thumb{flex:0 0 120px}
   #slideBtns{grid-template-columns:repeat(2,1fr);width:190px;align-content:start}
@@ -235,11 +272,9 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
 <body>
 <header>
   <a class="homeLink" href="start.html" title="Till startsidan" data-en-title="To the start page">⌂ Start</a>
-  <h1 title="En bild överst, blisstext under — visa i helskärm eller spara som PowerPoint"
+  <div class="wbTitle"><h1 title="En bild överst, blisstext under — visa i helskärm eller spara som PowerPoint"
       data-en-title="A picture at the top, Bliss text underneath — show it full screen or save as PowerPoint"><span data-en="Slideshow">Bildspel</span> <span style="color:var(--sel)">·</span> Bliss</h1>
-  <input id="showTitle" type="text" placeholder="Bildspelets namn" data-en-ph="Slideshow name" autocomplete="off"
-         aria-label="Bildspelets namn" data-en-aria="Slideshow name">
-  <span id="saveState" role="status" aria-live="polite"></span>
+    <span class="sub" data-en="pictures with Bliss text">bilder med blisstext</span></div>
   <span class="grow"></span>
   <!-- 2026-11-19: every button has its Bliss symbol AND its word (symbols drawn by the engine, data-bliss = BCI ids) -->
   <div class="tools" role="toolbar" aria-label="Arkiv" data-en-aria="File">
@@ -253,6 +288,12 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
 </header>
 <main>
   <aside class="col" aria-labelledby="slidesHead">
+    <!-- the show's name and whether it is kept, at the head of its slides (2026-11-26) -->
+    <div id="docRow">
+      <input id="showTitle" type="text" placeholder="Bildspelets namn" data-en-ph="Slideshow name" autocomplete="off"
+             aria-label="Bildspelets namn" data-en-aria="Slideshow name">
+      <span id="saveState" role="status" aria-live="polite"></span>
+    </div>
     <h2 id="slidesHead" class="colHead"><span class="bi" data-bliss="15962"></span><span data-en="Slides">Sidor</span> <span id="slideCount"></span></h2>
     <div id="slides" role="list" aria-labelledby="slidesHead"
          title="↑/↓ byter sida · Alt+↑/↓ flyttar sidan · Delete tar bort · dra för att flytta"
@@ -313,7 +354,7 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
             <input id="optTextBg" type="color" value="#ffffff" title="Välj en egen färg" data-en-title="Choose your own colour"
                    aria-label="Egen färg bakom blisstexten" data-en-aria="Own colour behind the Bliss text"></div>
           <span id="posHead" class="optHead" data-en="Where the Bliss text goes">Blisstextens plats</span>
-          <div id="posBtns" role="group" aria-labelledby="posHead"></div>
+          <div id="posBtns" class="choices" role="group" aria-labelledby="posHead"></div>
           <label><span data-en="Picture height">Bildens höjd</span> <input id="optImg" type="range" min="30" max="85" step="1"></label>
           <label><span data-en="Space between symbols">Avstånd mellan symbolerna</span> <input id="optGap" type="range" min="1" max="24" step="1"></label>
           <button id="btnLookAll" class="tb"><span class="bi" data-bliss="12360"></span><span class="lbl" data-en="Use on all slides">Använd på alla sidor</span></button>
@@ -323,7 +364,7 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
         <summary><span class="bi" data-bliss="12360"></span><span data-en="The whole slideshow">Hela bildspelet</span></summary>
         <div class="secBody">
           <span id="formatHead" class="optHead" data-en="Format of the slides">Sidornas format</span>
-          <div id="formatBtns" role="group" aria-labelledby="formatHead"></div>
+          <div id="formatBtns" class="choices" role="group" aria-labelledby="formatHead"></div>
           <label><span data-en="Bliss symbols">Blissymboler</span> <input id="optSymbols" type="checkbox" checked></label>
           <label><span data-en="Words under the symbols">Ord under symbolerna</span> <input id="optLabels" type="checkbox" checked></label>
           <label><span data-en="Symbol size">Symbolstorlek</span>
@@ -463,7 +504,7 @@ drawIcons();
 /** The word on a button (its .lbl), or the whole text of a plain button. */
 const lblOf = (btn) => btn.querySelector('.lbl') || btn;
 const setLabel = (btn, text) => { lblOf(btn).textContent = text; };
-// the file buttons may show their symbol only (a narrow window): the word is their tooltip too
+// the file buttons' words are their tooltips too (the keys are added to them below)
 for (const b of document.querySelectorAll('header .tools .tb')) b.title = lblOf(b).textContent;
 $('btnPlay').title = lblOf($('btnPlay')).textContent + ' (F5)';
 /* measured boxes are cached — every thumbnail re-lays out its words */
@@ -747,9 +788,11 @@ function renderOptions() {
   $('optPen').value = String(show.pen || 35);
   $('optSpeak').checked = !!show.speakAuto;
   $('optBg').value = sl.bg || '#ffffff';
-  for (const b of $('bgSwatches').children) b.classList.toggle('on', b.dataset.bg.toLowerCase() === (sl.bg || '#ffffff').toLowerCase());
+  // the chosen swatch: .on for the eye, aria-pressed for a screen reader
+  const mark = (b, on) => { b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); };
+  for (const b of $('bgSwatches').children) mark(b, b.dataset.bg.toLowerCase() === (sl.bg || '#ffffff').toLowerCase());
   $('optTextBg').value = sl.textBg || '#ffffff';
-  for (const b of $('tbgSwatches').children) b.classList.toggle('on', b.dataset.bg.toLowerCase() === (sl.textBg || '').toLowerCase());
+  for (const b of $('tbgSwatches').children) mark(b, b.dataset.bg.toLowerCase() === (sl.textBg || '').toLowerCase());
   // "Use on all slides" only means something while some slide looks different
   const one = JSON.stringify(lookOf(sl));
   $('btnLookAll').disabled = show.slides.every(x => JSON.stringify(lookOf(x)) === one);
@@ -1057,11 +1100,16 @@ for (const [id, step] of [['optImg', 5], ['optGap', 1], ['optPen', 1]]) {
 }
 {
   const sel = $('optSize'), box = document.createElement('div');
-  box.id = 'sizeBtns'; box.setAttribute('role', 'group');
+  box.id = 'sizeBtns'; box.className = 'choices'; box.setAttribute('role', 'group');
   box.setAttribute('aria-label', sel.closest('label').querySelector('span').textContent);
+  // each size shows the same Bliss symbol, as big as that size makes it (160 → 27 px … 65 → 11 px)
+  let sym = '';
+  try { sym = wbIcons.svg('12857'); } catch (_) {}
   for (const o of sel.options) {
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'tb'; b.dataset.v = o.value; b.textContent = o.textContent;
+    b.type = 'button'; b.className = 'choice'; b.dataset.v = o.value;
+    b.innerHTML = `<span class="pic" aria-hidden="true">${sym.replace('<svg', `<svg style="height:${Math.round(o.value / 6)}px"`)}</span><span class="lbl"></span>`;
+    lblOf(b).textContent = o.textContent;
     b.onclick = () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); syncSizeBtns(); };
     box.appendChild(b);
   }
@@ -1074,7 +1122,7 @@ for (const [id, step] of [['optImg', 5], ['optGap', 1], ['optPen', 1]]) {
   const box = $('formatBtns');
   for (const [k, f] of Object.entries(FORMATS)) {
     const b = document.createElement('button'), r = 34 / Math.max(f.w, f.h);
-    b.type = 'button'; b.className = 'tb'; b.dataset.v = k;
+    b.type = 'button'; b.className = 'choice'; b.dataset.v = k;
     b.innerHTML = `<span class="shape" style="width:${Math.round(f.w * r)}px;height:${Math.round(f.h * r)}px" aria-hidden="true"></span><span class="lbl">${tr(f.en, f.sv)}</span>`;
     b.onclick = () => { show.format = k; renderOptions(); renderSlides(); renderStage(); autosave(); };
     box.appendChild(b);
@@ -1120,7 +1168,7 @@ $('optImg').addEventListener('input', () => setLook({ imgPct: +$('optImg').value
 for (const [v, sv, en] of [['under', 'Under bilden', 'Under the picture'], ['bottom', 'På bilden, nederst', 'On the picture, at the bottom'],
                            ['top', 'På bilden, överst', 'On the picture, at the top']]) {
   const b = document.createElement('button');
-  b.type = 'button'; b.className = 'tb'; b.dataset.v = v;
+  b.type = 'button'; b.className = 'choice'; b.dataset.v = v;
   const pic = v === 'under' ? 'height:55%' : 'bottom:0', bar = v === 'top' ? 'top:4px' : 'bottom:4px';
   b.innerHTML = `<span class="posPic" aria-hidden="true"><span class="pic" style="${pic}"></span><span class="bar" style="${bar}"></span></span><span class="lbl">${tr(en, sv)}</span>`;
   b.onclick = () => {
