@@ -972,6 +972,65 @@ const asyncChecks = (async () => {
     [true, true, true, true]);
 })().catch(e => { fail++; console.log('✗ BlissOnline: ' + (e && e.stack || e)); });
 
+/* ---------- 10g. the new look, step 2d (2026-11-26): Gravyrkort, Almanacka, Start, Inställningar ---------- */
+{
+  // Gravyrkort: the panel folds in parts that are remembered; every slider has − and +; one main action, always in view
+  const g = read('gravyr.html');
+  const secs = [...g.matchAll(/<details class="sec" id="(\w+)"/g)].map(m => m[1]);
+  check('Gravyrkort: the settings fold in five parts, remembered',
+    [secs, /const KEY = 'wb-gravyr-ui', SECS = \['secText', 'secSym', 'secCard', 'secHoles', 'secBg'\]/.test(g), /\$\(id\)\.addEventListener\('toggle', keep\)/.test(g)],
+    [['secText', 'secSym', 'secCard', 'secHoles', 'secBg'], true, true]);
+  const ranges = [...g.matchAll(/<input id="(\w+)" type="range"/g)].map(m => m[1]).sort();
+  const steps = Object.keys(Function('return ' + g.match(/const STEPS = (\{[^}]*\})/)[1])()).sort();
+  check('Gravyrkort: every slider gets a − and a + (a switch, the eyes)', [ranges.filter(id => !steps.includes(id)), steps.filter(id => !ranges.includes(id))], [[], []]);
+  const exp = g.slice(g.indexOf('<div id="exportBox">'), g.indexOf('</aside>', g.indexOf('<div id="exportBox">')));
+  check('Gravyrkort: the laser SVG is the one main action, outside the parts that fold',
+    [(g.match(/class="primary"/g) || []).length, /id="btnSVG" class="primary"/.test(exp), /id="hint2"/.test(exp)], [1, true, true]);
+  check('Gravyrkort: the parts are named in English too, and the search field has a name',
+    [secs.every(id => new RegExp(`id="${id}"[^>]*>\\s*<summary><span data-en="[^"]+">`).test(g)), /#side summary \[data-en\]/.test(g), /id="search"[^>]*aria-label="Sök ord"/.test(g)],
+    [true, true, true]);
+
+  // Almanacka: the week bar, today, the quiet add button, a dialog in the middle
+  const a = read('almanacka.html');
+  const nav = a.slice(a.indexOf('<div id="weekNav"'), a.indexOf('</div>', a.indexOf('<div id="weekNav"')));
+  check('Almanacka: the week bar keeps its buttons in order, and says the new week',
+    [[...nav.matchAll(/id="(\w+)"/g)].map(m => m[1]).slice(1), /id="weekLabel" aria-live="polite"/.test(nav), /<div class="wbTitle"><h1>/.test(a)],
+    [['prevWeek', 'thisWeek', 'weekLabel', 'nextWeek'], true, true]);
+  check('Almanacka: today stands out, + Ny bokning is quiet, the dialog sits in the middle',
+    [/\.day\.today \.dayHead\{background:var\(--accent\);color:var\(--on-accent,#fff\)/.test(a), /\.add\{[^}]*border:1\.5px dashed var\(--line\)/.test(a),
+     /dialog\{margin:auto;/.test(a), /\.dlgBtns button\{min-height:var\(--target\)/.test(a)],
+    [true, true, true, true]);
+  check('Almanacka: in English the buttons\' names follow their titles',
+    /if \(el\.hasAttribute\('aria-label'\)\) el\.setAttribute\('aria-label', el\.dataset\.enTitle\)/.test(a), true);
+
+  // Start: one row of settings at the top right, and the part used last
+  const st = read('start.html');
+  const end = st.slice(st.indexOf('<div id="startEnd">'), st.indexOf('</header>'));
+  check('Start: the settings are one row at the top right — Läs vid muspekare joins them',
+    [/<div data-wb-end>/.test(end), ['installApp', 'btnSwitch', 'langRow'].filter(id => !end.includes(`id="${id}"`)), /id="langRow" class="seg"/.test(end),
+     /<div class="wbTitle"><h1>WinBliss/.test(st), st.includes('<script src="js/shared/ikoner.js"></script>')],
+    [true, [], true, true, true]);
+  check('Start: a card shows when it is pointed at or reached with Tab',
+    /\.card:hover,\.card:focus-visible\{/.test(st) && /\.card:focus-visible\{outline:3px solid var\(--accent\)/.test(st), true);
+  // the part used last is read before window.js remembers the start page instead
+  const head = st.slice(0, st.indexOf('</script>'));
+  check('Start: the part used last is read before anything else',
+    head.indexOf("window.wbLastPart = localStorage.getItem('wb-senast')") > 0 && head.indexOf("window.wbLastPart") < head.indexOf("sessionStorage.getItem('wb-igang')"), true);
+  const wantSrc = st.match(/const want = ([^;]+);/)[1];
+  const want = (last) => Function('last', 'return ' + wantSrc)(last);
+  const hrefs = [...st.matchAll(/<a class="card" href="([^"]+)"/g)].map(m => m[1]);
+  check('Start: the card of the part used last',
+    ['index.html', 'index.html?vy=skriv', 'bildspel-ny.html', 'almanacka.html?x=1', 'gravyr.html?from=skriv', 'start.html'].map(l => hrefs.includes(want(l)) ? want(l) : null),
+    ['index.html', 'index.html?vy=skriv', 'bildspel.html', 'almanacka.html', 'gravyr.html', null]);
+
+  // Inställningar: the shared buttons, 44 px, readable while learning in dark mode
+  const ins = read('installningar.html');
+  check('Inställningar: 44 px buttons and rows, no white text on the pink of dark mode',
+    [/main button\{min-height:var\(--target\)/.test(ins), /\.row label\{[^}]*min-height:var\(--target\)/.test(ins), /button\.learning\{[^}]*color:#fff/.test(ins),
+     /details\.tool > summary\{[^}]*min-height:var\(--target\)/.test(ins)],
+    [true, true, false, true]);
+}
+
 asyncChecks.then(() => {
   console.log(`${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
