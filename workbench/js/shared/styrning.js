@@ -160,6 +160,7 @@ const wbStyr = (() => {
       scan: { ms: num(sc.ms, 500, 6000, 1500), rounds: num(sc.rounds, 1, 9, 3), restart: sc.restart === true },
       dwell: { ms: num(dw.ms, 400, 4000, 1000), ring: dw.ring !== false, pause: dw.pause !== false },
       strong: o.strong === true,
+      hover: o.hover === true,          // read aloud what the mouse points at (hovertal.js, 2026-11-26)
       keys,
     };
   }

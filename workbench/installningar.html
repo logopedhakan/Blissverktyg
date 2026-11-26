@@ -121,6 +121,13 @@ footer{padding:3px 12px 8px;font-size:11px;color:var(--dim);text-align:center}
     <div class="row"><label><input type="checkbox" id="optStrong"><span class="bi" data-bliss="18291,16675"></span><span id="lStrong"></span></label></div>
   </section>
 
+  <!-- 2026-11-26: aids that hold in every part — read aloud what the mouse (or the eyes) point at -->
+  <section aria-labelledby="hAids">
+    <h2><span class="bi" data-bliss="16728"></span><span id="hAids"></span></h2>
+    <div class="row"><label><input type="checkbox" id="optHover"><span class="bi" data-bliss="23593,16728"></span><span id="lHover"></span></label></div>
+    <p class="note" id="nHover"></p>
+  </section>
+
   <section aria-labelledby="hKeys">
     <h2><span class="bi" data-bliss="23553"></span><span id="hKeys"></span></h2>
     <p class="intro" id="iKeys"></p>
@@ -136,6 +143,8 @@ footer{padding:3px 12px 8px;font-size:11px;color:var(--dim);text-align:center}
 <footer>WinBliss² · 2026 AnyCom AB · CC BY 4.0 · Blissymbolics © BCI, CC BY-SA 4.0</footer>
 <script src="js/shared/lang.js"></script>
 <script src="js/shared/styrning.js"></script>
+<script src="js/shared/speak.js"></script>
+<script src="js/shared/hovertal.js"></script>
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/switch.js"></script>
 <script src="js/engine/bliss-shapes.js"></script>
@@ -204,6 +213,9 @@ const TEXT = {
   lTryEye: tr('Try', 'Prova'),
   hLook: tr('See where you are', 'Se var du är'),
   lStrong: tr('Clear marking (a yellow ring)', 'Tydlig markering (gul ring)'),
+  hAids: tr('Aids', 'Hjälpmedel'),
+  lHover: tr('Read on mouse-over — what the mouse or the eyes point at is read aloud', 'Läs vid muspekare — det som musen eller blicken pekar på läses upp'),
+  nHover: tr('In every part. It can also be turned on and off with the button at the top of each part.', 'I alla delar. Kan också slås på och av med knappen överst i varje del.'),
   hKeys: tr('Keyboard shortcuts', 'Kortkommandon'),
   iKeys: tr('Press Change, then the key or joystick button. Esc cancels.', 'Tryck Ändra, sedan tangenten eller joystickknappen. Esc avbryter.'),
 };
@@ -315,6 +327,8 @@ $('optRing').onchange = () => put({ dwell: Object.assign({}, S().dwell, { ring: 
 $('optPause').onchange = () => put({ dwell: Object.assign({}, S().dwell, { pause: $('optPause').checked }) });
 for (const b of $('tryEye').querySelectorAll('button')) b.onclick = () => { $('oTryEye').textContent = '✓ ' + b.textContent; };
 $('optStrong').onchange = () => put({ strong: $('optStrong').checked });
+$('optHover').onchange = () => wbHover.set($('optHover').checked);
+if (!WB_SPEECH) $('optHover').closest('section').hidden = true;
 
 /* ---- shortcuts ---- */
 const open = new Set(['alla']);                     // the parts shown open
@@ -398,6 +412,7 @@ function render() {
   $('optDwell').value = s.dwell.ms; $('oDwell').textContent = secs(s.dwell.ms);
   $('optRing').checked = s.dwell.ring; $('optPause').checked = s.dwell.pause;
   $('optStrong').checked = s.strong;
+  $('optHover').checked = !!s.hover;
   if (!busy) { renderRoles(); renderKeys(); }
 }
 ST.onChange(render);
