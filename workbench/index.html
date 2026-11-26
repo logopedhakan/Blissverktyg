@@ -54,8 +54,8 @@ header button{white-space:nowrap}
 header #btnSettings{font-size:20px;line-height:1;padding:2px 10px 4px}
 header h1{font-size:17px;margin:0;font-weight:700}
 header h1 sup{color:var(--accent);font-size:.62em;font-weight:700;vertical-align:super;margin-left:1px}
-header .sub{color:var(--dim);font-size:12px}
-header .spacer{flex:1}
+/* the line under the name says which view is open */
+#subWrite{display:none} body.writing #subWrite{display:inline} body.writing #subEdit{display:none}
 #status{font-size:12px;color:var(--dim)}
 
 main{flex:1;display:flex;min-height:0;gap:10px;padding:10px}
@@ -94,8 +94,19 @@ main{flex:1;display:flex;min-height:0;gap:10px;padding:10px}
 #stageWrap{position:relative;flex:1;overflow:auto;background:var(--panel-2);
   display:flex;align-items:flex-start;justify-content:center;padding:18px;min-height:250px}
 #stage{background:var(--stage);border-radius:10px;box-shadow:var(--shadow);touch-action:none}
-#edTools{display:flex;gap:6px;align-items:center;padding:8px 14px;flex-wrap:wrap}
-#edTools .sep{width:1px;height:22px;background:var(--rule);margin:0 4px}
+#edTools{display:flex;gap:var(--s2) var(--s5);align-items:flex-end;padding:8px 14px;flex-wrap:wrap}
+#edTools .sep{width:1px;height:22px;background:var(--rule);margin:0 4px;align-self:center}
+/* named groups of buttons, in Editera and Skriv (2026-11-26): a small name over
+   each group, the same buttons in every group, the groups apart by a clear gap */
+.tGroup{display:flex;flex-direction:column;gap:3px;min-width:0}
+.tLbl{font-size:11px;line-height:1.2;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);padding-left:2px;white-space:nowrap}
+.tBtns{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+/* the symbol over the word, as Memory's buttons with pictures (2026-11-26): narrow
+   enough that the groups share a row on a laptop screen, big enough to hit */
+.tBtns > button{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;white-space:nowrap;flex:none;
+  min-height:54px;min-width:64px;padding:5px 8px 4px;line-height:1.1;font-weight:600;border-radius:var(--r2)}
+.tBtns > button > .wbi{margin-right:0}
+#edMeta .tGroup{margin-left:var(--s3)}
 #edTools .inline{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim)}
 #edTools input[type=color]{padding:0;width:30px;height:26px;border-radius:6px;cursor:pointer}
 #btnInkReset{padding:3px 8px;font-size:11.5px}
@@ -192,6 +203,7 @@ body.embed header,body.embed #colophon,body.embed #wHint{display:none}
 body.embed #wSettings{display:inline-block}
 #wHelp{display:none} body.embed #wHelp{display:inline-block}
 #edBackWrite,#edBackSep{display:none}
+#edBackWrite{min-height:40px;font-weight:700}
 body.embed #edBackWrite{display:inline-block} body.embed #edBackSep{display:inline-block}
 body.embed main{padding:4px;gap:4px}
 body.embed #wTools{padding:4px 8px}
@@ -200,11 +212,12 @@ body.embed.embed-notools #wTools{display:none}
    2026-09-09) — the header shows only what serves the writing */
 body.writing #btnExportList,body.writing #btnManager{display:none}
 /* quick toggles in the header (PeO 2026-09-09): visible in Write mode only —
-   pressed = the surface is shown, released = switched off */
-.wToggle{display:none;font-size:12.5px;padding:5px 10px}
-body.writing .wToggle{display:inline-block}
-.wToggle.on{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
-.wToggle:not(.on){opacity:.6;text-decoration:line-through}
+   pressed = the surface is shown (filled, css/wb-base.css .seg), released =
+   switched off. One .seg group since 2026-11-26; no faded or struck-through
+   text, so the off state keeps its contrast too. */
+#wtSeg{display:none}
+body.writing #wtSeg{display:inline-flex}
+.wToggle{white-space:nowrap;padding:5px 12px}
 .wAddBtn{display:none}
 body.writing .wAddBtn{display:inline-block}
 
@@ -258,7 +271,15 @@ body.writing #writeView{display:flex}
 body.writing #editor{display:none}
 #wInputRow{display:flex;gap:8px;padding:12px 14px 8px}
 #wInput{flex:1;font-size:15px;font:inherit;resize:vertical;min-height:38px;padding:8px 10px;border:1px solid var(--rule);border-radius:8px;background:var(--panel);color:var(--ink)}
-#wMic{font-size:17px;line-height:1}
+#wMic{line-height:1}
+/* beside the text field (2026-11-26): Diktera and Läs upp are the clear main
+   actions; Formfamiljer, Rensa and ⚙ are quiet (css/wb-base.css .quiet). They
+   move as one block: on a narrow window the block goes under the text field. */
+#wInActs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;align-content:flex-start;flex:0 1 auto;min-width:0}
+#wInActs > button{white-space:nowrap;min-height:var(--target)}
+.wMain{font-weight:700;background:var(--accent-soft);border:2px solid var(--accent);padding:6px 14px}
+.wMain:hover{background:color-mix(in srgb,var(--accent) 22%,var(--panel));border-color:var(--accent)}
+#wInActs > .quiet{padding:6px 9px}
 /* Narrow window — a third of the screen (the ⅓ button) or zoomed in
    (2026-11-12): the list and the writing surface stack instead of sharing the
    width, which left the text field 22 px wide at 640 px; the buttons beside
@@ -275,7 +296,7 @@ body.writing #editor{display:none}
    A text field cannot colour single words, so the text is drawn again in a layer
    behind it (#wInMarks) and the field's own letters are made see-through — only
    once the layer is in place (.marked), so the text never disappears. */
-#wInBox{flex:1 1 220px;position:relative;display:flex;min-width:0}
+#wInBox{flex:1 1 300px;position:relative;display:flex;min-width:0}
 #wInBox > #wInput{flex:1;min-width:0;position:relative;z-index:1}
 #wInMarks{position:absolute;pointer-events:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;
   color:var(--ink);box-sizing:border-box;display:none}
@@ -304,6 +325,8 @@ body.writing #editor{display:none}
   body.writing #wPreviewWrap{min-height:240px}
   /* the header buttons (Skriv, ⚙, ?) wrap to a second row instead of going off screen */
   header{flex-wrap:wrap;row-gap:6px}
+  /* a long button name (Spara → the list's name) wraps instead of being cut off */
+  .tBtns > button{white-space:normal;max-width:100%;text-align:center}
 }
 /* live recording state: unmistakably red and pulsing (steady red when the
    user prefers reduced motion) */
@@ -339,8 +362,9 @@ body.writing #editor{display:none}
 /* the writing surface is a full-width PAGE, not a floating card — lines start
    at the left margin like a document (PeO 2026-09-09) */
 #wPreview{background:var(--stage);border-radius:10px;box-shadow:var(--shadow);padding:16px 26px;width:100%;margin:auto}
-#wTools{display:flex;gap:8px;align-items:center;padding:8px 14px}
-#wHint{font-size:11.5px;color:var(--dim);margin-left:auto}
+/* the tools under the page: Dokument · Dela · Skicka till (2026-11-26) */
+#wTools{display:flex;gap:var(--s2) var(--s5);align-items:flex-end;flex-wrap:wrap;padding:8px 14px 10px;border-top:1px solid var(--rule-soft)}
+#wHint{font-size:11.5px;color:var(--dim);margin-left:auto;flex:1 1 14em;text-align:right;align-self:center}
 .bIcon{margin-right:7px;display:inline-block;line-height:0;vertical-align:middle}
 .bIcon:empty{display:none}
 .bIcon svg{height:17px;width:auto;vertical-align:middle}
@@ -380,13 +404,17 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
   <!-- the same visible way home as the other parts (PeO, 2026-09-25); the footer
        link stays for whoever looks there. Hidden in embed mode with the header. -->
   <a id="homeLink" href="start.html" title="To the start page">⌂ Start</a>
-  <h1>WinBliss<sup>2</sup></h1>
+  <!-- the name and, small under it, which view is open (the shared top bar, 2026-11-26) -->
+  <div class="wbTitle"><h1>WinBliss<sup>2</sup></h1><span class="sub"><span id="subWrite">Write in Bliss</span><span id="subEdit">Draw and edit symbols</span></span></div>
+  <span class="grow"></span>
   <button id="btnExportList"><span class="bIcon"></span>Export list…</button>
   <button id="btnManager"><span class="bIcon"></span>List manager</button>
-  <button id="wtList" class="wToggle" title="Show or hide the word list" aria-pressed="true">List</button>
-  <button id="wtChips" class="wToggle" title="Show or hide the word alternatives" aria-pressed="true">Words</button>
-  <button id="wtChooser" class="wToggle" title="Show or hide the form row" aria-pressed="true">Forms</button>
-  <span class="spacer"></span>
+  <!-- Skriv: what the writing surface shows, one row of on/off choices (pressed = shown) -->
+  <span id="wtSeg" class="seg" role="group" aria-label="Show">
+    <button id="wtList" class="wToggle" title="Show or hide the word list" aria-pressed="true">List</button>
+    <button id="wtChips" class="wToggle" title="Show or hide the word alternatives" aria-pressed="true">Words</button>
+    <button id="wtChooser" class="wToggle" title="Show or hide the form row" aria-pressed="true">Forms</button>
+  </span>
   <button id="btnWrite">✎ Write</button>
   <button id="btnSettings" title="Settings" aria-label="Settings">⚙</button>
   <button id="btnHelp" title="Help & keyboard shortcuts (?)" aria-label="Help and keyboard shortcuts">? Help</button>
@@ -416,14 +444,18 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
   <section id="writeView" aria-label="Write in Bliss" data-drop="Drop the PDF from BlissOnline, or a WinBliss document, here">
     <div id="wInputRow">
       <div id="wInBox"><div id="wInMarks" aria-hidden="true"></div><textarea id="wInput" rows="2" placeholder="Write — every word becomes Bliss; new line = new line…" autocomplete="off"></textarea></div>
-      <button id="wMic" title="Dictate" aria-label="Dictate">🎤</button>
-      <button id="wAI" title="Let AI interpret the sentence into Bliss grammar — every choice stays editable" style="display:none">✨ Interpret</button>
-      <button id="wSpeak" title="Read the text aloud (click again to stop)">🔊 Read aloud</button>
-      <button id="wFam" title="Fetch a word from Form families without leaving Write">⬡ Form families…</button>
-      <button id="wClear">Clear</button>
-      <button id="wSettings" title="Settings" aria-label="Settings">⚙</button>
-      <!-- the header (and its ? Help) is hidden when embedded: help in the tools row instead -->
-      <button id="wHelp" title="Help: all keyboard shortcuts">? Help</button>
+      <!-- the two main actions beside the text, then the quieter ones (2026-11-26);
+           the buttons move as one block, so none is left alone on a row -->
+      <div id="wInActs">
+        <button id="wMic" class="wMain" title="Dictate" aria-label="Dictate">🎤 Dictate</button>
+        <button id="wAI" title="Let AI interpret the sentence into Bliss grammar — every choice stays editable" style="display:none">✨ Interpret</button>
+        <button id="wSpeak" class="wMain" title="Read the text aloud (click again to stop)">🔊 Read aloud</button>
+        <button id="wFam" class="quiet" title="Fetch a word from Form families without leaving Write">⬡ Form families…</button>
+        <button id="wClear" class="quiet">Clear</button>
+        <button id="wSettings" class="quiet" title="Settings" aria-label="Settings">⚙</button>
+        <!-- the header (and its ? Help) is hidden when embedded: help in the tools row instead -->
+        <button id="wHelp" class="quiet" title="Help: all keyboard shortcuts">? Help</button>
+      </div>
     </div>
     <!-- the words that got no symbol, one at a time (2026-11-26): each opens its choices -->
     <div id="wNoSymBar" role="group" aria-labelledby="wNoSymCount" hidden>
@@ -434,24 +466,33 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
     <div id="wChips" role="group" aria-label="Sentence words"></div>
     <div id="wChooser" hidden></div>
     <div id="wPreviewWrap"><div id="wPreview"></div></div>
+    <!-- the tools under the page, in named groups (2026-11-26): the small visible
+         name is for the eye, the group's aria-label for a screen reader -->
     <div id="wTools">
-      <span class="saveGroup">
-        <button id="wOpenDoc">Open…</button>
-        <button id="wSaveDoc">Save ↓</button>
-      </span>
-      <span class="sep" style="width:1px;height:22px;background:var(--rule)"></span>
-      <span class="saveGroup">
-        <button id="wSVG">SVG ↓</button>
-        <button id="wPNG">PNG ↓</button>
-        <button id="wDoc">Word ↓</button>
-        <button id="wPrint">PDF…</button>
-        <button id="wClip">Clipboard ↓</button>
-      </span>
-      <span class="sep" style="width:1px;height:22px;background:var(--rule)"></span>
-      <span class="saveGroup">
-        <button id="wToShow" title="The text as a new slide in Slideshow">→ Slideshow</button>
-        <button id="wToTag" title="The symbols onto an engraving tag">→ Engraving tag</button>
-      </span>
+      <div class="tGroup" id="wgDoc" role="group" aria-label="Document">
+        <span class="tLbl" id="wgDocL" aria-hidden="true">Document</span>
+        <div class="tBtns">
+          <button id="wOpenDoc">Open…</button>
+          <button id="wSaveDoc">Save ↓</button>
+        </div>
+      </div>
+      <div class="tGroup" id="wgShare" role="group" aria-label="Share">
+        <span class="tLbl" id="wgShareL" aria-hidden="true">Share</span>
+        <div class="tBtns">
+          <button id="wPrint">PDF…</button>
+          <button id="wDoc">Word ↓</button>
+          <button id="wPNG">PNG ↓</button>
+          <button id="wSVG">SVG ↓</button>
+          <button id="wClip">Clipboard ↓</button>
+        </div>
+      </div>
+      <div class="tGroup" id="wgSend" role="group" aria-label="Send to">
+        <span class="tLbl" id="wgSendL" aria-hidden="true">Send to</span>
+        <div class="tBtns">
+          <button id="wToShow" title="The text as a new slide in Slideshow">→ Slideshow</button>
+          <button id="wToTag" title="The symbols onto an engraving tag">→ Engraving tag</button>
+        </div>
+      </div>
       <span id="wHint">every word can be adjusted — click it · unmatched words become text, or new symbols of your own</span>
     </div>
   </section>
@@ -478,12 +519,17 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
         <option>YELLOW</option><option>RED</option><option>GREEN</option>
         <option>BLUE</option><option>WHITE</option><option>GRAY</option></select></label>
       <label style="display:none">Origin <input id="country" value="SWE"></label>
-      <button id="btnNewSym">New symbol</button>
-      <span class="saveGroup">
-        <button id="btnAddToList" class="primary">Save to list</button>
-        <button id="btnAddToListB" class="primary" style="display:none"></button>
-        <button id="btnSaveAsNew" title="Save the drawing as a new symbol with its own id — the symbol it was made from stays as it was">Save as new symbol…</button>
-      </span>
+      <!-- the toolbar in named groups (2026-11-26): Symbol beside its name and id,
+           then Edit and Export on the row under it; the save is the one primary -->
+      <div class="tGroup" id="edgSym" role="group" aria-label="Symbol">
+        <span class="tLbl" id="edgSymL" aria-hidden="true">Symbol</span>
+        <div class="tBtns">
+          <button id="btnNewSym">New symbol</button>
+          <button id="btnAddToList" class="primary">Save to list</button>
+          <button id="btnAddToListB" class="primary" style="display:none"></button>
+          <button id="btnSaveAsNew" title="Save the drawing as a new symbol with its own id — the symbol it was made from stays as it was">Save as new symbol…</button>
+        </div>
+      </div>
       <span id="edStdBadge"></span>
     </div>
     <!-- Toolbar ABOVE the canvas (PeO, 2026-08-25): tab order runs
@@ -491,20 +537,26 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
          shapes and the palette never crosses the whole toolbar. -->
     <div id="edTools">
       <!-- embed mode hides the header, so "open in editor" needs a way back (Håkan, 2026-09-24) -->
-      <button id="edBackWrite" class="primary">← Write</button>
+      <button id="edBackWrite">← Write</button>
       <span class="sep" id="edBackSep"></span>
-      <button id="btnRotate" title="R">⟳ Rotate</button>
-      <button id="btnDelete" title="Delete/Backspace">🗑 Delete</button>
-      <button id="btnDup" title="D">⧉ Duplicate</button>
-      <span class="sep"></span>
-      <button id="btnUndo" title="Cmd/Ctrl+Z">↩ Undo</button>
-      <span class="sep"></span>
-      <span class="saveGroup">
-        <button id="btnExportSVG">SVG ↓</button>
-        <button id="btnExportPNG">PNG ↓</button>
-        <button id="btnCopyClip">Clipboard ↓</button>
-        <button id="btnGravyr" title="Open the symbol on an engraving tag">Engrave →</button>
-      </span>
+      <div class="tGroup" id="edgEdit" role="group" aria-label="Edit">
+        <span class="tLbl" id="edgEditL" aria-hidden="true">Edit</span>
+        <div class="tBtns">
+          <button id="btnRotate" title="R">⟳ Rotate</button>
+          <button id="btnDelete" title="Delete/Backspace">🗑 Delete</button>
+          <button id="btnDup" title="D">⧉ Duplicate</button>
+          <button id="btnUndo" title="Cmd/Ctrl+Z">↩ Undo</button>
+        </div>
+      </div>
+      <div class="tGroup" id="edgExport" role="group" aria-label="Export">
+        <span class="tLbl" id="edgExportL" aria-hidden="true">Export</span>
+        <div class="tBtns">
+          <button id="btnExportSVG">SVG ↓</button>
+          <button id="btnExportPNG">PNG ↓</button>
+          <button id="btnCopyClip">Clipboard ↓</button>
+          <button id="btnGravyr" title="Open the symbol on an engraving tag">Engrave →</button>
+        </div>
+      </div>
       <span id="hint">drag shapes from the palette · Shift = fine grid · double-click a list row to edit it</span>
     </div>
     <div id="stageWrap"><svg id="stage" tabindex="0" aria-label="Editing canvas"></svg></div>
