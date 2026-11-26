@@ -72,8 +72,10 @@ const wbSwitch = (() => {
 
   /* ---- stepping and pressing ---- */
   const FOCUSABLE = 'a[href],button,input:not([type=hidden]),select,textarea,summary,[tabindex]';
+  // checkVisibility: what is in a closed <details> still has boxes, but cannot take focus —
+  // without it the stepping stood still on a folded part's heading (2026-11-26)
   const shown = (el) => !el.disabled && el.tabIndex >= 0 && !el.closest('[inert]') && el.getClientRects().length > 0 &&
-    getComputedStyle(el).visibility !== 'hidden';
+    getComputedStyle(el).visibility !== 'hidden' && (!el.checkVisibility || el.checkVisibility());
   function stops() {
     const s = api.scope ? api.scope() : null;
     if (s) return (Array.isArray(s) ? s : [...s.querySelectorAll(FOCUSABLE)]).filter(el => el && shown(el));

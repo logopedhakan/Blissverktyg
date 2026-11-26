@@ -301,6 +301,59 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     [/chip\.setAttribute\('aria-label', key \+/.test(fm), /chip\.setAttribute\('aria-pressed', String\(on\)\)/.test(fm)], [true, true]);
 }
 
+/* ---------- 5b. The new design, step 2c: Hänga gubbe and Formfamiljer (2026-11-26) ---------- */
+{
+  const gi = read('gissa.html'), fm = read('former.html');
+  const markup = (h) => h.slice(h.indexOf('<body>'), h.indexOf('<script'));
+  const ids = (h) => [...markup(h).matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);
+  const order = (h, list) => { const m = ids(h); return list.map(id => m.indexOf(id)); };
+  const rising = (a) => a.every((x, i) => x >= 0 && (i === 0 || x > a[i - 1]));
+  // every element the scripts, shortcuts and symbols use is still there
+  const giKeep = ['nWon', 'nStreak', 'picker', 'pickSearch', 'pickRows', 'pickCount', 'left', 'word', 'btnHide', 'msg', 'wrongRow', 'wrongList',
+    'mid', 'board', 'tray', 'palette', 'famRow', 'varRow', 'right', 'quip', 'gallows', 'controls', 'theme', 'diff', 'famModeRow', 'famMode',
+    'btnHint', 'btnList', 'btnPick', 'btnSound', 'btnNext', 'btnReveal'];
+  const fmKeep = ['palTools', 'btnClear', 'palette', 'mid', 'statsRow', 'stats', 'speakAll', 'words', 'side', 'detail', 'dSym', 'dName', 'dSpeak',
+    'dEn', 'dForms', 'copyText', 'dCopy', 'dCopyTxt', 'dCopyMsg', 'dSkriv', 'dSkrivMsg', 'dGravyr', 'famMode', 'speakPickRow', 'speakPick',
+    'speakHoverRow', 'speakHover'];
+  check('Design 2c: every id is kept', [giKeep.filter(id => !ids(gi).includes(id)), fmKeep.filter(id => !ids(fm).includes(id))], [[], []]);
+  check('Design 2c: no id is used twice', [ids(gi).filter((x, i, a) => a.indexOf(x) !== i), ids(fm).filter((x, i, a) => a.indexOf(x) !== i)], [[], []]);
+  // Hänga gubbe: the game first (New word is the one main action), then Words and Settings that fold
+  check('Hänga gubbe: the game first, then the folding Words and Settings',
+    rising(order(gi, ['gallows', 'btnNext', 'btnHint', 'btnSound', 'btnReveal', 'secWords', 'btnList', 'btnPick', 'secSettings', 'theme', 'diff', 'famMode', 'keyHint'])), true);
+  check('Hänga gubbe: New word is the one primary button', [(markup(gi).match(/class="[^"]*\bprimary\b/g) || []).length, /<button id="btnNext" class="primary">/.test(gi)], [1, true]);
+  check('Hänga gubbe: the folding parts are details.sec and are remembered',
+    [/<details id="secWords" class="sec">/.test(gi), /<details id="secSettings" class="sec">/.test(gi),
+     /const KEY = 'gissa-ui';/.test(gi), /for \(const id of \['secWords', 'secSettings'\]\) \$\(id\)\.addEventListener\('toggle', keep\)/.test(gi),
+     /'#secWords > summary': '\d+'/.test(gi), /'#secSettings > summary': '\d+'/.test(gi)], [true, true, true, true, true, true]);
+  check('Hänga gubbe: the score is two counters in the top bar, in both languages',
+    [/<span class="score" id="score"><span class="stat"><b id="nWon">0<\/b>/.test(gi), /\$\('score'\)\.innerHTML = '<span class="stat"><b id="nWon">0<\/b> <span>solved<\/span>/.test(gi)], [true, true]);
+  check('Hänga gubbe: Tab wraps from the last control that shows, not from inside a folded part',
+    [/function lastControl\(\)/.test(gi), /el\.checkVisibility\(\)/.test(gi), /!ev\.shiftKey && document\.activeElement === last/.test(gi)], [true, true, true]);
+  check('Hänga gubbe: a narrow window is one column (no panel pinned to a track)',
+    /@media \(max-width:760px\)\{[\s\S]*?#picker,#left,#right\{grid-column:auto\}/.test(gi), true);
+  check('Hänga gubbe: no empty "Wrong guesses" row', /#wrongRow\[hidden\]\{display:none\}/.test(gi), true);
+  check('Hänga gubbe: the board lines have English names', /tr\('sky', 'himmel'\)/.test(gi) && /tr\('earth', 'jord'\)/.test(gi), true);
+  // Formfamiljer: on/off settings are switches, the match is one row of choices
+  const sw = (h, id) => new RegExp(`<input type="checkbox" id="${id}"[^>]*role="switch"`).test(h);
+  check('Formfamiljer: the on/off settings are switches', ['famMode', 'speakPick', 'speakHover', 'copyText'].filter(id => !sw(fm, id)), []);
+  check('Hänga gubbe: "Rätt familj räcker" is a switch', sw(gi, 'famMode'), true);
+  check('Formfamiljer: the match is three choices with a pressed state and its symbol',
+    [/<div id="matchBtns" class="choices" role="group" aria-labelledby="matchHead">/.test(fm),
+     ['only', 'all', 'any'].filter(v => !new RegExp(`class="choice" data-v="${v}" aria-pressed=`).test(fm)),
+     ['matchOnly', 'matchAll', 'matchAny'].filter(id => !new RegExp(`'#${id}': '\\d+'`).test(fm)),
+     /b\.setAttribute\('aria-pressed', String\(b\.dataset\.v === r\.value\)\)/.test(fm),
+     /<label><input type="radio" name="mode" value="all" checked>/.test(fm)],
+    [true, [], [], true, true]);
+  check('Formfamiljer: what the English translation changes is in the page',
+    ['#famModeRow .tt', '#speakPickRow .tt', '#speakHoverRow .tt', '#copyTextRow > span', "$('modeHead')", "$('matchHead')"].filter(sel => !fm.includes(sel)).concat(
+    ['id="famModeRow"', 'id="copyTextRow"', 'id="modeHead"', 'id="matchHead"', 'class="tt"'].filter(x => !fm.includes(x))), []);
+  check('Formfamiljer: a narrow window lets the page scroll (a valid rule)',
+    [/\};body\{/.test(fm), /@media \(max-width:900px\)\{\s*body\{height:auto;min-height:100vh\}/.test(fm)], [false, true]);
+  check('Formfamiljer: Send to Skriv is the one primary button', [(markup(fm).match(/class="[^"]*\bprimary\b/g) || []).length, /<button id="dSkriv" class="primary">/.test(fm)], [1, true]);
+  // the switch steps over what a closed <details> hides (it has boxes, but cannot take focus)
+  check('Brytare: nothing inside a closed folding part is a stop', /\(!el\.checkVisibility \|\| el\.checkVisibility\(\)\)/.test(read('js/shared/switch.js')), true);
+}
+
 /* ---------- 6. Skriv writes by Bliss-glosor's rules (js/shared/bliss-skriv.js), 2026-11-19 ----------
    Skriv's real parser (wParse in app.js) on Bliss-glosor's approved sentences
    (tests/fixtures/meningar.json): with the articles and "ska" left out it must
