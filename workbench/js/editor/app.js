@@ -1870,6 +1870,7 @@ function wRenderChips() {
 }
 function wRender() {
   const spot = wFocusSpot();
+  wMarksOf();
   wRenderChips();
   wRenderChooser();
   wRenderPreview();
@@ -2436,6 +2437,60 @@ if ('BroadcastChannel' in window) {
       }
     }
   };
+}
+/* ---- words without a symbol, marked in the text field itself (2026-11-26) ----
+   The words are drawn again in #wInMarks, behind the field, at the same place:
+   same font, padding, width and scroll. A word that got no symbol (or only a
+   guess) is coloured and underlined there. Marks are kept as { off, word } and
+   shown only while the text still has that word at that place, so typing never
+   shows a mark on the wrong word before the text is read again. */
+let wMarks = [];
+const wNoSym = (w) => !w.br && !w.punct && !w.skip && !!w.asText && (!(w.ids || []).length || !!w.fuzzy || !!w.guess);
+function wMarksOf() {
+  const v = $('wInput').value;
+  wMarks = [];
+  for (const w of W) {
+    if (w.off == null || !wNoSym(w)) continue;
+    const m = /^\S+/.exec(v.slice(w.off));
+    const word = m && m[0].replace(/[?!.,]+$/, '');
+    if (word) wMarks.push({ off: w.off, word });
+  }
+  wMarksDraw();
+}
+const W_MARK_CSS = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontStretch', 'lineHeight', 'letterSpacing', 'wordSpacing',
+  'textIndent', 'textTransform', 'tabSize', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'];
+function wMarksFit() {
+  const ta = $('wInput'), mk = $('wInMarks'), cs = getComputedStyle(ta);
+  for (const p of W_MARK_CSS) mk.style[p] = cs[p];
+  // inside the field's border and beside its scroll bar: the text wraps at the same width
+  mk.style.left = (ta.offsetLeft + ta.clientLeft) + 'px';
+  mk.style.top = (ta.offsetTop + ta.clientTop) + 'px';
+  mk.style.width = ta.clientWidth + 'px';
+  mk.style.height = ta.clientHeight + 'px';
+  mk.scrollTop = ta.scrollTop;
+}
+function wMarksDraw() {
+  const ta = $('wInput'), mk = $('wInMarks');
+  if (!mk) return;
+  const v = ta.value;
+  let html = '', at = 0;
+  for (const m of wMarks) {
+    if (m.off < at || v.substr(m.off, m.word.length) !== m.word) continue;
+    html += escXml(v.slice(at, m.off)) + `<span class="noSym">${escXml(m.word)}</span>`;
+    at = m.off + m.word.length;
+  }
+  // a last empty line keeps its height, as in the field
+  mk.innerHTML = html + escXml(v.slice(at)) + '\n';
+  mk.scrollTop = ta.scrollTop;
+}
+if ($('wInMarks')) {
+  $('wInput').addEventListener('input', wMarksDraw);
+  $('wInput').addEventListener('scroll', () => { $('wInMarks').scrollTop = $('wInput').scrollTop; });
+  new ResizeObserver(() => { wMarksFit(); wMarksDraw(); }).observe($('wInput'));
+  wMarksFit(); wMarksDraw();
+  $('wInBox').classList.add('marked');
+  // the typeface may arrive after the page: measure again then
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { wMarksFit(); wMarksDraw(); });
 }
 $('wInput').addEventListener('keyup', wScrollToCaret);
 $('wInput').addEventListener('click', wScrollToCaret);
