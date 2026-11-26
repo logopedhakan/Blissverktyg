@@ -773,5 +773,66 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Blisshuset: only that word', [parse('blisshus')[0].asText, !!parse('blisshus')[0].parts], [true, false]);
 }
 
-console.log(`${pass} passed, ${fail} failed`);
-process.exit(fail ? 1 : 0);
+/* ---------- 11. a BlissOnline PDF into Skriv (2026-11-26): a page made here, its text read back ---------- */
+const asyncChecks = (async () => {
+  const zlib = require('zlib');
+  const ctx = vm.createContext({ console, DecompressionStream, Response, Blob, Uint8Array, TextDecoder });
+  for (const f of ['js/shared/pdf-vektor.js', 'js/shared/blissonline.js', 'js/data/blissonline-glyfer.js'])
+    vm.runInContext(globalize(read(f), ['wbPdf', 'wbBlissOnline', 'WB_BO_GLYPHS']), ctx);
+  // a row as BlissOnline draws it: a white band, white Bliss boxes (20 units high), each word's
+  // letters as one filled shape, and after a word its symbol — lines and a filled dot, above
+  const u = 2.6, rowTop = 780, cellTop = rowTop - 2, baseline = cellTop - 20 * u - 6;
+  const f2 = (v) => v.toFixed(2);
+  // (drawn from the table's 16-point outlines: letters with few corners, so the drawing stays true to them;
+  // I, O and ! come from the font, not from a sample)
+  const words = ['Ingrid', 'såg', 'IDA:', 'Ola!', 'lika', 'för att'];
+  let c = `1 1 1 rg 36 ${f2(baseline - 6)} 523 ${f2(rowTop - baseline + 6)} re f\n`;
+  let x = 40;
+  for (const word of words) {
+    c += `1 1 1 rg ${f2(x)} ${f2(cellTop - 20 * u)} ${f2(8 * u)} ${f2(20 * u)} re f\n0 0 0 rg\n`;
+    let lx = x;
+    for (const ch of word) {
+      if (ch === ' ') { lx += 0.95 * u; continue; }
+      const shape = ctx.WB_BO_GLYPHS[ch][0];
+      for (const o of shape) c += o.map(([px, py], i) => `${f2(lx + px * u)} ${f2(baseline + py * u)} ${i ? 'l' : 'm'}`).join('\n') + '\nh\n';
+      lx += Math.max(...shape.flat().map(p => p[0])) * u + 0.6;
+    }
+    c += 'f\n';
+    // the symbol: a square (lines) with a filled dot in it — not read, never taken for a word
+    c += `0 0 0 RG 0.87 w ${f2(x)} ${f2(cellTop - 16 * u)} m ${f2(x + 8 * u)} ${f2(cellTop - 16 * u)} l ${f2(x + 8 * u)} ${f2(cellTop - 8 * u)} l ${f2(x)} ${f2(cellTop - 8 * u)} l h S\n`;
+    c += `0 0 0 rg ${f2(x + 4 * u)} ${f2(cellTop - 12 * u)} 0.6 0.6 re f\n`;
+    x = Math.max(lx, x + 8 * u) + 3 * u;
+  }
+  const body = zlib.deflateSync(Buffer.from(c, 'latin1'));
+  const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << >> >>'];
+  let pdf = '%PDF-1.4\n';
+  objs.forEach((o, i) => { pdf += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+  const pdfBytes = Buffer.concat([Buffer.from(pdf + `4 0 obj\n<< /Length ${body.length} /Filter /FlateDecode >>\nstream\n`, 'latin1'), body,
+    Buffer.from('\nendstream\nendobj\n%%EOF\n', 'latin1')]);
+  ctx.bytes = new Uint8Array(pdfBytes);
+  const pages = await vm.runInContext('wbPdf.read(bytes)', ctx);
+  check('BlissOnline: the PDF is read — its lines and its filled shapes', [pages.length, pages[0].items.some(i => i.paint === 'stroke'), pages[0].items.some(i => i.paint === 'fill')], [1, true, true]);
+  ctx.pages = pages;
+  const lay = vm.runInContext('wbBlissOnline.layout(pages)', ctx);
+  check('BlissOnline: the words are read from their letter shapes (the symbols are not words)',
+    [lay.rows.length, lay.rows[0].words.map(w => w.text), lay.rows[0].words.reduce((n, w) => n + w.unknown, 0)], [1, words, 0]);
+  // letters no sample had come from Arial itself
+  check('BlissOnline: capitals, w and signs from the font', ['A', 'W', 'w', '!', '(', 'Ä', 'Q'].filter(ch => !ctx.WB_BO_GLYPHS[ch]), []);
+  // l and I are all but the same bar in Arial: the word around them decides
+  const L = (w, start) => ctx.wbBlissOnline.settleLI(w.replace(/#/g, '\u0001'), start);
+  check('BlissOnline: l or I by the word around it',
+    [L('#ngrid', false), L('#ika', false), L('#KEA', false), L('#ika', true), L('Wi#a', false), L('i#', false)],
+    ['Ingrid', 'lika', 'IKEA', 'Iika', 'Wila', 'il']);
+  // Skriv opens a PDF with Open…; its own symbols are used, and everything is kept offline
+  const app = read('js/editor/app.js'), idx = read('index.html'), sw = read('sw.js');
+  check('BlissOnline: Skriv opens PDFs — the text, with its own symbols — and the scripts are in the page and offline',
+    [/if \(wIsPdf\(f\)\) \{ await wImportPdf\(f\); return; \}/.test(app), /wbBlissMatch|bliss-match/.test(app + idx + sw),
+     ['js/shared/pdf-vektor.js', 'js/shared/blissonline.js', 'js/data/blissonline-glyfer.js'].filter(f => !idx.includes(`src="${f}"`) || !sw.includes(`'${f}'`))],
+    [true, false, []]);
+})().catch(e => { fail++; console.log('✗ BlissOnline: ' + (e && e.stack || e)); });
+
+asyncChecks.then(() => {
+  console.log(`${pass} passed, ${fail} failed`);
+  process.exit(fail ? 1 : 0);
+});

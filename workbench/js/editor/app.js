@@ -2505,22 +2505,47 @@ function wApplyDoc(txt) {
   toast(tr('Document opened — keep writing', 'Dokumentet öppnat — fortsätt skriva'));
   return true;
 }
+/* ---- a BlissOnline PDF into Write (2026-11-26) ----
+   BlissOnline (SPSM) draws its words as letter outlines; js/shared/blissonline.js
+   reads the TEXT back (with its rows: a short row ends a paragraph). The symbols
+   are Write's own, from BCI-AV by Write's rules — BlissOnline's are not copied. */
+async function wImportPdf(file) {
+  if (typeof wbPdf === 'undefined' || typeof wbBlissOnline === 'undefined') return false;
+  toast(tr('Reading the PDF…', 'Läser PDF:en…'));
+  await new Promise(r => setTimeout(r, 30));            // the message shows before the work starts
+  let lay;
+  try { lay = wbBlissOnline.layout(await wbPdf.read(new Uint8Array(await file.arrayBuffer()))); }
+  catch (_) { toast(tr('The PDF could not be read', 'PDF:en gick inte att läsa')); return false; }
+  const units = lay.rows.flatMap(r => r.words);
+  if (!units.length) { toast(tr('No BlissOnline text found in the PDF', 'Ingen BlissOnline-text hittades i PDF:en')); return false; }
+  $('wInput').value = lay.rows.map(r => r.words.map(w => w.text).join(' ') + (r.end ? '\n' : ' ')).join('').trim();
+  wOpen = -1;
+  wDocHandle = null;                                     // Save makes a new .wbd
+  wParse();
+  const unknown = units.reduce((n, u) => n + u.unknown, 0);
+  toast(tr(`From BlissOnline: ${W.filter(w => !w.br && !w.punct).length} words`, `Från BlissOnline: ${W.filter(w => !w.br && !w.punct).length} ord`) +
+    (unknown ? tr(` — ${unknown} letters could not be read (�)`, ` — ${unknown} bokstäver gick inte att läsa (�)`) : ''));
+  return true;
+}
+const wIsPdf = (f) => /\.pdf$/i.test(f.name || '') || f.type === 'application/pdf';
 $('wOpenDoc').onclick = async () => {
   if (window.showOpenFilePicker) {
     try {
       const [h] = await showOpenFilePicker({
-        types: [{ description: 'WinBliss-dokument', accept: { 'application/json': ['.wbd'] } }],
+        types: [{ description: tr('WinBliss document or BlissOnline PDF', 'WinBliss-dokument eller BlissOnline-PDF'),
+                  accept: { 'application/json': ['.wbd'], 'application/pdf': ['.pdf'] } }],
       });
       const f = await h.getFile();
+      if (wIsPdf(f)) { await wImportPdf(f); return; }
       if (wApplyDoc(await f.text())) wDocHandle = h;   // Save now writes back here
       return;
     } catch (e) { if (e && e.name === 'AbortError') return; }
   }
   const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.wbd,application/json';
+  inp.type = 'file'; inp.accept = '.wbd,.pdf,application/json,application/pdf';
   inp.onchange = () => {
     const f = inp.files[0]; if (!f) return;
-    f.text().then(wApplyDoc);
+    if (wIsPdf(f)) wImportPdf(f); else f.text().then(wApplyDoc);
   };
   inp.click();
 };
