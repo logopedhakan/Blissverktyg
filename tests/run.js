@@ -695,6 +695,19 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     ctx.turnCard(H, 0); ctx.turnCard(H, 2); return ctx.turnCard(H, 0).what; })(), 'none');
   check('memory: the timer turns back only a missed pair', (() => { const H = ctx.newState(deck(), 1);
     ctx.turnCard(H, 0); const one = ctx.coverCards(H); ctx.turnCard(H, 1); return [one, ctx.coverCards(H), H.up.length]; })(), [false, true, 0]);
+  // up to four players (2026-11-26): a miss passes the turn round; the pair is the finder's; the leader is known
+  {
+    const deck6 = () => [{ p: 0 }, { p: 1 }, { p: 2 }, { p: 0 }, { p: 1 }, { p: 2 }].map(c => Object.assign(c, { found: false }));
+    const H = ctx.newState(deck6(), 3);
+    const turns = [];
+    const two = (x, y) => { ctx.coverCards(H); ctx.turnCard(H, x); ctx.turnCard(H, y); };
+    for (const [x, y] of [[0, 1], [1, 2], [2, 3], [0, 3]]) { two(x, y); turns.push(H.turn); }
+    check('memory: three players take turns in a ring, the pair is the finder\'s',
+      [turns, H.scores, H.deck[0].by, H.deck[3].by, ctx.leaders(H), ctx.newState(deck6(), 9).scores.length, ctx.leaders(ctx.newState(deck6(), 2))],
+      [[1, 2, 0, 0], [1, 0, 0], 0, 0, [0], 4, []]);
+    two(1, 2); two(2, 5);   // player 0 misses, then player 1 finds 2+5
+    check('memory: a tie in the lead is everyone with the most pairs', [H.scores, ctx.leaders(H)], [[1, 1, 0], [0, 1]]);
+  }
   check('memory: near-square cards in a wide board and a tall one',
     [[12, 1000, 600], [16, 1000, 600], [24, 1000, 600], [12, 400, 900]].map(([n, w, h]) => { const g = ctx.gridFor(n, w, h); return g.cols + 'x' + g.rows; }),
     ['4x3', '6x3', '6x4', '3x4']);

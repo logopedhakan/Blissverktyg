@@ -16,16 +16,82 @@ body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,
 header{display:flex;align-items:baseline;gap:14px;padding:12px 18px;flex-wrap:wrap}
 header h1{font-size:20px}
 header .sub{color:var(--dim);font-size:13px}
-#score{margin-left:auto;font-size:15px;color:var(--dim);display:flex;gap:10px;flex-wrap:wrap}
-#score b{color:var(--ink)}
-#score .pl{padding:2px 10px;border-radius:999px;border:2px solid transparent}
-#score .pl.on{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+/* the players (2026-11-26, "more like a game"): one card each, in the player's colour.
+   Whose turn it is stands out (big frame, "Your turn", the board framed in the same
+   colour); whoever leads wears the crown; the pairs a player has found sit on their card. */
+#players{display:flex;gap:10px;flex-wrap:wrap}
+.pc{--pc:var(--accent);flex:1 1 170px;min-width:0;display:flex;flex-direction:column;gap:6px;padding:8px 12px;border-radius:14px;
+  background:color-mix(in srgb,var(--pc) 10%,var(--panel));border:3px solid color-mix(in srgb,var(--pc) 35%,transparent);
+  transition:transform .2s,opacity .2s,box-shadow .2s}
+.pc.on{border-color:var(--pc);box-shadow:0 0 0 4px color-mix(in srgb,var(--pc) 30%,transparent),0 4px 14px rgba(0,0,0,.15);transform:translateY(-2px)}
+.pc.wait{opacity:.62}
+.pcHead{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-weight:700;font-size:16px}
+.pcHead .pname{color:var(--pc)}
+.pc .sym svg{height:26px;width:auto;display:block}
+.pc .sym .bfill{fill:currentColor}
+.pcHead > .sym{color:var(--pc)}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 10px 2px 6px;border-radius:999px;font-size:13.5px;font-weight:700;white-space:nowrap}
+.badge .sym svg{height:20px}
+.badge.turn{background:var(--pc);color:#fff;animation:turnPulse 1.4s ease-in-out infinite}
+.badge.lead{background:#f2c230;color:#3b2a00}
+@keyframes turnPulse{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--pc) 30%,transparent)}}
+.pcBody{display:flex;align-items:center;gap:10px;min-height:34px}
+.pts{font-size:30px;font-weight:800;line-height:1;color:var(--pc);min-width:1.2em;text-align:center}
+.pts.bump{animation:bump .6s ease-out}
+@keyframes bump{30%{transform:scale(1.6)}100%{transform:scale(1)}}
+.tokens{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+.tokens .tok{display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:30px;padding:2px 4px;border-radius:7px;
+  background:var(--stage);border:2px solid var(--pc);color:var(--ink)}
+.tokens .tok svg{height:22px;width:auto;display:block}
+.stat{display:inline-flex;align-items:center;gap:6px;font-size:15px;color:var(--dim)}
+.stat b{font-size:22px;color:var(--ink)}
+.stat .sym svg{height:22px}
+@media (prefers-reduced-motion: reduce){.pc,.pts.bump,.badge.turn{transition:none;animation:none}}
 main{flex:1;display:grid;grid-template-columns:1fr 280px;gap:14px;padding:0 18px 14px;min-height:0}
+/* the board in a frame of the colour of the player whose turn it is */
+#boardWrap{--turn:var(--rule);flex:1;min-height:0;position:relative;display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:18px;
+  border:4px solid var(--turn);background:color-mix(in srgb,var(--turn) 7%,transparent);transition:border-color .3s,background-color .3s}
+@media (prefers-reduced-motion: reduce){#boardWrap{transition:none}}
+/* "Player 2's turn": a strip at the top of the board in the player's colour, never over
+   the cards; it jumps when the turn changes */
+#turnBanner{--pc:#2463c9;align-self:center;display:flex;align-items:center;gap:8px;padding:4px 18px 4px 12px;border-radius:999px;
+  background:var(--pc);color:#fff;font-size:clamp(16px,2.4vmin,22px);font-weight:800;box-shadow:0 3px 10px rgba(0,0,0,.18)}
+#turnBanner[hidden]{display:none}
+#turnBanner .sym svg{height:1.3em;width:auto;display:block}
+#turnBanner .bfill{fill:#fff}
+#turnBanner.show{animation:banner .7s cubic-bezier(.2,1.5,.5,1)}
+@keyframes banner{0%{transform:scale(.6);opacity:.3}100%{transform:scale(1);opacity:1}}
+@media (prefers-reduced-motion: reduce){#turnBanner.show{animation:none}}
+/* the end: who won, with the scores, and Play again */
+#win{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:14px;
+  background:color-mix(in srgb,var(--bg) 55%,transparent);backdrop-filter:blur(2px)}
+#win[hidden]{display:none}
+.winBox{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;max-width:min(92%,460px);
+  padding:20px 26px;border-radius:20px;background:var(--panel);border:4px solid var(--win,var(--ok));box-shadow:0 10px 40px rgba(0,0,0,.3);
+  animation:winIn .45s cubic-bezier(.2,1.4,.5,1)}
+@keyframes winIn{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+.winBox .big svg{height:72px;width:auto;display:block}
+.winBox .big{color:var(--win,var(--ok))}
+.winBox .big .bfill{fill:currentColor}
+.winBox h2{font-size:clamp(20px,3.4vmin,30px);line-height:1.2}
+#winList{list-style:none;display:flex;flex-direction:column;gap:5px;min-width:220px}
+#winList li{display:flex;align-items:center;gap:8px;padding:4px 12px;border-radius:10px;font-size:16px;font-weight:700;
+  background:color-mix(in srgb,var(--pc) 12%,transparent);border:2px solid var(--pc);color:var(--ink)}
+#winList li .n{margin-left:auto;font-size:20px;color:var(--pc)}
+#winList li .sym svg{height:22px;width:auto;display:block}
+.winBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.winBtns button{min-height:48px;display:inline-flex;align-items:center;gap:7px}
+.winBtns .sym svg{height:24px;width:auto;display:block}
+.winBtns .primary .bfill{fill:currentColor}
+.confetti{position:absolute;inset:0;pointer-events:none}
+.confetti i{position:absolute;top:-14px;width:10px;height:14px;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+@media (prefers-reduced-motion: reduce){.winBox{animation:none}.confetti{display:none}}
 #play{display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0}
 #msg{font-size:16px;min-height:24px;color:var(--dim)}
 #msg.good{color:var(--ok);font-weight:600} #msg.bad{color:var(--sel)}
 /* the cards fill the free space; the page picks columns so they stay near square */
-#board{flex:1;min-height:0;display:grid;gap:clamp(6px,1.2vmin,14px);
+#board{flex:1;min-width:0;min-height:0;display:grid;gap:clamp(6px,1.2vmin,14px);
   grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));grid-template-rows:repeat(var(--rows,3),minmax(0,1fr))}
 .card{position:relative;container-type:size;padding:0;border-radius:14px;border:2px solid var(--rule);
   background:var(--stage);color:var(--ink);cursor:pointer;overflow:hidden;font:inherit;min-height:0}
@@ -43,8 +109,14 @@ main{flex:1;display:grid;grid-template-columns:1fr 280px;gap:14px;padding:0 18px
 @keyframes flipIn{0%{transform:scaleX(.05)}100%{transform:scaleX(1)}}
 @media (prefers-reduced-motion: reduce){.card.up,.card.found{animation:none}}
 .card.miss{border-color:var(--sel);box-shadow:0 0 0 3px color-mix(in srgb,var(--sel) 35%,transparent)}
-.card.found{border-color:var(--ok);cursor:default;opacity:.7}
-.card.found::after{content:"✓";position:absolute;right:8px;top:4px;color:var(--ok);font-weight:700;font-size:clamp(12px,13cqmin,22px)}
+.card.found{border-color:var(--by,var(--ok));cursor:default;opacity:.75}
+.card.found::after{content:"✓";position:absolute;right:6px;top:5px;color:var(--by,var(--ok));font-weight:800;font-size:clamp(12px,13cqmin,22px)}
+/* found by a player: their number on a dot of their colour */
+.card.found[data-by]::after{content:attr(data-by);color:#fff;background:var(--by);border-radius:999px;min-width:1.5em;height:1.5em;
+  display:flex;align-items:center;justify-content:center;font-size:clamp(11px,11cqmin,18px)}
+.card.pop{animation:pop .5s ease-out}
+@keyframes pop{35%{transform:scale(1.1)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){.card.pop{animation:none}}
 #board.won .card.found{opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 35%,transparent)}
 .face svg{width:84%;height:64%;flex:none}
 .face.noLabel svg{height:80%}
@@ -66,7 +138,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 @media (max-width:760px){
   main{grid-template-columns:1fr;grid-template-rows:auto auto;align-content:start;overflow-y:auto}
   #play{min-height:auto}
-  #board{flex:none;height:min(70vh,120vw)}
+  #boardWrap{flex:none;height:min(70vh,120vw)}
   #side{overflow:visible}
 }
 </style>
@@ -76,12 +148,27 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
   <a class="homeLink" href="start.html" title="Till startsidan" data-en-title="To the start page">⌂ Start</a>
   <h1><span data-en="Memory">Memory</span> <span style="color:var(--sel)">·</span> Bliss</h1>
   <span class="sub" data-en="turn two cards at a time and find the pairs">vänd två kort i taget och hitta paren</span>
-  <span id="score" aria-live="off"></span>
 </header>
 <main>
   <section id="play" aria-label="Spelplan" data-en-aria="Game board">
+    <div id="players" aria-label="Spelarna" data-en-aria="The players"></div>
     <div id="msg" aria-live="polite"></div>
-    <div id="board"></div>
+    <div id="boardWrap">
+      <div id="turnBanner" aria-hidden="true" hidden></div>
+      <div id="board"></div>
+      <div id="win" hidden role="dialog" aria-labelledby="winTitle">
+        <div class="confetti" aria-hidden="true"></div>
+        <div class="winBox">
+          <span class="big" aria-hidden="true"></span>
+          <h2 id="winTitle"></h2>
+          <ol id="winList"></ol>
+          <div class="winBtns">
+            <button id="btnAgain" class="primary"><span data-en="Play again">Spela igen</span></button>
+            <button id="btnLook"><span data-en="Look at the board">Titta på brädet</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
   <aside id="side" aria-label="Inställningar" data-en-aria="Settings">
     <button id="btnNew" class="primary"><span data-en="New game">Nytt spel</span></button>
@@ -117,6 +204,8 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
       <select id="optPlayers">
         <option value="1" data-en="One player">En spelare</option>
         <option value="2" data-en="Two players, taking turns">Två spelare, turas om</option>
+        <option value="3" data-en="Three players">Tre spelare</option>
+        <option value="4" data-en="Four players">Fyra spelare</option>
       </select>
     </label>
     <label><span data-en="Two cards that are not a pair turn back">Två kort som inte är ett par vänds tillbaka</span>
@@ -186,7 +275,8 @@ function makeDeck(entries, kind, rnd = Math.random) {
     { p, sym: e.sym, word: e.word, show: kind === 'word' ? 'word' : 'sym', found: false }]), rnd);
 }
 function newState(deck, players) {
-  return { deck, up: [], moves: 0, turn: 0, scores: players === 2 ? [0, 0] : [0], over: false };
+  const n = Math.max(1, Math.min(4, Math.floor(+players) || 1));
+  return { deck, up: [], moves: 0, turn: 0, scores: new Array(n).fill(0), over: false };
 }
 /* One press on card i. Two cards that were not a pair stay up until the timer
    or the next press turns them back: pressing one of them only turns them back,
@@ -207,13 +297,20 @@ function turnCard(G, i) {
   const [a, b] = G.up;
   if (G.deck[a].p === G.deck[b].p) {
     G.deck[a].found = G.deck[b].found = true;
+    G.deck[a].by = G.deck[b].by = G.turn;            // who found it, and when
+    G.deck[a].at = G.deck[b].at = G.moves;
     G.up = [];
     G.scores[G.turn]++;
     if (G.deck.every(d => d.found)) { G.over = true; return { what: 'end', i, a, b }; }
     return { what: 'pair', i, a, b };
   }
-  if (G.scores.length > 1) G.turn = 1 - G.turn;     // a miss: the other player's turn
+  G.turn = (G.turn + 1) % G.scores.length;          // a miss: the next player's turn
   return { what: 'miss', i, a, b };
+}
+// the players with the most pairs (none while nobody has a pair)
+function leaders(G) {
+  const m = Math.max(...G.scores);
+  return m > 0 ? G.scores.map((v, k) => (v === m ? k : -1)).filter(k => k >= 0) : [];
 }
 function coverCards(G) { if (G.up.length !== 2) return false; G.up = []; return true; }
 // columns that keep the cards closest to square in a w × h box, rows filled
@@ -294,8 +391,20 @@ if (!WB_SPEECH) $('optSpeak').closest('label').hidden = true;
 $('ownRow').hidden = $('optLevel').value !== 'egna';
 
 /* ---- the page ---- */
-let G = null, backT = null;
+let G = null, backT = null, winT = null;
 const player = (k) => tr('Player ', 'Spelare ') + (k + 1);
+/* each player's colour (white text reads on all four) and the Bliss symbols of the game */
+const PCOL = ['#2463c9', '#c2540f', '#1f7f45', '#8a3fc4'];
+const GSYM = { person: '16161', turn: '17956', crown: '22618', prize: '25773', pair: '15959', winner: '29705', again: '12350,14418', look: '16747' };
+const icon = (ids) => `<span class="sym" aria-hidden="true">${wbIcons.svg(ids)}</span>`;
+const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/* one player's best: the fewest moves for this many pairs of this kind, kept in this browser */
+const REC_KEY = 'wb-memory-rekord';
+const recKey = () => `${G.deck.length / 2}|${G.kind}`;
+function record() { try { return (JSON.parse(localStorage.getItem(REC_KEY) || '{}') || {})[recKey()] || 0; } catch (_) { return 0; } }
+function saveRecord(moves) {
+  try { const r = JSON.parse(localStorage.getItem(REC_KEY) || '{}') || {}; r[recKey()] = moves; localStorage.setItem(REC_KEY, JSON.stringify(r)); } catch (_) {}
+}
 function say(t, cls) { $('msg').textContent = t; $('msg').className = cls || ''; }
 function speak(text, then) {
   if (!$('optSpeak').checked || !text) { if (then) then(); return; }
@@ -304,7 +413,8 @@ function speak(text, then) {
 }
 
 function newGame() {
-  clearTimeout(backT);
+  clearTimeout(backT); clearTimeout(winT);
+  $('win').hidden = true;
   const level = $('optLevel').value;
   let note = '';
   if (level === 'egna') {
@@ -314,15 +424,18 @@ function newGame() {
   const want = +$('optPairs').value;
   const entries = pickEntries(pool(level), want);
   if (entries.length < 2) {
-    G = null; $('board').innerHTML = ''; renderScore();
+    G = null; $('board').innerHTML = ''; renderPlayers();
     say(note + (level === 'egna' ? tr('Write at least two words that have Bliss symbols.', 'Skriv minst två ord som har blissymboler.')
                                  : tr('There are not enough words here.', 'Det finns inte tillräckligt många ord här.')), 'bad');
     return;
   }
   if (entries.length < want) note += tr(`Only ${entries.length} pairs this time. `, `Bara ${entries.length} par den här gången. `);
   G = newState(makeDeck(entries, $('optKind').value), +$('optPlayers').value);
+  G.kind = $('optKind').value;
+  G.best = G.scores.length === 1 ? record() : 0;
   buildBoard();
   say(note + (G.scores.length > 1 ? tr(`${player(0)} begins.`, `${player(0)} börjar.`) : ''), note ? 'bad' : '');
+  if (G.scores.length > 1) banner();
 }
 
 function cardLabel(i) {
@@ -376,30 +489,117 @@ function paint(miss) {
     el.classList.toggle('found', c.found);
     el.classList.toggle('miss', !!miss && G.up.includes(i));
     el.disabled = c.found;
+    // found by a player: their colour and number on the card
+    if (c.found && G.scores.length > 1) { el.dataset.by = c.by + 1; el.style.setProperty('--by', PCOL[c.by]); }
+    else { delete el.dataset.by; el.style.removeProperty('--by'); }
     el.setAttribute('aria-label', cardLabel(i));
   });
   $('board').classList.toggle('won', G.over);
-  renderScore();
+  renderPlayers();
 }
-function renderScore() {
-  const s = $('score');
-  s.innerHTML = '';
+/* the players' cards: name, whose turn, who leads, the score and the pairs found */
+function foundBy(k) {
+  const seen = new Map();
+  for (const c of G.deck) if (c.found && c.by === k && !seen.has(c.p)) seen.set(c.p, c);
+  return [...seen.values()].sort((x, y) => x.at - y.at);
+}
+function tokens(k) {
+  return foundBy(k).map(c => {
+    let svg = '';
+    try { svg = blissSVG(c.sym, { unit: 2.4, color: 'currentColor' }); } catch (_) {}
+    return `<span class="tok" title="${esc(c.word)}">${svg}</span>`;
+  }).join('');
+}
+function renderPlayers(bump) {
+  const box = $('players');
+  box.innerHTML = '';
+  $('boardWrap').style.removeProperty('--turn');
+  $('turnBanner').hidden = true;
   if (!G) return;
-  const add = (html, cls) => { const e = document.createElement('span'); e.className = cls || ''; e.innerHTML = html; s.append(e); };
-  const pairs = G.deck.length / 2;
-  if (G.scores.length > 1) {
-    G.scores.forEach((v, k) => add(`${player(k)}: <b>${v}</b>`, 'pl' + (k === G.turn && !G.over ? ' on' : '')));
-    add(`${tr('pairs', 'par')} <b>${G.scores[0] + G.scores[1]}</b>/${pairs}`);
-  } else {
-    add(`${tr('pairs', 'par')} <b>${G.scores[0]}</b>/${pairs} · ${tr('moves', 'drag')} <b>${G.moves}</b>`);
+  const multi = G.scores.length > 1, lead = multi ? leaders(G) : [], pairs = G.deck.length / 2;
+  if (multi && !G.over) {
+    $('boardWrap').style.setProperty('--turn', PCOL[G.turn]);
+    const b = $('turnBanner');
+    b.innerHTML = `${icon(GSYM.turn)}<span>${tr(`${player(G.turn)}'s turn`, `${player(G.turn)}:s tur`)}</span>`;
+    b.style.setProperty('--pc', PCOL[G.turn]);
+    b.hidden = false;
   }
+  G.scores.forEach((v, k) => {
+    const el = document.createElement('div');
+    const on = multi && k === G.turn && !G.over, leads = lead.includes(k);
+    el.className = 'pc' + (on ? ' on' : '') + (multi && !on && !G.over ? ' wait' : '') + (leads ? ' lead' : '');
+    el.style.setProperty('--pc', multi ? PCOL[k] : 'var(--accent)');
+    if (multi) {
+      const leadTxt = !leads ? '' : lead.length > 1 ? tr('Shares the lead', 'Delar ledningen') : G.over ? tr('Winner', 'Vinnare') : tr('Leads', 'Leder');
+      el.innerHTML = `<div class="pcHead">${icon(GSYM.person)}<span class="pname">${player(k)}</span>` +
+        (on ? `<span class="badge turn">${icon(GSYM.turn)}${tr('Your turn', 'Din tur')}</span>` : '') +
+        (leads ? `<span class="badge lead">${icon(GSYM.crown)}${leadTxt}</span>` : '') + '</div>' +
+        `<div class="pcBody"><span class="pts${bump === k ? ' bump' : ''}">${v}</span><span class="tokens">${tokens(k)}</span></div>`;
+      el.setAttribute('aria-label', `${player(k)}: ${v} ${tr('pairs', 'par')}` + (on ? ', ' + tr('your turn', 'din tur') : '') + (leadTxt ? ', ' + leadTxt.toLowerCase() : ''));
+    } else {
+      el.innerHTML = `<div class="pcBody">` +
+        `<span class="stat">${icon(GSYM.pair)}${tr('Pairs', 'Par')} <b class="pts${bump === 0 ? ' bump' : ''}">${v}</b>/${pairs}</span>` +
+        `<span class="stat">${icon(GSYM.turn)}${tr('Moves', 'Drag')} <b>${G.moves}</b></span>` +
+        (G.best ? `<span class="stat">${icon(GSYM.prize)}${tr('Record', 'Rekord')} <b>${G.best}</b></span>` : '') +
+        `</div><div class="tokens">${tokens(0)}</div>`;
+      el.setAttribute('aria-label', `${v} ${tr('of', 'av')} ${pairs} ${tr('pairs', 'par')}, ${G.moves} ${tr('moves', 'drag')}` +
+        (G.best ? `, ${tr('record', 'rekord')} ${G.best}` : ''));
+    }
+    box.append(el);
+  });
+}
+/* the turn has changed: the strip at the top of the board jumps */
+function banner() {
+  const b = $('turnBanner');
+  b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+}
+/* the end: the winner, everyone's pairs, Play again */
+function showWin(newRecord) {
+  const multi = G.scores.length > 1, lead = leaders(G);
+  const box = $('win'), list = $('winList');
+  const col = multi && lead.length === 1 ? PCOL[lead[0]] : '';
+  box.querySelector('.winBox').style.setProperty('--win', col || 'var(--ok)');
+  box.querySelector('.big').innerHTML = icon(multi && lead.length === 1 ? GSYM.winner : GSYM.prize);
+  $('winTitle').textContent = endText() + (newRecord ? ' ' + tr('A new record!', 'Nytt rekord!') : '');
+  list.innerHTML = '';
+  list.hidden = !multi;
+  if (multi) {
+    G.scores.map((v, k) => [v, k]).sort((x, y) => y[0] - x[0] || x[1] - y[1]).forEach(([v, k]) => {
+      const li = document.createElement('li');
+      li.style.setProperty('--pc', PCOL[k]);
+      li.innerHTML = `${icon(lead.includes(k) ? GSYM.crown : GSYM.person)}<span>${player(k)}</span><span class="n">${v}</span>`;
+      list.append(li);
+    });
+  }
+  // a little confetti in the players' colours
+  const conf = box.querySelector('.confetti');
+  conf.innerHTML = '';
+  const cols = multi ? PCOL.slice(0, G.scores.length).concat('#f2c230') : ['#f2c230', '#2463c9', '#1f7f45', '#c2540f'];
+  for (let n = 0; n < 48; n++) {
+    const i = document.createElement('i');
+    i.style.left = (Math.random() * 100).toFixed(1) + '%';
+    i.style.background = cols[n % cols.length];
+    i.style.animationDuration = (2.2 + Math.random() * 2).toFixed(2) + 's';
+    i.style.animationDelay = (Math.random() * 0.8).toFixed(2) + 's';
+    conf.append(i);
+  }
+  box.hidden = false;
+  $('btnAgain').focus();
 }
 function endText() {
   if (G.scores.length === 1) return tr(`All pairs found in ${G.moves} moves!`, `Alla par hittade på ${G.moves} drag!`);
-  const [a, b] = G.scores;
-  if (a === b) return tr(`A draw — ${a} pairs each!`, `Oavgjort — ${a} par var!`);
-  const w = a > b ? 0 : 1;
-  return tr(`${player(w)} wins, ${Math.max(a, b)} pairs to ${Math.min(a, b)}!`, `${player(w)} vann med ${Math.max(a, b)} par mot ${Math.min(a, b)}!`);
+  const w = leaders(G), m = Math.max(...G.scores);
+  if (w.length === G.scores.length) return tr(`A draw — ${m} pairs each!`, `Oavgjort — ${m} par var!`);
+  if (w.length > 1) {
+    const names = w.map(player), and = tr(' and ', ' och ');
+    const list = names.slice(0, -1).join(', ') + and + names[names.length - 1];
+    return tr(`${list} share the win, ${m} pairs each!`, `${list} delar segern med ${m} par var!`);
+  }
+  if (G.scores.length === 2) {
+    const o = G.scores[1 - w[0]];
+    return tr(`${player(w[0])} wins, ${m} pairs to ${o}!`, `${player(w[0])} vann med ${m} par mot ${o}!`);
+  }
+  return tr(`${player(w[0])} wins with ${m} pairs!`, `${player(w[0])} vann med ${m} par!`);
 }
 function onCard(i) {
   if (!G) return;
@@ -409,20 +609,31 @@ function onCard(i) {
   if (r.what === 'cover') { paint(); say(''); return; }
   paint(r.what === 'miss');
   const c = G.deck[i];
+  const multi = G.scores.length > 1;
+  if (r.what === 'pair' || r.what === 'end') {
+    // the pair jumps, and the finder's score with it
+    renderPlayers(G.deck[r.a].by);
+    for (const k of [r.a, r.b]) { const el = $('board').children[k]; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  }
   if (r.what === 'up') { say(c.word); speak(c.word); return; }
   if (r.what === 'pair') {
     say(tr(`A pair: ${c.word}!`, `Ett par: ${c.word}!`) + (G.scores.length > 1 ? ' ' + tr(`${player(G.turn)} goes again.`, `${player(G.turn)} fortsätter.`) : ''), 'good');
     speak(c.word);
   } else if (r.what === 'end') {
-    const t = endText();
+    let rec = false;
+    if (!multi && (!G.best || G.moves < G.best)) { rec = !!G.best; saveRecord(G.moves); G.best = G.moves; }
+    const t = endText() + (rec ? ' ' + tr('A new record!', 'Nytt rekord!') : '');
     say(t, 'good');
+    renderPlayers();
     speak(c.word, () => speak(t));
-    $('btnNew').focus();
+    winT = setTimeout(() => showWin(rec), 900);      // the last pair is seen first
+    return;
   } else {
     const manual = $('optBack').value === 'tryck';
     say(tr('Not a pair.', 'Inte ett par.') + (G.scores.length > 1 ? ' ' + tr(`Now it is ${player(G.turn)}'s turn.`, `Nu är det ${player(G.turn)}:s tur.`) : '') +
         (manual ? ' ' + tr('Press a card to go on.', 'Tryck på ett kort för att fortsätta.') : ''), 'bad');
-    speak(c.word);
+    if (multi) { banner(); speak(c.word, () => speak(tr(`${player(G.turn)}'s turn`, `${player(G.turn)}:s tur`))); }
+    else speak(c.word);
     if (!manual) backT = setTimeout(() => { if (coverCards(G)) paint(); }, +$('optBack').value || 2000);
   }
   // a found card cannot keep the focus: the next card still in play gets it
@@ -452,6 +663,7 @@ new ResizeObserver(() => layout()).observe($('board'));
 /* a switch steps through the cards still in play and New game — not the settings
    (Tab still reaches everything); a dialog that is open keeps its own stops */
 if (window.wbSwitch) wbSwitch.scope = () => document.querySelector('dialog[open]') ? null
+  : !$('win').hidden ? [$('btnAgain'), $('btnLook')]
   : [...$('board').children].filter(el => !el.disabled).concat($('btnNew'));
 
 /* ---- settings ---- */
@@ -466,6 +678,9 @@ $('optLabel').onchange = () => { saveOpts(); if (G) buildBoard(); };
 for (const id of ['optBack', 'optSpeak', 'ownWords']) $(id).addEventListener('change', saveOpts);
 $('btnOwn').onclick = () => { saveOpts(); newGame(); };
 $('btnNew').onclick = newGame;
+$('btnAgain').onclick = newGame;
+$('btnLook').onclick = () => { $('win').hidden = true; $('btnNew').focus(); };
+$('win').addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); $('btnLook').click(); } });
 $('btnList').onclick = () => {
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = '.wbs,.txt';
@@ -523,6 +738,8 @@ wbIcons.put({
   '#optLabel': '18272,17969',
   '#optSpeak': '16728',
   '#btnKeys': '14704',
+  '#btnAgain': GSYM.again,
+  '#btnLook': GSYM.look,
 });
 </script>
 </body>
