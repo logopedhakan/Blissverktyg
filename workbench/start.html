@@ -15,6 +15,8 @@
 // home link, the back button) the start page stays. "?start" always stays.
 (() => {
   try {
+    // the part used last, for its card (read before window.js remembers this page instead)
+    window.wbLastPart = localStorage.getItem('wb-senast') || '';
     if (sessionStorage.getItem('wb-igang')) return;
     sessionStorage.setItem('wb-igang', '1');
     if (/[?&]start\b/.test(location.search)) return;
@@ -30,16 +32,29 @@
 <style>
 body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;
   background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column}
-header{padding:26px 22px 6px;text-align:center}
-header h1{font-size:26px}
-header .sub{color:var(--dim);font-size:14px}
+/* the top bar (2026-11-26): the name left, every setting in one row on the right */
+body > header{padding:12px 18px}
+header h1{font-size:24px}
+header .wbTitle .sub{font-size:13.5px;max-width:none}
+#startEnd{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:var(--s2);margin-left:auto}
+#startEnd > [data-wb-end]{display:flex;align-items:center;gap:var(--s2)}
 main{flex:1;display:flex;align-items:center;justify-content:center;padding:10px 18px 20px}
 #cards{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 260px));
   gap:16px;justify-content:center;max-width:920px}
-.card{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;
-  background:var(--panel);border:2px solid var(--rule);border-radius:16px;padding:20px 16px 16px;
-  text-decoration:none;color:var(--ink)}
-.card:hover{border-color:var(--accent);background:var(--accent-soft)}
+.card{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;
+  background:var(--panel);border:2px solid var(--rule);border-radius:var(--r3);padding:20px 16px 16px;
+  text-decoration:none;color:var(--ink);box-shadow:var(--shadow-1);
+  transition:border-color var(--ease),background-color var(--ease),box-shadow var(--ease),transform var(--ease)}
+/* pointed at or reached with Tab: the same clear state */
+.card:hover,.card:focus-visible{border-color:var(--accent);background:var(--accent-soft);box-shadow:var(--shadow-2);transform:translateY(-2px)}
+.card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.card:active{transform:none}
+.card:hover h2,.card:focus-visible h2{color:var(--accent)}
+/* the part used last: a small tag and a soft accent edge */
+.card.last{border-color:color-mix(in srgb,var(--accent) 55%,var(--rule))}
+.card .lastTag{position:absolute;top:8px;right:8px;font-size:11.5px;font-weight:700;line-height:1;padding:5px 8px;border-radius:999px;
+  background:var(--accent-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent)}
+@media (prefers-reduced-motion: reduce){.card{transition:none}.card:hover,.card:focus-visible{transform:none}}
 .card .icon{height:74px;display:flex;align-items:center;justify-content:center;gap:8px}
 .card .icon svg{max-height:70px;width:auto;height:auto}
 .card h2{font-size:17px}
@@ -50,32 +65,35 @@ footer{display:flex;flex-direction:column;gap:2px;align-items:center;text-align:
   padding:10px 16px 14px;font-size:11.5px;color:var(--dim)}
 footer a{color:var(--dim);text-decoration-color:var(--rule)}
 footer a:hover{color:var(--accent)}
-#langRow{position:absolute;top:14px;right:16px;display:flex;gap:0;border:1px solid var(--rule);
-  border-radius:9px;overflow:hidden}
-#langRow button{font:inherit;font-size:12.5px;padding:5px 11px;border:none;cursor:pointer;
-  background:var(--panel);color:var(--dim)}
-#langRow button.on{background:var(--accent);color:var(--on-accent,#fff)}
-header{position:relative}
+/* Svenska | English as one segmented choice (css/wb-base.css .seg) */
+#langRow > button{font-size:14px;padding:6px 12px}
 /* shown by js/shared/pwa.js only while the browser offers to install */
-#installApp{margin-top:12px;font:inherit;font-size:14px;font-weight:600;padding:8px 16px;border-radius:10px;
-  border:1px solid var(--accent);background:var(--accent);color:var(--on-accent,#fff);cursor:pointer}
+#installApp{font-size:14px;min-height:var(--target);padding:6px 14px}
 #installApp[hidden]{display:none}
-#btnSwitch{display:inline-block;margin-top:10px;font:inherit;font-size:15px;padding:9px 18px;border-radius:10px;
-  border:1px solid var(--rule);background:var(--panel);color:var(--ink);cursor:pointer;text-decoration:none}
-#btnSwitch:hover{border-color:var(--accent)}
+#btnSwitch{display:inline-flex;align-items:center;gap:6px;min-height:var(--target);font-size:14px;padding:6px 14px;border-radius:10px;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink);text-decoration:none;white-space:nowrap}
+#btnSwitch:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--panel))}
+/* a narrow window: the settings under the name, the whole width */
+@media (max-width:640px){#startEnd{margin-left:0;justify-content:flex-start;flex:1 0 100%}header .wbTitle .sub{white-space:normal}}
 </style>
 </head>
 <body>
 <header>
-  <div id="langRow">
-    <button data-lang="sv" class="on">Svenska</button><button data-lang="en">English</button>
+  <div class="wbTitle"><h1>WinBliss<sup>2</sup></h1>
+    <span class="sub" data-sv="Blissverktyget — välj en del att arbeta i"
+          data-en="THE Bliss tool — pick a part to work in">Blissverktyget — välj en del att arbeta i</span></div>
+  <!-- 2026-11-26: every setting in one row at the top right; js/shared/hovertal.js puts
+       "Läs vid muspekare" last in [data-wb-end], before the language choice -->
+  <div id="startEnd">
+    <div data-wb-end>
+      <button id="installApp" hidden data-sv="⤓ Installera Blissverktyget som app" data-en="⤓ Install Blissverktyget as an app">⤓ Installera Blissverktyget som app</button>
+      <!-- 2026-11-20: one settings page for steering every part — switches, joystick, eye control, shortcuts -->
+      <a id="btnSwitch" href="installningar.html" data-sv="⚙ Styrning och kortkommandon" data-en="⚙ Steering and shortcuts">⚙ Styrning och kortkommandon</a>
+    </div>
+    <div id="langRow" class="seg" role="group" aria-label="Språk · Language">
+      <button data-lang="sv" class="on">Svenska</button><button data-lang="en">English</button>
+    </div>
   </div>
-  <h1>WinBliss<sup>2</sup></h1>
-  <span class="sub" data-sv="Blissverktyget — välj en del att arbeta i"
-        data-en="THE Bliss tool — pick a part to work in">Blissverktyget — välj en del att arbeta i</span>
-  <!-- 2026-11-20: one settings page for steering every part — switches, joystick, eye control, shortcuts -->
-  <div><a id="btnSwitch" href="installningar.html" data-sv="⚙ Styrning och kortkommandon" data-en="⚙ Steering and shortcuts">⚙ Styrning och kortkommandon</a></div>
-  <div><button id="installApp" hidden data-sv="⤓ Installera Blissverktyget som app" data-en="⤓ Install Blissverktyget as an app">⤓ Installera Blissverktyget som app</button></div>
 </header>
 <main>
   <div id="cards">
@@ -144,6 +162,7 @@ header{position:relative}
 <script src="js/shared/styrning.js"></script>
 <script src="js/shared/speak.js"></script>
 <script src="js/shared/hovertal.js"></script>
+<script src="js/shared/ikoner.js"></script>
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/switch.js"></script>
@@ -164,6 +183,24 @@ function applyStartLang() {
 }
 for (const b of document.querySelectorAll('#langRow button'))
   b.onclick = () => { lang = b.dataset.lang; wbSetLang(lang); applyStartLang(); };
+// the part used last gets a small tag (2026-11-26): its page, and Skriv apart from Editera
+{
+  const last = String(window.wbLastPart || '');
+  const want = last.split('?')[0].replace(/^bildspel-ny\.html$/, 'bildspel.html') + (/[?&]vy=skriv\b/.test(last) ? '?vy=skriv' : '');
+  const card = [...document.querySelectorAll('#cards .card')].find(c => c.getAttribute('href') === want);
+  if (card) {
+    card.classList.add('last');
+    const tag = document.createElement('span');
+    tag.className = 'lastTag'; tag.dataset.sv = 'Senast'; tag.dataset.en = 'Last used';
+    // read with the card's name: "Bildspel, senast använd"
+    tag.setAttribute('aria-hidden', 'true');
+    card.prepend(tag);
+    card.setAttribute('aria-describedby', 'lastNote');
+    const note = document.createElement('span');
+    note.id = 'lastNote'; note.hidden = true; note.dataset.sv = 'senast använd'; note.dataset.en = 'last used';
+    document.body.appendChild(note);
+  }
+}
 applyStartLang();
 // Card icons drawn by the real engine: a Bliss symbol per part, forms for former.html.
 for (const el of document.querySelectorAll('.icon[data-gloss]')) {
