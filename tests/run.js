@@ -714,7 +714,12 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('memory: on the start page, offline, with the shared everyday words',
     [/href="memory\.html"/.test(read('start.html')), /'memory\.html'/.test(read('sw.js')), /'js\/shared\/vardagsord\.js'/.test(read('sw.js')),
      /src="js\/shared\/vardagsord\.js"/.test(page), /const HAKAN = WB_VARDAGSORD/.test(read('gissa.html'))],
-    [true, true, true, true, true]);
+    [true, true, true, true, true]);  // pairs, players and the turning back as picture buttons (2026-11-26); the selects stay, hidden, and hold the value
+  check('memory: pairs, players and turning back are rows of buttons over the kept selects',
+    ['optPairs', 'optPlayers', 'optBack'].map(id => [new RegExp(`choiceRow\\('${id}'`).test(page), new RegExp(`<select id="${id}">`).test(page),
+      page.includes(`id="${id}Head"`)]),
+    [[true, true, true], [true, true, true], [true, true, true]]);
+  check('memory: the chosen button is marked for screen readers too', /setAttribute\('aria-pressed', String\(b\.dataset\.v === \$\(id\)\.value\)\)/.test(page), true);
 }
 
 /* ---------- 9. Skriv -> Bildspel (2026-11-19): an open Bildspel gets the text, else one opens ---------- */
