@@ -2550,6 +2550,32 @@ $('wOpenDoc').onclick = async () => {
   inp.click();
 };
 
+/* a file dragged into Write (2026-11-26): a BlissOnline PDF or a WinBliss document
+   (.wbd) opens as with Open…. Anywhere on the page while writing — a file let go
+   beside the text must not make the browser leave Write to show it. Text dragged
+   in still goes where it always went (only file drags are taken). */
+const wHasFiles = (ev) => !!ev.dataTransfer && [...ev.dataTransfer.types].includes('Files');
+const wFileDrop = (ev) => wHasFiles(ev) && document.body.classList.contains('writing');
+document.addEventListener('dragover', (ev) => {
+  if (!wFileDrop(ev)) return;
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = 'copy';
+  $('writeView').classList.add('fileOver');
+}, true);
+document.addEventListener('dragleave', (ev) => {
+  // left the window (not just moved onto another element in it)
+  if (!ev.relatedTarget || !document.documentElement.contains(ev.relatedTarget)) $('writeView').classList.remove('fileOver');
+}, true);
+document.addEventListener('drop', (ev) => {
+  if (!wFileDrop(ev)) return;
+  ev.preventDefault(); ev.stopPropagation();
+  $('writeView').classList.remove('fileOver');
+  const files = [...ev.dataTransfer.files];
+  const f = files.find(wIsPdf) || files.find(x => /\.wbd$/i.test(x.name));
+  if (!f) return toast(tr('Drop a PDF from BlissOnline or a WinBliss document (.wbd)', 'Släpp en PDF från BlissOnline eller ett WinBliss-dokument (.wbd)'));
+  if (wIsPdf(f)) wImportPdf(f); else f.text().then(wApplyDoc);
+}, true);
+
 /* keyboard shortcuts in Write mode (Håkan 2026-09-11 — a screen keyboard can
    send key combos): Ctrl/Cmd+S saves the document, Ctrl/Cmd+O opens one — since
    2026-11-20 with the other keys on Write's buttons (wbButtonKeys below), so they
