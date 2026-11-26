@@ -186,6 +186,13 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   const gaps = bs.cleanShow({ gap: 10, slides: [{ gap: 3 }, { gap: 'x' + X }, {}] });
   check('Bildspel: each slide has its own spacing, a bad or missing one is the show\'s', gaps.slides.map(x => x.gap), [3, 10, 10]);
   check('Bildspel: a new slide starts with the spacing of the one before', look.newSlide({ gap: 4 }).gap, 4);
+  // the tile behind the Bliss text is as wide as the text, not the whole bottom (2026-11-26)
+  const tb = run('const SH = 900;\n' + cut('bildspel.html', 'function textBand', '/* the slide\'s ink'), 'bildspel.html (textBand)', ['SH']);
+  const txt = { x: 40, y: 560, w: 1520, h: 310 };
+  const short = tb.textBand({ txt, vb: { x: -2000, y: -500, w: 7600, h: 1550 }, blk: { W: 3600, H: 550 } });   // k = 0.2
+  const wide = tb.textBand({ txt, vb: { x: 0, y: -100, w: 7600, h: 1550 }, blk: { W: 7600, H: 1350 } });
+  check('Bildspel: the text tile fits the text, inside the slide', [short.x, short.w, short.y, short.h, wide.x, wide.w, wide.y + wide.h <= 900 - 6],
+    [412, 776, 642, 146, 30, 1540, true]);
 
   // Editera: ink and background from a settings file (.wbx) or the saved settings
   const ed = run(cut('js/editor/app.js', 'const HEX_COLOR', 'function resolvedBg'), 'app.js (okInk, okBg)', ['HEX_COLOR', 'okInk', 'okBg']);
