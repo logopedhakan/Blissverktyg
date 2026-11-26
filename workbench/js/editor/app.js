@@ -100,25 +100,24 @@ function renderListPane(key) {
   const L = lists[key];
   const rows = $(key === 'A' ? 'rowsA' : 'rowsB');
   const q = $(key === 'A' ? 'search' : 'searchB').value.trim().toLowerCase();
-  rows.innerHTML = '';
   let shown = 0;
   L.view = [];
+  // the rows as one piece of markup, put in at once (2026-11-26): one row at a
+  // time made the browser take in 250 small pieces, which was most of the time
+  const editT = escXml(tr('Edit gloss & synonyms (F2)', 'Redigera benämning & synonymer (F2)')), editA = escXml(tr('Edit gloss for', 'Redigera benämning för'));
+  let html = '';
   for (let i = 0; i < L.syms.length; i++) {
     const s = L.syms[i];
     if (q && !(s.n.toLowerCase().includes(q) || translatedGloss(s).toLowerCase().includes(q) || String(s.id).startsWith(q))) continue;
     L.view.push(i);
     if (shown++ >= MAX_ROWS) continue;
-    const d = document.createElement('div');
-    d.className = 'row' + (L.sel.has(i) ? ' sel' : '');
-    d.dataset.i = i;
-    d.draggable = true;
     let thumb = '';
     try { thumb = thumbSVG(s); } catch (_) {}
-    d.innerHTML = `<span class="thumb">${thumb}</span>
+    html += `<div class="row${L.sel.has(i) ? ' sel' : ''}" data-i="${i}" draggable="true"><span class="thumb">${thumb}</span>
       <span class="g">${escXml(displayGloss(s))}<br><span class="id mono">${escXml(String(s.id))}</span></span>
-      <button class="editG" title="${tr('Edit gloss & synonyms (F2)', 'Redigera benämning & synonymer (F2)')}" aria-label="${tr('Edit gloss for', 'Redigera benämning för')} ${escXml(firstGloss(s))}">✎</button>`;
-    rows.appendChild(d);
+      <button class="editG" title="${editT}" aria-label="${editA} ${escXml(firstGloss(s))}">✎</button></div>`;
   }
+  rows.innerHTML = html;
   $(key === 'A' ? 'countA' : 'countB').textContent =
     `${L.syms.length} ${tr('symbols', 'symboler')}` + (q ? ` · ${L.view.length} ${tr('match', 'träffar')}` : '') +
     (shown > MAX_ROWS ? ` · ${tr('showing', 'visar')} ${MAX_ROWS}` : '') +
@@ -1689,9 +1688,11 @@ function wEditDist(a, b) {
 const W_PUNCT = { '?': 8485, '!': 8483, '.': 8486, ',': 8487 };
 
 let W = [];                 // [{token, ids, pick, ind, asText}]
+let wParseT = 0;            // a reading of the text that waits (wParseSoon)
 let wOpen = -1;             // chooser open for chip index
 
 function wParse() {
+  if (wParseT) { clearTimeout(wParseT); wParseT = 0; }
   wBuildIndex();
   const rawLines = $('wInput').value.split('\n');
   const prev = W; W = [];
@@ -2295,7 +2296,20 @@ $('btnGravyr').onclick = () => {
   localStorage.setItem('wb-gravyr', JSON.stringify({ id: ed.sym.id || 0, n: $('gloss').value || ed.sym.n || '', e: ed.sym.e }));
   window.open('gravyr.html?from=editor', '_blank');
 };
-$('wInput').addEventListener('input', wParse);
+/* typing: one reading of the text per moment, not one per key (2026-11-26). Keys
+   that come close together are read together; a long text waits for a short pause,
+   since reading it all again on every key made typing lag. */
+function wParseSoon() {
+  clearTimeout(wParseT);
+  wParseT = setTimeout(wParse, $('wInput').value.length > 300 ? 120 : 0);
+}
+$('wInput').addEventListener('input', wParseSoon);
+// a click or a shortcut (save, read aloud, to Bildspel …) right after typing gets the text as typed
+const wFlushParse = () => { if (wParseT) wParse(); };
+document.addEventListener('pointerdown', wFlushParse, true);
+document.addEventListener('keydown', (ev) => {
+  if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.key === 'Escape' || ev.key === 'Enter' || /^F\d+$/.test(ev.key)) wFlushParse();
+}, true);
 /* Pasting text copied from a PDF with symbol text (Håkan, 2026-11-26): the PDF
    gives one word per line, with stray single characters from the symbols in
    between ("Frågor / O / Var / 1 / 3 / till …"). When most pasted lines are a

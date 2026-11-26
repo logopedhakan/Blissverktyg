@@ -8,7 +8,7 @@
 #   js/shared/lang.js  js/shared/wbs.js  js/shared/shortcuts.js  js/shared/speak.js  js/shared/blisstext.js
 #   js/shared/sv-morph.js
 #   js/engine/bliss-shapes.js  js/engine/bliss-engine.js
-#   js/data/bliss-data.js  js/data/glosses.js
+#   js/data/bliss-data.js  js/data/glosses-sv.js
 $app = Join-Path $PSScriptRoot '..\workbench'
 $src = Join-Path $app 'bildspel.html'
 $out = Join-Path $PSScriptRoot '..\dist\artifact\bildspel.html'
