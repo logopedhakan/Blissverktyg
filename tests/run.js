@@ -186,8 +186,20 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   const gaps = bs.cleanShow({ gap: 10, slides: [{ gap: 3 }, { gap: 'x' + X }, {}] });
   check('Bildspel: each slide has its own spacing, a bad or missing one is the show\'s', gaps.slides.map(x => x.gap), [3, 10, 10]);
   check('Bildspel: a new slide starts with the spacing of the one before', look.newSlide({ gap: 4 }).gap, 4);
+  // the slides' format: one for the whole show, a portrait one included (2026-11-26)
+  check('Bildspel: the format is kept, a bad or missing one is 16:9',
+    [bs.cleanShow({ format: '9:16', slides: [] }).format, bs.cleanShow({ format: '3:4', slides: [] }).format,
+     bs.cleanShow({ format: '2:1' + X, slides: [] }).format, bs.cleanShow({ slides: [] }).format], ['9:16', '3:4', '16:9', '16:9']);
+  {
+    const page = read('bildspel.html');
+    const fm = run(cut('bildspel.html', 'const FORMATS', '// gap: the slide') + "\nvar show = { format: '9:16' };", 'bildspel.html (FORMATS)', ['FORMATS', 'slideSize']);
+    check('Bildspel: a portrait show has tall slides, and PowerPoint gets the same size',
+      [fm.slideSize(), Object.keys(fm.FORMATS).every(k => new RegExp(k.replace(':', '\\:')).test('16:9 4:3 1:1 3:4 9:16')),
+       /<p:sldSz cx="\$\{slideSize\(\)\[0\] \* EMU\}" cy="\$\{slideSize\(\)\[1\] \* EMU\}"/.test(page)],
+      [[900, 1600], true, true]);
+  }
   // the tile behind the Bliss text is as wide as the text, not the whole bottom (2026-11-26)
-  const tb = run('const SH = 900;\n' + cut('bildspel.html', 'function textBand', '/* the slide\'s ink'), 'bildspel.html (textBand)', ['SH']);
+  const tb = run('const slideSize = () => [1600, 900];\n' + cut('bildspel.html', 'function textBand', '/* the slide\'s ink'), 'bildspel.html (textBand)', []);
   const txt = { x: 40, y: 560, w: 1520, h: 310 };
   const short = tb.textBand({ txt, vb: { x: -2000, y: -500, w: 7600, h: 1550 }, blk: { W: 3600, H: 550 } });   // k = 0.2
   const wide = tb.textBand({ txt, vb: { x: 0, y: -100, w: 7600, h: 1550 }, blk: { W: 7600, H: 1350 } });
