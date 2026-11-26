@@ -2805,14 +2805,16 @@ const W_ATTRIBUTION = 'Blissymbolics © C.K. Bliss 1949, 1965 · Parts herein ©
    (kept in this browser, 'wb-skriv-sida'). */
 const A4 = { w: 210, h: 297, m: 18 };
 const PX_PER_MM = 96 / 25.4;
-const PAGE_SYM = [[4.5, 'Small', 'Små'], [6.5, 'Medium', 'Mellan'], [9, 'Large', 'Stora'], [13, 'Very large', 'Mycket stora']];
+// symbol sizes (Håkan, 2026-11-26): Small is about thirteen words a line, then even steps
+// to Very large, about three or four (an everyday sentence, the words at medium size)
+const PAGE_SYM = [[2.85, 'Small', 'Små'], [4.4, 'Medium', 'Mellan'], [6.8, 'Large', 'Stora'], [10.5, 'Very large', 'Mycket stora']];
 const PAGE_TEXT = [[0, 'None', 'Ingen'], [70, 'Small', 'Liten'], [100, 'Medium', 'Mellan'], [140, 'Large', 'Stor'], [200, 'Very large', 'Mycket stor']];
 const nearest = (list, v) => list.reduce((a, b) => (Math.abs(b[0] - v) < Math.abs(a[0] - v) ? b : a))[0];
 function wPageOpts() {
   let o = {};
   try { o = JSON.parse(localStorage.getItem('wb-skriv-sida') || '{}') || {}; } catch (_) {}
   return {
-    sym: PAGE_SYM.some(x => x[0] === o.sym) ? o.sym : nearest(PAGE_SYM, WS.unit * 0.6),
+    sym: PAGE_SYM.some(x => x[0] === o.sym) ? o.sym : nearest(PAGE_SYM, WS.unit * 0.4),
     text: PAGE_TEXT.some(x => x[0] === o.text) ? o.text : nearest(PAGE_TEXT, WS.text),
   };
 }
@@ -2895,7 +2897,7 @@ function wPageDlg(mode) {
   // a Bliss symbol at the size it gets / "Aa" at the size the words get
   const sym = (typeof wbIcons !== 'undefined' && wbIcons.svg('16161')) || '';
   $('pgSym').innerHTML = PAGE_SYM.map(([v, en, sv]) =>
-    `<button type="button" class="pgChoice" data-v="${v}"><span class="pgPic" style="--h:${Math.round(v * 3.4)}px" aria-hidden="true">${sym}</span><span>${tr(en, sv)}</span></button>`).join('');
+    `<button type="button" class="pgChoice" data-v="${v}"><span class="pgPic" style="--h:${Math.round(8 + v * 3)}px" aria-hidden="true">${sym}</span><span>${tr(en, sv)}</span></button>`).join('');
   $('pgText').innerHTML = PAGE_TEXT.map(([v, en, sv]) =>
     `<button type="button" class="pgChoice" data-v="${v}"><span class="pgAa" style="font-size:${v ? Math.round(8 + v * 0.11) : 14}px" aria-hidden="true">${v ? 'Aa' : '—'}</span><span>${tr(en, sv)}</span></button>`).join('');
   for (const [box, key] of [['pgSym', 'sym'], ['pgText', 'text']])
