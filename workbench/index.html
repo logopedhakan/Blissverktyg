@@ -248,12 +248,22 @@ body.writing #editor{display:none}
    the text field wrap below it. */
 #wInputRow{flex-wrap:wrap}
 #wInput{flex:1 1 220px}
+/* Håkan, 2026-11-26: with a lot of text the text field was squeezed (and even
+   pushed out of sight) by the word chips. The text field always shows at least
+   two rows and never shrinks; the chips scroll in their own area instead, and
+   the tools row keeps its size. */
+#wInputRow,#wTools{flex-shrink:0}
+#wInput{line-height:1.35;min-height:calc(2.7em + 18px)}
+#wChips{flex:0 1 auto;max-height:40%;overflow-y:auto}
 @media (max-width: 900px){
   body.writing main{flex-direction:column}
   body.writing #listPanel,body.writing #paneB.open{width:auto;flex:0 1 auto;max-height:30vh}
   body.writing #writeView{flex:1 1 60vh;min-height:min(60vh,420px);overflow:auto}
   /* the parts keep their size and the writing surface scrolls instead */
   body.writing #writeView > *{flex-shrink:0}
+  /* the text field stays in sight at the top while the surface scrolls */
+  body.writing #wInputRow{position:sticky;top:0;z-index:3;background:var(--panel)}
+  body.writing #wChips{max-height:none}
   body.writing #wPreviewWrap{min-height:240px}
   /* the header buttons (Skriv, ⚙, ?) wrap to a second row instead of going off screen */
   header{flex-wrap:wrap;row-gap:6px}
