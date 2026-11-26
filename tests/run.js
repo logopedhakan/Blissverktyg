@@ -850,6 +850,16 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     [true, true, true, false, false, false, false]);
 }
 
+/* ---------- 10d. Skriv: PDF and Word as A4 pages (2026-11-26) ---------- */
+{
+  const app = read('js/editor/app.js');
+  check('Skriv: PDF and Word are A4 pages, lines wrap to the page and are not split',
+    [/const A4 = \{ w: 210, h: 297, m: 18 \}/.test(app), /@page\{size:A4;margin:\$\{A4\.m\}mm\}/.test(app),
+     /\.line\{break-inside:avoid;page-break-inside:avoid/.test(app), /@page WordSection1\{size:\$\{pt\(A4\.w\)\} \$\{pt\(A4\.h\)\}/.test(app),
+     /p\.line\{margin:0 0 6pt 0;page-break-inside:avoid\}/.test(app), /wLines\(Math\.max\(16, cw \/ unit - 1\.6\)\)/.test(app)],
+    [true, true, true, true, true, true]);
+}
+
 /* ---------- 11. a BlissOnline PDF into Skriv (2026-11-26): a page made here, its text read back ---------- */
 const asyncChecks = (async () => {
   const zlib = require('zlib');

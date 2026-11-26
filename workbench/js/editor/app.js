@@ -2782,26 +2782,66 @@ $('wToTag').onclick = () => {
 $('wToShow').title = tr('The text as a new slide in Slideshow', 'Texten som en ny sida i Bildspel');
 $('wToTag').title = tr('The symbols onto an engraving tag', 'Symbolerna på ett gravyrkort');
 const W_ATTRIBUTION = 'Blissymbolics © C.K. Bliss 1949, 1965 · Parts herein © Blissymbolics Communication International (BCI), CC BY-SA 4.0 · WinBliss² (AnyCom AB)';
+/* PDF and Word as A4 pages (2026-11-26): 210 × 297 mm with 18 mm margins. The lines
+   wrap to the page's width (before, a line was as wide as three pages and was cut
+   off), a line is never split over two pages, and the symbols follow Write's own
+   size setting (WS.unit). */
+const A4 = { w: 210, h: 297, m: 18 };
+const PX_PER_MM = 96 / 25.4;
+function wPageLines() {
+  const unit = Math.max(4, Math.min(30, WS.unit * 0.6));
+  const cw = (A4.w - 2 * A4.m) * PX_PER_MM;            // the text's width on the page, in CSS px
+  // wLineSVG adds 0.8 units of room at each end
+  const lines = wLines(Math.max(16, cw / unit - 1.6)).map(l => {
+    const r = wLineSVG(l, unit, true);
+    // the line's words, for a screen reader and Word's alt text
+    return r && Object.assign(r, { said: l.map(w => w.label || w.token).join(' ').replace(/ ([.,!?:;])/g, '$1') });
+  }).filter(Boolean);
+  return { cw, lines };
+}
+const wPageTitle = () => (wDocHandle && wDocHandle.name ? wDocHandle.name.replace(/\.[^.]+$/, '') : tr('Bliss text', 'Blisstext'));
 $('wDoc').onclick = async () => {
   if (!W.length) return toast(tr('Nothing to export', 'Inget att exportera'));
-  const lines = wLines().map(l => wLineSVG(l, 18, true)).filter(Boolean);
+  const { cw, lines } = wPageLines();
   const imgs = [];
   for (const l of lines) {
-    const cv = await wRaster(l.svg);
-    imgs.push(`<p><img src="${cv.toDataURL('image/png')}" width="${Math.round(l.w)}"></p>`);
+    const cv = await wRaster(l.svg, 3);                // sharp on paper
+    const k = Math.min(1, cw / l.w), w = l.w * k, h = l.h * k;
+    imgs.push(`<p class="line"><img src="${cv.toDataURL('image/png')}" width="${Math.round(w)}" height="${Math.round(h)}" ` +
+      `style="width:${(w * 0.75).toFixed(1)}pt;height:${(h * 0.75).toFixed(1)}pt" alt="${escXml(l.said || '')}"></p>`);
   }
-  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"></head><body>${imgs.join('')}<p style="font-size:8pt;color:#888">${W_ATTRIBUTION}</p></body></html>`;
-  download('bliss-text.doc', new Blob(['﻿' + html], { type: 'application/msword' }));
-  toast(tr('Word document saved (.doc)', 'Word-dokument sparat (.doc)'));
+  const pt = (mm) => (mm * 72 / 25.4).toFixed(1) + 'pt';
+  // Word reads the page from @page and the section that names it; Print view, not Web view
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+    `<head><meta charset="utf-8"><meta name="ProgId" content="Word.Document"><title>${escXml(wPageTitle())}</title>` +
+    '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->' +
+    `<style>@page WordSection1{size:${pt(A4.w)} ${pt(A4.h)};margin:${pt(A4.m)};mso-header-margin:${pt(10)};mso-footer-margin:${pt(10)};mso-paper-source:0}` +
+    'div.WordSection1{page:WordSection1}body{font-family:Arial,sans-serif}' +
+    'p.line{margin:0 0 6pt 0;page-break-inside:avoid}' +
+    'p.attr{margin-top:12pt;font-size:8pt;color:#888888}</style></head>' +
+    `<body><div class="WordSection1">${imgs.join('')}<p class="attr">${W_ATTRIBUTION}</p></div></body></html>`;
+  download('bliss-text.doc', new Blob(['\ufeff' + html], { type: 'application/msword' }));
+  toast(tr('Word document saved (.doc, A4)', 'Word-dokument sparat (.doc, A4)'));
 };
 $('wPrint').onclick = () => {
   if (!W.length) return toast(tr('Nothing to print', 'Inget att skriva ut'));
-  const lines = wLines().map(l => wLineSVG(l, 18, true)).filter(Boolean);
+  const { lines } = wPageLines();
   const win = window.open('', '_blank');
   if (!win) return toast(tr('The browser blocked the print window', 'Webbläsaren blockerade utskriftsfönstret'));
-  win.document.write(`<html><head><meta charset="utf-8"><title>Bliss</title><style>body{font-family:sans-serif;margin:2cm}div{margin-bottom:10px}footer{font-size:8pt;color:#888;margin-top:2em}</style></head><body>${lines.map(l => `<div>${l.svg}</div>`).join('')}<footer>${W_ATTRIBUTION}</footer></body></html>`);
+  // on screen the window shows the page as it will be printed: white, A4 wide, with its margins
+  win.document.write(`<!DOCTYPE html><html lang="${lang === 'sv' ? 'sv' : 'en'}"><head><meta charset="utf-8"><title>${escXml(wPageTitle())}</title><style>` +
+    `@page{size:A4;margin:${A4.m}mm}` +
+    'html,body{margin:0;background:#fff;color:#000}body{font-family:Arial,Helvetica,sans-serif}' +
+    '.line{break-inside:avoid;page-break-inside:avoid;margin:0 0 3mm}.line svg{display:block;max-width:100%;height:auto}' +
+    'footer{break-inside:avoid;font-size:8pt;color:#777;margin-top:6mm}' +
+    `@media screen{html{background:#e8e6e1}body{width:${A4.w - 2 * A4.m}mm;min-height:${A4.h - 2 * A4.m}mm;margin:10mm auto;padding:${A4.m}mm;` +
+    'box-shadow:0 2px 12px rgba(0,0,0,.25)}}' +
+    `</style></head><body>${lines.map(l => `<div class="line" role="img" aria-label="${escXml(l.said || '')}">${l.svg}</div>`).join('')}` +
+    `<footer>${W_ATTRIBUTION}</footer></body></html>`);
   win.document.close();
-  setTimeout(() => win.print(), 300);
+  // print once the window has laid the page out (and the typeface is there)
+  const go = () => setTimeout(() => win.print(), 150);
+  if (win.document.fonts && win.document.fonts.ready) win.document.fonts.ready.then(go); else go();
 };
 
 /* the AI layer: same chips, a different filler. The endpoint gets the text
