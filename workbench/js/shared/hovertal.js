@@ -22,10 +22,11 @@ const wbHover = (() => {
     .replace(/[\p{Extended_Pictographic}←-⇿⌀-⏿■-◿✀-➿️]/gu, ' ')
     .replace(/\s+/g, ' ').trim().slice(0, 240);
 
-  let t = null, last = null;
+  let t = null, last = null, mine = false;
   /** Reads `text` after the pause, once: the same thing is not read again while it is being read. */
-  function say(text, key) {
+  function say(text, key, generic) {
     clearTimeout(t);
+    mine = !!generic;                  // started by the pointer below, not by the part itself
     if (!on()) return;
     const s = clean(text);
     if (!s) return;
@@ -37,6 +38,9 @@ const wbHover = (() => {
     }, WAIT);
   }
   const stop = () => clearTimeout(t);
+  // the pointer moving on stops only what it started itself: a part's own reading
+  // (a day in Almanacka) goes on while the pointer moves over the day's parts
+  const stopMine = () => { if (mine) clearTimeout(t); };
 
   /* ---- what the pointer is over ---- */
   const SEL = 'button, a[href], summary, label, [role="button"], [role="img"][aria-label], img[alt], select, ' +
@@ -57,11 +61,11 @@ const wbHover = (() => {
     const el = ev.target && ev.target.closest ? ev.target.closest(SEL) : null;
     if (el === current) return;
     current = el;
-    if (!el || el.closest('[data-hover-own], [aria-hidden="true"], [hidden]')) { stop(); return; }
-    say(textOf(el), el);
+    if (!el || el.closest('[data-hover-own], [aria-hidden="true"], [hidden]')) { stopMine(); return; }
+    say(textOf(el), el, true);
   }
   function out(ev) {
-    if (current && !(ev.relatedTarget && current.contains(ev.relatedTarget))) { current = null; stop(); }
+    if (current && !(ev.relatedTarget && current.contains(ev.relatedTarget))) { current = null; stopMine(); }
   }
 
   /* ---- the button in the top bar ---- */
