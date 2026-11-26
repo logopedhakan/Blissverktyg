@@ -831,6 +831,25 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Skriv reads the text once per moment while typing', /addEventListener\('input', wParseSoon\)/.test(read('js/editor/app.js')), true);
 }
 
+/* ---------- 10c. Skriv: words without a symbol are marked in the text field (2026-11-26) ---------- */
+{
+  const html = read('index.html'), app = read('js/editor/app.js');
+  check('Skriv: the text field has a layer behind it for the marks, shown only once it is in place',
+    [/<div id="wInBox"><div id="wInMarks" aria-hidden="true"><\/div><textarea id="wInput"/.test(html),
+     /#wInBox\.marked #wInput\{color:transparent;caret-color:var\(--ink\)/.test(html), /\$\('wInBox'\)\.classList\.add\('marked'\)/.test(app)],
+    [true, true, true]);
+  check('Skriv: the words without a symbol can be gone through, with buttons and F4 / Shift+F4',
+    [/<div id="wNoSymBar"[^>]*hidden>/.test(html), /\{ id: 'wNoSymNext', b: '[\d,]+', key: 'F4'/.test(read('js/shared/styrning.js')),
+     /\{ id: 'wNoSymPrev', b: '[\d,]+', key: 'Shift\+F4'/.test(read('js/shared/styrning.js')), /\{ id: 'wNoSymNext' \}, \{ id: 'wNoSymPrev' \}/.test(app)],
+    [true, true, true, true]);
+  const f = vm.createContext({});
+  vm.runInContext(app.slice(app.indexOf('const wNoSym'), app.indexOf('\n', app.indexOf('const wNoSym'))) + ';this.f = wNoSym;', f);
+  check('Skriv: a word with no symbol, or only a guess, is marked; a chosen text form, a symbol, a left-out word or a full stop is not',
+    [f.f({ asText: true, ids: [] }), f.f({ asText: true, ids: [1], fuzzy: true }), f.f({ asText: true, ids: [1], guess: true }),
+     f.f({ asText: true, ids: [1] }), f.f({ asText: false, ids: [1] }), f.f({ asText: true, ids: [], skip: true }), f.f({ punct: true, asText: true, ids: [] })],
+    [true, true, true, false, false, false, false]);
+}
+
 /* ---------- 11. a BlissOnline PDF into Skriv (2026-11-26): a page made here, its text read back ---------- */
 const asyncChecks = (async () => {
   const zlib = require('zlib');

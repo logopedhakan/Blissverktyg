@@ -1870,6 +1870,8 @@ function wRenderChips() {
 }
 function wRender() {
   const spot = wFocusSpot();
+  wMarksOf();
+  wNoSymBar();
   wRenderChips();
   wRenderChooser();
   wRenderPreview();
@@ -2437,6 +2439,88 @@ if ('BroadcastChannel' in window) {
     }
   };
 }
+/* ---- words without a symbol, marked in the text field itself (2026-11-26) ----
+   The words are drawn again in #wInMarks, behind the field, at the same place:
+   same font, padding, width and scroll. A word that got no symbol (or only a
+   guess) is coloured and underlined there. Marks are kept as { off, word } and
+   shown only while the text still has that word at that place, so typing never
+   shows a mark on the wrong word before the text is read again. */
+let wMarks = [];
+const wNoSym = (w) => !w.br && !w.punct && !w.skip && !!w.asText && (!(w.ids || []).length || !!w.fuzzy || !!w.guess);
+function wMarksOf() {
+  const v = $('wInput').value;
+  wMarks = [];
+  for (const w of W) {
+    if (w.off == null || !wNoSym(w)) continue;
+    const m = /^\S+/.exec(v.slice(w.off));
+    const word = m && m[0].replace(/[?!.,]+$/, '');
+    if (word) wMarks.push({ off: w.off, word });
+  }
+  wMarksDraw();
+}
+/* going through them (2026-11-26): "3 words without a symbol" with Previous and
+   Next (F4, Shift+F4). Each step opens that word's choices — a guess, another
+   symbol, keep it as text, or make a symbol of your own — and selects it in the
+   text field, so it can be retyped at once. */
+const wNoSymList = () => W.reduce((a, w, i) => (wNoSym(w) ? a.concat(i) : a), []);
+function wNoSymBar() {
+  const bar = $('wNoSymBar');
+  if (!bar) return;
+  const list = wNoSymList(), k = list.indexOf(wOpen), n = list.length;
+  bar.hidden = !n;
+  $('wNoSymCount').textContent = k >= 0
+    ? tr(`Word ${k + 1} of ${n} without a symbol`, `Ord ${k + 1} av ${n} utan symbol`)
+    : n === 1 ? tr('1 word without a symbol', '1 ord utan symbol') : tr(`${n} words without a symbol`, `${n} ord utan symbol`);
+}
+function wNoSymGo(step) {
+  const list = wNoSymList();
+  if (!list.length) return;
+  const i = step > 0 ? (list.find(x => x > wOpen) ?? list[0])
+    : ([...list].reverse().find(x => x < wOpen) ?? list[list.length - 1]);
+  wOpen = i; wFocusNext = 'chooser';
+  wRender();
+  const chip = $('wChips').children[i];
+  if (chip) chip.scrollIntoView({ block: 'nearest' });
+  const w = W[i], ta = $('wInput'), m = w && wMarks.find(x => x.off === w.off);
+  if (m) try { ta.setSelectionRange(m.off, m.off + m.word.length); } catch (_) {}
+}
+$('wNoSymNext').onclick = () => wNoSymGo(1);
+$('wNoSymPrev').onclick = () => wNoSymGo(-1);
+const W_MARK_CSS = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontStretch', 'lineHeight', 'letterSpacing', 'wordSpacing',
+  'textIndent', 'textTransform', 'tabSize', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'];
+function wMarksFit() {
+  const ta = $('wInput'), mk = $('wInMarks'), cs = getComputedStyle(ta);
+  for (const p of W_MARK_CSS) mk.style[p] = cs[p];
+  // inside the field's border and beside its scroll bar: the text wraps at the same width
+  mk.style.left = (ta.offsetLeft + ta.clientLeft) + 'px';
+  mk.style.top = (ta.offsetTop + ta.clientTop) + 'px';
+  mk.style.width = ta.clientWidth + 'px';
+  mk.style.height = ta.clientHeight + 'px';
+  mk.scrollTop = ta.scrollTop;
+}
+function wMarksDraw() {
+  const ta = $('wInput'), mk = $('wInMarks');
+  if (!mk) return;
+  const v = ta.value;
+  let html = '', at = 0;
+  for (const m of wMarks) {
+    if (m.off < at || v.substr(m.off, m.word.length) !== m.word) continue;
+    html += escXml(v.slice(at, m.off)) + `<span class="noSym">${escXml(m.word)}</span>`;
+    at = m.off + m.word.length;
+  }
+  // a last empty line keeps its height, as in the field
+  mk.innerHTML = html + escXml(v.slice(at)) + '\n';
+  mk.scrollTop = ta.scrollTop;
+}
+if ($('wInMarks')) {
+  $('wInput').addEventListener('input', wMarksDraw);
+  $('wInput').addEventListener('scroll', () => { $('wInMarks').scrollTop = $('wInput').scrollTop; });
+  new ResizeObserver(() => { wMarksFit(); wMarksDraw(); }).observe($('wInput'));
+  wMarksFit(); wMarksDraw();
+  $('wInBox').classList.add('marked');
+  // the typeface may arrive after the page: measure again then
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { wMarksFit(); wMarksDraw(); });
+}
 $('wInput').addEventListener('keyup', wScrollToCaret);
 $('wInput').addEventListener('click', wScrollToCaret);
 /* drop targets: the input takes the browser's native text drop (position-exact,
@@ -2966,7 +3050,7 @@ if (typeof wbShortcuts === 'function') {
   // the keys and their names live in js/shared/styrning.js (WB_KEYMAP), where they can be changed
   const KEYS = typeof wbButtonKeys === 'function' ? wbButtonKeys([
     { id: 'wSpeak', of: 'alla:speak', name: () => tr('read the text aloud / stop reading', 'läs upp texten / stoppa uppläsningen') },
-    { id: 'wMic' }, { id: 'wFam' }, { id: 'wOpenDoc' }, { id: 'wSaveDoc' }, { id: 'wPrint' }, { id: 'wClip' }, { id: 'wToShow' }, { id: 'wToTag' },
+    { id: 'wMic' }, { id: 'wFam' }, { id: 'wOpenDoc' }, { id: 'wSaveDoc' }, { id: 'wPrint' }, { id: 'wClip' }, { id: 'wToShow' }, { id: 'wToTag' }, { id: 'wNoSymNext' }, { id: 'wNoSymPrev' },
     { id: 'btnHelp', key: '?', shown: true, name: () => tr('all keyboard shortcuts (this list)', 'alla kortkommandon (den här listan)') },
     { id: 'wHelp', key: '?', shown: true, inList: false, name: () => '' },
   ], { tool: 'skriv', paused: () => !inWriting() }) : null;
