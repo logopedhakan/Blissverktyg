@@ -856,8 +856,12 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Skriv: PDF and Word are A4 pages, lines wrap to the page and are not split',
     [/const A4 = \{ w: 210, h: 297, m: 18 \}/.test(app), /@page\{size:A4;margin:\$\{A4\.m\}mm\}/.test(app),
      /\.line\{break-inside:avoid;page-break-inside:avoid/.test(app), /@page WordSection1\{size:\$\{pt\(A4\.w\)\} \$\{pt\(A4\.h\)\}/.test(app),
-     /p\.line\{margin:0 0 6pt 0;page-break-inside:avoid\}/.test(app), /wLines\(Math\.max\(16, cw \/ unit - 1\.6\)\)/.test(app)],
+     /p\.line\{margin:0 0 6pt 0;page-break-inside:avoid\}/.test(app), /wLines\(Math\.max\(8, cw \/ unit - 1\.6\), opts\)/.test(app)],
     [true, true, true, true, true, true]);
+  check('Skriv: the symbols\' and the words\' size are chosen before printing or saving Word, and kept',
+    [/\$\('wDoc'\)\.onclick = \(\) => wPageDlg\('word'\)/.test(app), /\$\('wPrint'\)\.onclick = \(\) => wPageDlg\('print'\)/.test(app),
+     /localStorage\.setItem\('wb-skriv-sida'/.test(app), /<dialog id="pageDlg"/.test(read('index.html'))],
+    [true, true, true, true]);
 }
 
 /* ---------- 11. a BlissOnline PDF into Skriv (2026-11-26): a page made here, its text read back ---------- */

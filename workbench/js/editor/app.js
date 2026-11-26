@@ -2173,26 +2173,41 @@ for (const [btn, key] of [['wtList', 'list'], ['wtChips', 'chips'], ['wtChooser'
   };
 }
 function wGapOf(w) { return w.punct ? Math.max(2, WS.gap / 2) : WS.gap; }
-function wLineSVG(words, unit = 14, withLabels = true) {
+/* a word's room on a line: its symbol — or, for PDF and Word (opts.roomy, 2026-11-26),
+   its word underneath when that is wider, so big text never runs into the next word */
+let wMeasure = null;
+function wTextW(t, fs) {
+  if (!wMeasure) wMeasure = document.createElement('canvas').getContext('2d');
+  wMeasure.font = `${fs}px Helvetica, Arial, sans-serif`;
+  return wMeasure.measureText(String(t)).width;
+}
+function wSlotW(w, box, fs, roomy) {
+  return roomy && !w.punct ? Math.max(box.vw, wTextW(w.label || w.token, fs) + fs * 0.5) : box.vw;
+}
+// opts.text: the words' size in % (else Write's own), opts.roomy: as above
+function wLineSVG(words, unit = 14, withLabels = true, opts = {}) {
   if (!words.length) return null;
+  const textPct = opts.text ?? WS.text;
+  if (textPct <= 0) withLabels = false;
+  const fs = 260 * (textPct / 100), pad = 80, roomy = !!opts.roomy && withLabels;
   let cursor = 0, parts = [], labels = [];
   let minY = 1e9, maxY = -1e9, maxX = 0;
   words.forEach((w, i) => {
     const els = wWordEls(w); if (!els.length) return;
     const box = wSvgBox(els, 4);
     const gap = i === 0 ? 0 : wGapOf(w);
-    const dx = cursor * 100 + gap * 100 - box.vx;
+    const slot = wSlotW(w, box, fs, roomy);
+    const dx = cursor * 100 + gap * 100 + (slot - box.vw) / 2 - box.vx;
     const body = (box.svg.match(/<\/style>([\s\S]*)<\/svg>/) || [, ''])[1];
     parts.push(`<g transform="translate(${dx.toFixed(1)} 0)">${body}</g>`);
     if (withLabels && !w.punct) labels.push({ x: dx + box.vx + box.vw / 2, t: w.label || w.token });
     minY = Math.min(minY, box.vy); maxY = Math.max(maxY, box.vy + box.vh);
-    cursor = (dx + box.vx + box.vw) / 100;
-    maxX = dx + box.vx + box.vw;
+    cursor = cursor + gap + slot / 100;
+    maxX = cursor * 100;
   });
   if (!parts.length) return null;
-  if (WS.text <= 0) withLabels = false;
-  const fs = 260 * (WS.text / 100), pad = 80;
-  const textY = Math.max(maxY, 1600) + 400;
+  // big words sit lower: the letters' tops keep clear of the symbols (the standard size is as before)
+  const textY = Math.max(maxY, 1600) + Math.max(400, fs * 0.9 + 100);
   const texts = withLabels ? labels.map(l =>
     `<text x="${l.x.toFixed(1)}" y="${textY}" text-anchor="middle" font-size="${fs}" font-family="Helvetica, Arial, sans-serif" stroke="none" class="bfill">${escXml(l.t)}</text>`).join('') : '';
   const vy = Math.min(minY, 300) - pad;
@@ -2201,7 +2216,7 @@ function wLineSVG(words, unit = 14, withLabels = true) {
   // (2026-11-19: "Mannen" last on a line showed as "Manne") — about 0.6 em a letter
   let left = 0, right = maxX;
   if (withLabels) for (const l of labels) {
-    const half = fs * 0.3 * String(l.t).length;
+    const half = roomy ? wTextW(l.t, fs) / 2 + fs * 0.1 : fs * 0.3 * String(l.t).length;
     left = Math.min(left, l.x - half); right = Math.max(right, l.x + half);
   }
   const vx = left - pad, vw = right - left + 2 * pad;
@@ -2213,13 +2228,14 @@ function wLineSVG(words, unit = 14, withLabels = true) {
 
 /* break the text into rendered lines: explicit ↵ breaks + auto-wrap at maxUnits */
 const W_WRAP_UNITS = 110;
-function wLines(maxUnits = W_WRAP_UNITS) {
+function wLines(maxUnits = W_WRAP_UNITS, opts = {}) {
   const lines = [[]];
+  const textPct = opts.text ?? WS.text, roomy = !!opts.roomy && textPct > 0, fs = 260 * (textPct / 100);
   let cursor = 0;
   for (const w of W) {
     if (w.br) { lines.push([]); cursor = 0; continue; }
     const els = wWordEls(w); if (!els.length) continue;
-    const wUnits = wSvgBox(els, 4).vw / 100;
+    const wUnits = wSlotW(w, wSvgBox(els, 4), fs, roomy) / 100;
     const gap = lines[lines.length - 1].length ? wGapOf(w) : 0;
     if (lines[lines.length - 1].length && cursor + gap + wUnits > maxUnits && !w.punct) {
       lines.push([]); cursor = 0;
@@ -2783,26 +2799,45 @@ $('wToShow').title = tr('The text as a new slide in Slideshow', 'Texten som en n
 $('wToTag').title = tr('The symbols onto an engraving tag', 'Symbolerna på ett gravyrkort');
 const W_ATTRIBUTION = 'Blissymbolics © C.K. Bliss 1949, 1965 · Parts herein © Blissymbolics Communication International (BCI), CC BY-SA 4.0 · WinBliss² (AnyCom AB)';
 /* PDF and Word as A4 pages (2026-11-26): 210 × 297 mm with 18 mm margins. The lines
-   wrap to the page's width (before, a line was as wide as three pages and was cut
-   off), a line is never split over two pages, and the symbols follow Write's own
-   size setting (WS.unit). */
+   wrap to the page's width, a line is never split over two pages, and a word wider
+   than its symbol gets the room it needs. The symbols' and the words' size are
+   chosen in a small window with the page in miniature, before printing or saving
+   (kept in this browser, 'wb-skriv-sida'). */
 const A4 = { w: 210, h: 297, m: 18 };
 const PX_PER_MM = 96 / 25.4;
-function wPageLines() {
-  const unit = Math.max(4, Math.min(30, WS.unit * 0.6));
+const PAGE_SYM = [[4.5, 'Small', 'Små'], [6.5, 'Medium', 'Mellan'], [9, 'Large', 'Stora'], [13, 'Very large', 'Mycket stora']];
+const PAGE_TEXT = [[0, 'None', 'Ingen'], [70, 'Small', 'Liten'], [100, 'Medium', 'Mellan'], [140, 'Large', 'Stor'], [200, 'Very large', 'Mycket stor']];
+const nearest = (list, v) => list.reduce((a, b) => (Math.abs(b[0] - v) < Math.abs(a[0] - v) ? b : a))[0];
+function wPageOpts() {
+  let o = {};
+  try { o = JSON.parse(localStorage.getItem('wb-skriv-sida') || '{}') || {}; } catch (_) {}
+  return {
+    sym: PAGE_SYM.some(x => x[0] === o.sym) ? o.sym : nearest(PAGE_SYM, WS.unit * 0.6),
+    text: PAGE_TEXT.some(x => x[0] === o.text) ? o.text : nearest(PAGE_TEXT, WS.text),
+  };
+}
+function wPageLines(o = wPageOpts()) {
+  const unit = o.sym, opts = { text: o.text, roomy: true };
   const cw = (A4.w - 2 * A4.m) * PX_PER_MM;            // the text's width on the page, in CSS px
   // wLineSVG adds 0.8 units of room at each end
-  const lines = wLines(Math.max(16, cw / unit - 1.6)).map(l => {
-    const r = wLineSVG(l, unit, true);
+  const lines = wLines(Math.max(8, cw / unit - 1.6), opts).map(l => {
+    const r = wLineSVG(l, unit, true, opts);
     // the line's words, for a screen reader and Word's alt text
-    return r && Object.assign(r, { said: l.map(w => w.label || w.token).join(' ').replace(/ ([.,!?:;])/g, '$1') });
+    return r && Object.assign(r, { said: l.map(w => w.label || w.token).join(' ').replace(/ ([.,!?:;])/g, '$1'), n: l.filter(w => !w.punct).length });
   }).filter(Boolean);
-  return { cw, lines };
+  // the pages: lines as they fill them (3 mm between lines), a line that does not fit starts the next
+  const ph = (A4.h - 2 * A4.m) * PX_PER_MM, gap = 3 * PX_PER_MM, pages = [[]];
+  let y = 0;
+  for (const l of lines) {
+    const h = l.h * Math.min(1, cw / l.w);
+    if (y && y + h > ph) { pages.push([]); y = 0; }
+    pages[pages.length - 1].push(l); y += h + gap;
+  }
+  return { cw, lines, pages };
 }
 const wPageTitle = () => (wDocHandle && wDocHandle.name ? wDocHandle.name.replace(/\.[^.]+$/, '') : tr('Bliss text', 'Blisstext'));
-$('wDoc').onclick = async () => {
-  if (!W.length) return toast(tr('Nothing to export', 'Inget att exportera'));
-  const { cw, lines } = wPageLines();
+async function wSaveWord(o) {
+  const { cw, lines } = wPageLines(o);
   const imgs = [];
   for (const l of lines) {
     const cv = await wRaster(l.svg, 3);                // sharp on paper
@@ -2820,12 +2855,11 @@ $('wDoc').onclick = async () => {
     'p.line{margin:0 0 6pt 0;page-break-inside:avoid}' +
     'p.attr{margin-top:12pt;font-size:8pt;color:#888888}</style></head>' +
     `<body><div class="WordSection1">${imgs.join('')}<p class="attr">${W_ATTRIBUTION}</p></div></body></html>`;
-  download('bliss-text.doc', new Blob(['\ufeff' + html], { type: 'application/msword' }));
+  download('bliss-text.doc', new Blob(['﻿' + html], { type: 'application/msword' }));
   toast(tr('Word document saved (.doc, A4)', 'Word-dokument sparat (.doc, A4)'));
-};
-$('wPrint').onclick = () => {
-  if (!W.length) return toast(tr('Nothing to print', 'Inget att skriva ut'));
-  const { lines } = wPageLines();
+}
+function wPrintPdf(o) {
+  const { lines } = wPageLines(o);
   const win = window.open('', '_blank');
   if (!win) return toast(tr('The browser blocked the print window', 'Webbläsaren blockerade utskriftsfönstret'));
   // on screen the window shows the page as it will be printed: white, A4 wide, with its margins
@@ -2842,7 +2876,56 @@ $('wPrint').onclick = () => {
   // print once the window has laid the page out (and the typeface is there)
   const go = () => setTimeout(() => win.print(), 150);
   if (win.document.fonts && win.document.fonts.ready) win.document.fonts.ready.then(go); else go();
-};
+}
+/* the window: symbol size and word size as buttons, the first page in miniature,
+   about how many words a line and how many pages; then Print/PDF or Save Word */
+let wPage = null;
+function wPageDlg(mode) {
+  if (!W.some(w => !w.br)) return toast(tr('Write something first', 'Skriv något först'));
+  wPage = Object.assign(wPageOpts(), { mode });
+  const dlg = $('pageDlg');
+  $('pgTitle').textContent = tr('PDF and Word — the page', 'PDF och Word — sidan');
+  $('pgSymHead').textContent = tr('Symbol size', 'Symbolstorlek');
+  $('pgTextHead').textContent = tr('Size of the words', 'Ordens storlek');
+  $('pgCancel').textContent = tr('Cancel', 'Avbryt');
+  $('pgPrint').textContent = tr('Print or PDF…', 'Skriv ut eller PDF…');
+  $('pgWord').textContent = tr('Save Word ↓', 'Spara Word ↓');
+  $('pgPrint').className = mode === 'word' ? '' : 'primary';
+  $('pgWord').className = mode === 'word' ? 'primary' : '';
+  // a Bliss symbol at the size it gets / "Aa" at the size the words get
+  const sym = (typeof wbIcons !== 'undefined' && wbIcons.svg('16161')) || '';
+  $('pgSym').innerHTML = PAGE_SYM.map(([v, en, sv]) =>
+    `<button type="button" class="pgChoice" data-v="${v}"><span class="pgPic" style="--h:${Math.round(v * 3.4)}px" aria-hidden="true">${sym}</span><span>${tr(en, sv)}</span></button>`).join('');
+  $('pgText').innerHTML = PAGE_TEXT.map(([v, en, sv]) =>
+    `<button type="button" class="pgChoice" data-v="${v}"><span class="pgAa" style="font-size:${v ? Math.round(8 + v * 0.11) : 14}px" aria-hidden="true">${v ? 'Aa' : '—'}</span><span>${tr(en, sv)}</span></button>`).join('');
+  for (const [box, key] of [['pgSym', 'sym'], ['pgText', 'text']])
+    for (const b of $(box).children) b.onclick = () => { wPage[key] = +b.dataset.v; wPageKeep(); wPageShow(); };
+  wPageShow();
+  dlg.showModal();
+  (mode === 'word' ? $('pgWord') : $('pgPrint')).focus();
+}
+function wPageKeep() {
+  try { localStorage.setItem('wb-skriv-sida', JSON.stringify({ sym: wPage.sym, text: wPage.text })); } catch (_) {}
+}
+function wPageShow() {
+  for (const [box, key] of [['pgSym', 'sym'], ['pgText', 'text']])
+    for (const b of $(box).children) b.setAttribute('aria-pressed', String(+b.dataset.v === wPage[key]));
+  const { pages, lines } = wPageLines(wPage);
+  const sheetW = 190, k = sheetW / (A4.w * PX_PER_MM);
+  const sheet = $('pgSheet');
+  sheet.style.setProperty('--w', sheetW + 'px');
+  sheet.style.setProperty('--pad', (A4.m * PX_PER_MM * k).toFixed(1) + 'px');
+  sheet.innerHTML = (pages[0] || []).map(l =>
+    `<div class="pgLine">${l.svg.replace(/ width="[\d.]+" height="[\d.]+"/, ` width="${(l.w * k).toFixed(1)}" height="${(l.h * k).toFixed(1)}"`)}</div>`).join('');
+  const words = lines.reduce((a, l) => a + l.n, 0), per = lines.length ? Math.round(words / lines.length) : 0;
+  $('pgInfo').textContent = tr(`About ${per} words a line · ${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`,
+    `Ungefär ${per} ord per rad · ${pages.length} ${pages.length === 1 ? 'sida' : 'sidor'}`);
+}
+$('wDoc').onclick = () => wPageDlg('word');
+$('wPrint').onclick = () => wPageDlg('print');
+$('pgCancel').onclick = () => $('pageDlg').close();
+$('pgPrint').onclick = () => { $('pageDlg').close(); wPrintPdf(wPage); };
+$('pgWord').onclick = () => { $('pageDlg').close(); wSaveWord(wPage); };
 
 /* the AI layer: same chips, a different filler. The endpoint gets the text
    plus each word's VERIFIED candidates and returns choices for the same

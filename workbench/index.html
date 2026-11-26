@@ -219,6 +219,23 @@ dialog::backdrop{background:rgba(12,13,16,.45)}
 .dlgRows{display:flex;flex-direction:column;gap:12px;min-width:320px}
 .dlgRow{display:flex;justify-content:space-between;align-items:center;gap:18px;font-size:13.5px}
 #helpDlg{max-width:760px}
+/* PDF and Word: sizes and the page in miniature (2026-11-26) */
+#pageDlg{max-width:760px;width:min(760px,94vw)}
+#pageDlg h2{margin:0 0 4px;font-size:18px}
+.pgBody{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.pgOpts{flex:1 1 300px;min-width:0}
+.pgChoices{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:6px}
+.pgChoice{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-height:84px;padding:6px 4px;
+  border-width:2px;border-radius:10px;font-size:13px;font-weight:600}
+.pgChoice[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+.pgPic svg{height:var(--h);width:auto;display:block}
+.pgPic .bfill{fill:currentColor}
+.pgAa{font-family:Helvetica,Arial,sans-serif;line-height:1}
+#pgInfo{margin:12px 0 0;font-weight:600;color:var(--dim)}
+#pgSheet{--w:190px;flex:none;width:var(--w);aspect-ratio:210/297;padding:var(--pad);box-sizing:border-box;overflow:hidden;
+  background:#fff;color:#000;border-radius:3px;box-shadow:0 2px 10px rgba(0,0,0,.28)}
+.pgLine{margin-bottom:2px}.pgLine svg{display:block;max-width:100%;height:auto}
+.pgBtns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px}
 .dlgSec{margin:18px 0 8px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--dim)}
 #stage .staffLbl{font-family:"Atkinson Hyperlegible Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
 #stage .stageCap{fill:var(--ink);stroke:none;cursor:text;
@@ -658,6 +675,26 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
     <button id="btnWbxOpen">Load preferences</button>
     <span style="flex:1"></span>
     <form method="dialog" style="display:inline"><button value="done" class="primary" autofocus>Done</button></form>
+  </div>
+</dialog>
+
+<!-- PDF and Word (2026-11-26): the symbols' and the words' size, with the first page in miniature -->
+<dialog id="pageDlg" aria-labelledby="pgTitle">
+  <h2 id="pgTitle"></h2>
+  <div class="pgBody">
+    <div class="pgOpts">
+      <div class="dlgSec" id="pgSymHead"></div>
+      <div id="pgSym" class="pgChoices" role="group" aria-labelledby="pgSymHead"></div>
+      <div class="dlgSec" id="pgTextHead"></div>
+      <div id="pgText" class="pgChoices" role="group" aria-labelledby="pgTextHead"></div>
+      <p id="pgInfo" aria-live="polite"></p>
+    </div>
+    <div id="pgSheet" aria-hidden="true"></div>
+  </div>
+  <div class="pgBtns">
+    <button type="button" id="pgCancel">Cancel</button>
+    <button type="button" id="pgWord">Save Word ↓</button>
+    <button type="button" id="pgPrint" class="primary">Print or PDF…</button>
   </div>
 </dialog>
 
