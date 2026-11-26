@@ -204,6 +204,9 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
 #posBtns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 #posBtns .tb{flex-direction:column;gap:5px;padding:7px 4px;font-size:12.5px;line-height:1.15;min-height:74px;text-align:center}
 #posBtns .tb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+/* the words may take two lines: "På bilden, nederst" is wider than a third of the panel */
+#posBtns .tb .lbl{white-space:normal;overflow-wrap:anywhere;min-width:0}
+#posBtns .tb{min-width:0}
 .posPic{position:relative;width:46px;height:30px;border:2px solid currentColor;border-radius:4px;overflow:hidden;flex:none}
 .posPic .pic{position:absolute;left:0;right:0;top:0;background:color-mix(in srgb,currentColor 35%,transparent)}
 .posPic .bar{position:absolute;left:7px;right:7px;height:7px;border-radius:2px;background:currentColor}
@@ -578,10 +581,18 @@ function layoutOf(s) {
   // text lies over its bottom or top part, as close to the edge as it fits
   const over = s.img && hasText && (s.textPos === 'bottom' || s.textPos === 'top') ? s.textPos : null;
   if (over) {
-    const th = (bot - top) * 0.42;
     img = { x, y: top, w, h: bot - top };
-    // 24 in from the edge: the tile (18 around the text) stays on the picture
-    txt = { x: x + 24, y: over === 'bottom' ? bot - th - 24 : top + 24, w: w - 48, h: th };
+    // the text goes on the picture as it is drawn (a wide picture on a tall slide
+    // fills only a band of it), 24 in from its edge: the tile (18 around the text) stays on it
+    let r = img;
+    if (s.imgW > 0 && s.imgH > 0) {
+      const a = s.imgW / s.imgH;
+      let pw = img.w, ph = img.w / a;
+      if (ph > img.h) { ph = img.h; pw = img.h * a; }
+      r = { x: img.x + (img.w - pw) / 2, y: img.y + (img.h - ph) / 2, w: pw, h: ph };
+    }
+    const th = r.h * 0.42;
+    txt = { x: r.x + 24, y: over === 'bottom' ? r.y + r.h - th - 24 : r.y + 24, w: Math.max(60, r.w - 48), h: th };
   } else if (s.img && hasText) {
     const ih = (bot - top - gap) * (s.imgPct || show.imgPct) / 100;
     img = { x, y: top, w, h: ih }; txt = { x, y: top + ih + gap, w, h: bot - top - ih - gap };
@@ -691,9 +702,14 @@ function renderStage() {
   $('stageCta').hidden = hasImg && hasTxt;
   $('stageCta').className = hasImg === hasTxt ? '' : hasImg ? 'bottom' : 'top';
   const fn = $('fitNote');
-  fn.hidden = !layoutOf(show.slides[cur]).shrunk;
-  fn.textContent = tr('⚠ The text does not fit at the chosen size and has been made smaller on this slide — shorten the text, lower the picture or choose smaller symbols.',
-    '⚠ Texten får inte plats i vald storlek och har gjorts mindre på den här sidan — korta texten, sänk bildens höjd eller välj mindre symboler.');
+  const lay = layoutOf(show.slides[cur]);
+  fn.hidden = !lay.shrunk;
+  // text on the picture has no picture height to lower: put it under the picture instead
+  fn.textContent = lay.over
+    ? tr('⚠ The text does not fit on the picture at the chosen size and has been made smaller — shorten the text, put it under the picture or choose smaller symbols.',
+      '⚠ Texten får inte plats på bilden i vald storlek och har gjorts mindre — korta texten, lägg den under bilden eller välj mindre symboler.')
+    : tr('⚠ The text does not fit at the chosen size and has been made smaller on this slide — shorten the text, lower the picture or choose smaller symbols.',
+      '⚠ Texten får inte plats i vald storlek och har gjorts mindre på den här sidan — korta texten, sänk bildens höjd eller välj mindre symboler.');
   const thumb = $('slides').children[cur];
   if (thumb) {
     thumb.innerHTML = `<span class="no" aria-hidden="true">${cur + 1}</span>${svg}`;
@@ -1112,7 +1128,7 @@ for (const [v, sv, en] of [['under', 'Under bilden', 'Under the picture'], ['bot
                            ['top', 'På bilden, överst', 'On the picture, at the top']]) {
   const b = document.createElement('button');
   b.type = 'button'; b.className = 'tb'; b.dataset.v = v;
-  const pic = v === 'under' ? 'height:60%' : 'bottom:0', bar = v === 'top' ? 'top:4px' : 'bottom:4px';
+  const pic = v === 'under' ? 'height:55%' : 'bottom:0', bar = v === 'top' ? 'top:4px' : 'bottom:4px';
   b.innerHTML = `<span class="posPic" aria-hidden="true"><span class="pic" style="${pic}"></span><span class="bar" style="${bar}"></span></span><span class="lbl">${tr(en, sv)}</span>`;
   b.onclick = () => {
     const sl = show.slides[cur], patch = { textPos: v };
