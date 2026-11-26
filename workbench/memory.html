@@ -139,21 +139,23 @@ button:hover{border-color:var(--accent)}
 .choices.pairs{grid-template-columns:repeat(5,minmax(0,1fr))}
 .choices.players{grid-template-columns:repeat(4,minmax(0,1fr))}
 .choices.back{grid-template-columns:repeat(3,minmax(0,1fr))}
-.choice{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:64px;padding:7px 3px;
+.choice{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:64px;padding:6px 2px;
   border-width:2px;border-radius:12px;font-size:13px;font-weight:700;line-height:1.1;transition:transform .12s,box-shadow .12s}
 .choice:hover{transform:translateY(-1px)}
 .choice[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);
   box-shadow:0 3px 10px color-mix(in srgb,var(--accent) 40%,transparent)}
 .choice:focus-visible{outline:3px solid var(--sel);outline-offset:2px}
 /* a little board: as many cards as the game will have */
-.mini{display:grid;gap:2px;grid-template-columns:repeat(var(--c),6px)}
-.mini i{width:6px;height:8px;border-radius:1.5px;background:var(--accent);opacity:.85}
+.mini{display:grid;gap:1.5px;grid-template-columns:repeat(var(--c),4px)}
+.mini i{width:4px;height:6px;border-radius:1px;background:var(--accent);opacity:.85}
+.choice .n{font-size:17px;line-height:1}
+.choice .u{font-size:11px;font-weight:600;line-height:1}
 .choice[aria-pressed="true"] .mini i{background:var(--on-accent,#fff)}
 /* the players, one person each, in the colour they get on the board */
-.ppl{display:flex;justify-content:center;flex-wrap:wrap;gap:1px;max-width:100%}
-.ppl .sym svg{height:22px;width:auto;display:block}
-.ppl .sym{color:var(--pc);border-radius:6px}
-.choice[aria-pressed="true"] .ppl .sym{background:#fff;padding:1px}
+.ppl{display:flex;justify-content:center;flex-wrap:nowrap;gap:0;max-width:100%;padding:2px 3px;border-radius:7px}
+.ppl .sym svg{height:20px;width:auto;display:block}
+.ppl .sym{color:var(--pc)}
+.choice[aria-pressed="true"] .ppl{background:#fff}
 .choice .big svg{height:26px;width:auto;display:block}
 .choice .big .bfill{fill:currentColor}
 @media (prefers-reduced-motion: reduce){.choice{transition:none}.choice:hover{transform:none}}
@@ -722,11 +724,11 @@ function syncChoices() {
 }
 choiceRow('optPairs', 'pairs', (v) => {
   const n = 2 * v, c = CARDS_COLS[v] || 4;
-  return `<span class="mini" style="--c:${c}" aria-hidden="true">${'<i></i>'.repeat(n)}</span><span>${v} ${tr('pairs', 'par')}</span>`;
+  return `<span class="mini" style="--c:${c}" aria-hidden="true">${'<i></i>'.repeat(n)}</span><span class="n">${v}</span><span class="u">${tr('pairs', 'par')}</span>`;
 });
 choiceRow('optPlayers', 'players', (v) => {
   const ppl = PCOL.slice(0, +v).map(col => `<span class="sym" style="--pc:${col}">${wbIcons.svg(GSYM.person)}</span>`).join('');
-  return `<span class="ppl" aria-hidden="true">${ppl}</span><span>${v}</span>`;
+  return `<span class="ppl" aria-hidden="true">${ppl}</span><span class="n">${v}</span>`;
 });
 choiceRow('optBack', 'back', (v) => v === 'tryck'
   ? `<span class="big" aria-hidden="true">${wbIcons.svg('14180')}</span><span>${tr('Press', 'Tryck')}</span>`
