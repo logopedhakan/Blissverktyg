@@ -864,7 +864,29 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     [true, true, true, true]);
 }
 
-/* ---------- 10e. the window keeps the size Windows docked it to (2026-11-26) ---------- */
+/* ---------- 10e. read aloud what the mouse points at, in every part (hovertal.js, 2026-11-26) ---------- */
+{
+  const pages = ['start.html', 'index.html', 'bildspel.html', 'gissa.html', 'memory.html', 'former.html', 'gravyr.html', 'almanacka.html', 'installningar.html'];
+  check('Läs vid muspekare: every part loads hovertal.js right after speak.js',
+    pages.filter(f => !/<script src="js\/shared\/speak\.js"><\/script>\n<script src="js\/shared\/hovertal\.js"><\/script>/.test(read(f))), []);
+  check('Läs vid muspekare: kept for offline use', /'js\/shared\/hovertal\.js'/.test(read('sw.js')), true);
+  // one setting for all parts, in the shared steering settings
+  const st = vm.createContext({ localStorage: { getItem: () => null, setItem() {} } });
+  vm.runInContext(globalize(read('js/shared/styrning.js'), ['wbStyr']), st);
+  check('Läs vid muspekare: one shared setting, off unless turned on',
+    [st.wbStyr.clean({}).hover, st.wbStyr.clean({ hover: true }).hover, st.wbStyr.clean({ hover: 'yes' }).hover], [false, true, false]);
+  // what is said: no pictographs or arrows, one line
+  const hv = vm.createContext({ document: { addEventListener() {}, readyState: 'complete' } });
+  vm.runInContext(read('js/shared/hovertal.js') + ';this.H = wbHover;', hv);
+  check('Läs vid muspekare: says the words, not the pictures', hv.H.clean('🔊 Läs  upp\n◀ Förra  ↓'), 'Läs upp Förra');
+  // the parts' own switches from before are the shared one now
+  check('Läs vid muspekare: Almanacka and Formfamiljer use the shared switch',
+    [/id="hoverToggle"/.test(read('almanacka.html')), /wbHover\.say/.test(read('almanacka.html')), /wbHover\.set\(\$\('speakHover'\)\.checked\)/.test(read('former.html')),
+     /id="optHover"/.test(read('installningar.html'))],
+    [false, true, true, true]);
+}
+
+/* ---------- 10f. the window keeps the size Windows docked it to (2026-11-26) ---------- */
 {
   const w = read('js/shared/window.js');
   check('window: the chosen size is set once when the app starts, not on every change of part, and never over a docked window',

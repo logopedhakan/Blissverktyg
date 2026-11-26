@@ -150,6 +150,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/speak.js"></script>
+<script src="js/shared/hovertal.js"></script>
 <script src="js/shared/shortcuts.js"></script>
 <script src="js/shared/switch.js"></script>
 <script src="js/engine/bliss-shapes.js"></script>
@@ -369,6 +370,7 @@ function showMore() {
       '</span><span><span class="nm">' + svName(s) + '</span><br><span class="en">' +
       (s.n || '') + '</span></span>';
     b.onclick = () => { showDetail(s, b); speakOnPick(s); };
+    b.dataset.hoverOwn = '';            // reads its Swedish name itself (hoverSpeak)
     b.addEventListener('mouseenter', () => hoverSpeak(s));
     b.addEventListener('mouseleave', hoverLeave);
     b.addEventListener('focus', () => hoverSpeak(s));
@@ -457,8 +459,17 @@ if (!WB_SPEECH) { $('speakPickRow').hidden = true; $('speakHoverRow').hidden = t
 /* read on hover (Håkan, 2026-11-05): the word under the mouse — or reached
    with Tab — after a short pause, so passing over the list stays quiet.
    A new word replaces the one being read. Remembered ('wb-former-hover'). */
-try { $('speakHover').checked = localStorage.getItem('wb-former-hover') === '1'; } catch (_) {}
-$('speakHover').addEventListener('change', () => { try { localStorage.setItem('wb-former-hover', $('speakHover').checked ? '1' : '0'); } catch (_) {} });
+/* 2026-11-26: this box is the shared "Läs vid muspekare" (js/shared/hovertal.js), the same
+   switch as in the top bar of every part. On here from before means on everywhere. */
+try {
+  if (localStorage.getItem('wb-former-hover') === '1') {
+    localStorage.removeItem('wb-former-hover');
+    if (!wbHover.on()) wbStyr.save(Object.assign({}, wbStyr.settings, { hover: true }));
+  }
+} catch (_) {}
+$('speakHover').checked = wbHover.on();
+$('speakHover').addEventListener('change', () => wbHover.set($('speakHover').checked));
+wbStyr.onChange(() => { $('speakHover').checked = wbHover.on(); });
 const HOVER_MS = 350;
 let hoverT = null, hoverSaid = null;
 function hoverSpeak(s) {

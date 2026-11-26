@@ -7,14 +7,14 @@
    When you add a file the app needs, add it to CORE and bump VERSION — the
    new version then replaces the old cache on the next visit. */
 'use strict';
-const VERSION = '2026-11-26.20';
+const VERSION = '2026-11-26.21';
 const CACHE = 'blissverktyget-' + VERSION;
 const CORE = [
   'start.html', 'index.html', 'skriv.html', 'bildspel.html', 'bildspel-ny.html', 'gissa.html', 'memory.html', 'installningar.html', 'former.html', 'gravyr.html', 'almanacka.html',
   'manifest.webmanifest', 'css/wb-base.css', 'css/wb-fonts.css',
   'fonts/atkinson-hyperlegible-next-latin.woff2', 'fonts/atkinson-hyperlegible-next-latin-ext.woff2',
   'fonts/atkinson-hyperlegible-mono-latin.woff2', 'fonts/atkinson-hyperlegible-mono-latin-ext.woff2',
-  'js/shared/lang.js', 'js/shared/styrning.js', 'js/shared/ikoner.js', 'js/shared/wbs.js', 'js/shared/vardagsord.js', 'js/shared/shortcuts.js', 'js/shared/switch.js', 'js/shared/pwa.js', 'js/shared/window.js', 'js/shared/speak.js',
+  'js/shared/lang.js', 'js/shared/styrning.js', 'js/shared/ikoner.js', 'js/shared/wbs.js', 'js/shared/vardagsord.js', 'js/shared/shortcuts.js', 'js/shared/switch.js', 'js/shared/pwa.js', 'js/shared/window.js', 'js/shared/speak.js', 'js/shared/hovertal.js',
   'js/shared/blisstext.js', 'js/shared/sv-morph.js', 'css/wb-blisstext.css',
   'js/shared/bliss-grammar.js', 'js/shared/bliss-skriv.js', 'js/shared/skriv-glosor.js',
   'js/data/bliss-skriv-data.js', 'js/data/bliss-synonymer.js', 'js/data/bliss-harledda.js',

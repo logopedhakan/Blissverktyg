@@ -30,7 +30,6 @@ button:hover{border-color:var(--accent)}
 #weekNav{display:flex;align-items:center;gap:6px}
 #weekNav button{font-size:17px;padding:6px 14px}
 #weekLabel{font-size:16px;font-weight:600;min-width:15ch;text-align:center}
-#hoverToggle[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
 main{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:minmax(0,1fr);
   gap:10px;padding:0 18px 10px}
 .day{background:var(--panel);border:2px solid var(--rule);border-radius:14px;display:flex;flex-direction:column;
@@ -125,7 +124,6 @@ dialog h2{font-size:17px;margin-bottom:10px}
     <button id="nextWeek" title="Nästa vecka" data-en-title="Next week" aria-label="Nästa vecka">▶</button>
   </div>
   <span class="grow"></span>
-  <button id="hoverToggle" aria-pressed="false" data-en="🔊 Read on mouse-over">🔊 Läs vid muspekare</button>
   <button id="btnSettings" title="Inställningar" data-en-title="Settings" aria-label="Inställningar">⚙</button>
 </header>
 <main id="week"></main>
@@ -181,6 +179,7 @@ dialog h2{font-size:17px;margin-bottom:10px}
 <script src="js/shared/pwa.js"></script>
 <script src="js/shared/window.js"></script>
 <script src="js/shared/speak.js"></script>
+<script src="js/shared/hovertal.js"></script>
 <script src="js/shared/shortcuts.js"></script>
 <script src="js/shared/switch.js"></script>
 <script src="js/engine/bliss-shapes.js"></script>
@@ -295,7 +294,6 @@ function render() {
     ? `${weekStart.getDate()}–${end.getDate()} ${M[end.getMonth()]}`
     : `${weekStart.getDate()} ${M[weekStart.getMonth()]} – ${end.getDate()} ${M[end.getMonth()]}`;
   $('weekLabel').textContent = `${tr('Week', 'Vecka')} ${isoWeek(weekStart)} · ${range} ${end.getFullYear()}`;
-  $('hoverToggle').setAttribute('aria-pressed', String(!!alm.hover));
   const today = isoDay(new Date());
   const box = $('week'); box.innerHTML = '';
   for (let i = 0; i < 7; i++) {
@@ -318,6 +316,7 @@ function render() {
       main.innerHTML = `<span class="time">${escXml(timeText(b))}</span>${lineHTML(b.words)}`;
       main.title = tr('Click to change', 'Klicka för att ändra');
       main.onclick = () => openBook(b);
+      main.dataset.hoverOwn = '';        // reads its time and words itself (below)
       main.addEventListener('mouseenter', () => hoverSpeak(b));
       main.addEventListener('focus', () => hoverSpeak(b));
       main.addEventListener('mouseleave', hoverLeave);
@@ -332,6 +331,7 @@ function render() {
         const kind = meetKind(link);
         a.title = (kind ? `${tr('Start the meeting in', 'Starta mötet i')} ${kind}` : tr('Start the meeting', 'Starta mötet'));
         a.innerHTML = `${meetIcon()}<span>${tr('Start meeting', 'Starta mötet')}</span>`;
+        a.dataset.hoverOwn = '';
         a.addEventListener('mouseenter', () => hoverSpeakText(tr('Start the meeting', 'Starta mötet')));
         a.addEventListener('focus', () => hoverSpeakText(tr('Start the meeting', 'Starta mötet')));
         a.addEventListener('mouseleave', hoverLeave);
@@ -347,6 +347,7 @@ function render() {
     col.appendChild(add);
     // the day itself reads aloud on hover too: its name and its bookings
     const head = col.querySelector('.dayHead');
+    head.dataset.hoverOwn = '';
     head.addEventListener('mouseenter', () => hoverSpeakText(daySpoken(i, d, list)));
     head.addEventListener('mouseleave', hoverLeave);
     box.appendChild(col);
@@ -361,26 +362,14 @@ $('prevWeek').onclick = () => { weekStart.setDate(weekStart.getDate() - 7); rend
 $('nextWeek').onclick = () => { weekStart.setDate(weekStart.getDate() + 7); render(); };
 $('thisWeek').onclick = () => { weekStart = mondayOf(new Date()); render(); };
 
-/* ---- read aloud on mouse-over: the toggle in the header (Håkan, 2026-11-08).
-   After a short pause, so passing over the week stays quiet; remembered. ---- */
-let hoverT = null, hoverLast = '';
-function hoverSpeakText(text) {
-  clearTimeout(hoverT);
-  if (!alm.hover) return;
-  hoverT = setTimeout(() => {
-    if (hoverLast === text && wbSpeaking()) return;
-    hoverLast = text;
-    const res = wbSpeak(text, { onend: () => { if (hoverLast === text) hoverLast = ''; } });
-    if (res === 'novoice') say(wbSpeakProblem(res));
-  }, 350);
-}
+/* ---- read aloud on mouse-over (Håkan, 2026-11-08). Since 2026-11-26 the switch is
+   the shared "Läs vid muspekare" in the top bar of every part (js/shared/hovertal.js);
+   here a booking reads its time and its words, the day its bookings. ---- */
+const hoverSpeakText = (text) => wbHover.say(text);
 const hoverSpeak = (b) => hoverSpeakText(spokenOf(b));
-function hoverLeave() { clearTimeout(hoverT); }
-$('hoverToggle').onclick = () => {
-  alm.hover = !alm.hover; persist(); render();
-  say(alm.hover ? tr('Read on mouse-over: on', 'Läs vid muspekare: på') : tr('Read on mouse-over: off', 'Läs vid muspekare: av'));
-};
-if (!WB_SPEECH) $('hoverToggle').hidden = true;
+const hoverLeave = () => wbHover.stop();
+// this part's own switch from before: on here meant on, so it is on everywhere now
+if (alm.hover) { alm.hover = false; persist(); if (!wbHover.on()) wbStyr.save(Object.assign({}, wbStyr.settings, { hover: true })); }
 // Alt+P: today's bookings (or the open booking while writing one)
 wbSpeakHotkey(() => {
   if ($('bookDlg').open) return $('btnSpeakBook').click();
@@ -604,7 +593,6 @@ wbShortcuts({
 /* a Bliss symbol beside every setting and button (js/shared/ikoner.js, 2026-11-20) */
 wbIcons.put({
   '#thisWeek': '17744',
-  '#hoverToggle': '23593,16728',
   '#bDate': '13639',
   '#bTime': '17732',
   '#bEnd': '17268',
