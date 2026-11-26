@@ -199,6 +199,17 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
 #formatBtns .shape{display:block;border:2.5px solid currentColor;border-radius:3px;background:var(--panel-2)}
 #formatBtns .tb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
 #formatBtns .tb[aria-pressed="true"] .shape{background:transparent}
+/* where the Bliss text goes (2026-11-26): under the picture, or on it, at the bottom or the top;
+   each button shows the slide in small */
+#posBtns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#posBtns .tb{flex-direction:column;gap:5px;padding:7px 4px;font-size:12.5px;line-height:1.15;min-height:74px;text-align:center}
+#posBtns .tb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+/* the words may take two lines: "På bilden, nederst" is wider than a third of the panel */
+#posBtns .tb .lbl{white-space:normal;overflow-wrap:anywhere;min-width:0}
+#posBtns .tb{min-width:0}
+.posPic{position:relative;width:46px;height:30px;border:2px solid currentColor;border-radius:4px;overflow:hidden;flex:none}
+.posPic .pic{position:absolute;left:0;right:0;top:0;background:color-mix(in srgb,currentColor 35%,transparent)}
+.posPic .bar{position:absolute;left:7px;right:7px;height:7px;border-radius:2px;background:currentColor}
 /* background colour of the slides: swatches + a free colour */
 .bgRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
 .bgRow > span:first-child{flex:1 0 100%}
@@ -309,6 +320,8 @@ header #wbWin button{min-width:36px;min-height:38px;font-size:15px;padding:4px 8
             <span id="tbgSwatches"></span>
             <input id="optTextBg" type="color" value="#ffffff" title="Välj en egen färg" data-en-title="Choose your own colour"
                    aria-label="Egen färg bakom blisstexten" data-en-aria="Own colour behind the Bliss text"></div>
+          <span id="posHead" class="optHead" data-en="Where the Bliss text goes">Blisstextens plats</span>
+          <div id="posBtns" role="group" aria-labelledby="posHead"></div>
           <label><span data-en="Picture height">Bildens höjd</span> <input id="optImg" type="range" min="30" max="85" step="1"></label>
           <label><span data-en="Space between symbols">Avstånd mellan symbolerna</span> <input id="optGap" type="range" min="1" max="24" step="1"></label>
           <button id="btnLookAll" class="tb"><span class="bi" data-bliss="12360"></span><span class="lbl" data-en="Use on all slides">Använd på alla sidor</span></button>
@@ -564,7 +577,23 @@ function layoutOf(s) {
   const [SW, SH] = slideSize();
   const top = 30, bot = SH - 30, gap = 24, x = 40, w = SW - 80;
   let img = null, txt = null;
-  if (s.img && hasText) {
+  // the text on the picture (2026-11-26): the picture takes the whole slide and the
+  // text lies over its bottom or top part, as close to the edge as it fits
+  const over = s.img && hasText && (s.textPos === 'bottom' || s.textPos === 'top') ? s.textPos : null;
+  if (over) {
+    img = { x, y: top, w, h: bot - top };
+    // the text goes on the picture as it is drawn (a wide picture on a tall slide
+    // fills only a band of it), 24 in from its edge: the tile (18 around the text) stays on it
+    let r = img;
+    if (s.imgW > 0 && s.imgH > 0) {
+      const a = s.imgW / s.imgH;
+      let pw = img.w, ph = img.w / a;
+      if (ph > img.h) { ph = img.h; pw = img.h * a; }
+      r = { x: img.x + (img.w - pw) / 2, y: img.y + (img.h - ph) / 2, w: pw, h: ph };
+    }
+    const th = r.h * 0.42;
+    txt = { x: r.x + 24, y: over === 'bottom' ? r.y + r.h - th - 24 : r.y + 24, w: Math.max(60, r.w - 48), h: th };
+  } else if (s.img && hasText) {
     const ih = (bot - top - gap) * (s.imgPct || show.imgPct) / 100;
     img = { x, y: top, w, h: ih }; txt = { x, y: top + ih + gap, w, h: bot - top - ih - gap };
   } else if (s.img) img = { x, y: top, w, h: bot - top };
@@ -578,9 +607,9 @@ function layoutOf(s) {
     let vw = txt.w / scale, vh = txt.h / scale;
     const k = Math.max(1, blk.W / vw, blk.H / vh);
     shrunk = k > 1.001; vw *= k; vh *= k;
-    vb = { x: -(vw - blk.W) / 2, y: -(vh - blk.H) / 2, w: vw, h: vh };
+    vb = { x: -(vw - blk.W) / 2, y: over === 'bottom' ? -(vh - blk.H) : over === 'top' ? 0 : -(vh - blk.H) / 2, w: vw, h: vh };
   } else if (txt && s.img) img = { x, y: top, w, h: bot - top };
-  return { img, txt: blk ? txt : null, blk, vb, shrunk };
+  return { img, txt: blk ? txt : null, blk, vb, shrunk, over };
 }
 function slideSVG(s, placeholder) {
   const L = layoutOf(s), [SW, SH] = slideSize();
@@ -628,8 +657,8 @@ function inkFor(bg) {
    slide starts with the look of the slide it comes after; "Use on all slides"
    copies it to every slide. The symbol size and line width stay the same for the
    whole show — Bliss size is semantic, a word is the same size on every slide. */
-const LOOK_DEFAULT = { bg: '#ffffff', textBg: null, imgPct: 62, gap: 8 };
-const lookOf = (s) => ({ bg: s.bg, textBg: s.textBg ?? null, imgPct: s.imgPct, gap: s.gap });
+const LOOK_DEFAULT = { bg: '#ffffff', textBg: null, imgPct: 62, gap: 8, textPos: 'under' };
+const lookOf = (s) => ({ bg: s.bg, textBg: s.textBg ?? null, imgPct: s.imgPct, gap: s.gap, textPos: s.textPos || 'under' });
 const newSlide = (from) => Object.assign({ text: '', words: [], img: null, imgW: 0, imgH: 0 }, LOOK_DEFAULT, from ? lookOf(from) : {});
 let show = { v: 1, title: '', symbols: true, labels: true, size: 120, gap: 8, pen: 35, imgPct: 62, speakAuto: false, bg: '#ffffff', textBg: null, format: '16:9', slides: [newSlide()], custom: [] };
 let cur = 0;          // current slide
@@ -673,9 +702,14 @@ function renderStage() {
   $('stageCta').hidden = hasImg && hasTxt;
   $('stageCta').className = hasImg === hasTxt ? '' : hasImg ? 'bottom' : 'top';
   const fn = $('fitNote');
-  fn.hidden = !layoutOf(show.slides[cur]).shrunk;
-  fn.textContent = tr('⚠ The text does not fit at the chosen size and has been made smaller on this slide — shorten the text, lower the picture or choose smaller symbols.',
-    '⚠ Texten får inte plats i vald storlek och har gjorts mindre på den här sidan — korta texten, sänk bildens höjd eller välj mindre symboler.');
+  const lay = layoutOf(show.slides[cur]);
+  fn.hidden = !lay.shrunk;
+  // text on the picture has no picture height to lower: put it under the picture instead
+  fn.textContent = lay.over
+    ? tr('⚠ The text does not fit on the picture at the chosen size and has been made smaller — shorten the text, put it under the picture or choose smaller symbols.',
+      '⚠ Texten får inte plats på bilden i vald storlek och har gjorts mindre — korta texten, lägg den under bilden eller välj mindre symboler.')
+    : tr('⚠ The text does not fit at the chosen size and has been made smaller on this slide — shorten the text, lower the picture or choose smaller symbols.',
+      '⚠ Texten får inte plats i vald storlek och har gjorts mindre på den här sidan — korta texten, sänk bildens höjd eller välj mindre symboler.');
   const thumb = $('slides').children[cur];
   if (thumb) {
     thumb.innerHTML = `<span class="no" aria-hidden="true">${cur + 1}</span>${svg}`;
@@ -712,6 +746,10 @@ function renderOptions() {
   syncFormat();
   const sl = show.slides[cur] || show;            // the slide's own look
   $('optImg').value = String(sl.imgPct || show.imgPct);
+  // the picture's height only means something while the text is under it
+  const pos = sl.textPos || 'under';
+  $('optImg').closest('label').style.display = pos === 'under' ? '' : 'none';
+  for (const b of $('posBtns').children) b.setAttribute('aria-pressed', String(b.dataset.v === pos));
   $('optGap').value = String(sl.gap || show.gap);
   $('optPen').value = String(show.pen || 35);
   $('optSpeak').checked = !!show.speakAuto;
@@ -1084,6 +1122,21 @@ function setLook(patch) {
   renderOptions(); renderSlides(); renderStage(); autosave();
 }
 $('optImg').addEventListener('input', () => setLook({ imgPct: +$('optImg').value }));
+/* where the Bliss text goes: under the picture, or on it at the bottom or the top.
+   On the picture the text gets a white tile when it has none, so it can be read. */
+for (const [v, sv, en] of [['under', 'Under bilden', 'Under the picture'], ['bottom', 'På bilden, nederst', 'On the picture, at the bottom'],
+                           ['top', 'På bilden, överst', 'On the picture, at the top']]) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'tb'; b.dataset.v = v;
+  const pic = v === 'under' ? 'height:55%' : 'bottom:0', bar = v === 'top' ? 'top:4px' : 'bottom:4px';
+  b.innerHTML = `<span class="posPic" aria-hidden="true"><span class="pic" style="${pic}"></span><span class="bar" style="${bar}"></span></span><span class="lbl">${tr(en, sv)}</span>`;
+  b.onclick = () => {
+    const sl = show.slides[cur], patch = { textPos: v };
+    if (v !== 'under' && !sl.textBg) patch.textBg = '#ffffff';
+    setLook(patch);
+  };
+  $('posBtns').appendChild(b);
+}
 $('btnLookAll').onclick = () => {
   const look = lookOf(show.slides[cur]);
   for (const x of show.slides) Object.assign(x, look);
@@ -1186,6 +1239,7 @@ function serialize() {
    Anything else falls back to the default, so a bad value never becomes markup. */
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const FORMAT_OK = /^(16:9|4:3|1:1|3:4|9:16)$/;
+const TEXT_POS = /^(under|bottom|top)$/;
 const IMG_DATA = /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+$/i;
 const clampNum = (v, lo, hi, def) => { v = +v; return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def; };
 function cleanShow(o) {
@@ -1194,6 +1248,7 @@ function cleanShow(o) {
   o.pen = clampNum(o.pen, 15, 100, 35);
   o.gap = clampNum(o.gap, 1, 24, 8);
   o.imgPct = clampNum(o.imgPct, 30, 85, 62);
+  o.textPos = TEXT_POS.test(o.textPos) ? o.textPos : 'under';
   o.title = typeof o.title === 'string' ? o.title : '';
   o.format = FORMAT_OK.test(o.format) ? o.format : '16:9';
   if (!Array.isArray(o.custom)) o.custom = [];
@@ -1207,6 +1262,7 @@ function cleanShow(o) {
     s.textBg = s.textBg === null ? null : HEX_COLOR.test(s.textBg) ? s.textBg : o.textBg;
     s.imgPct = clampNum(s.imgPct, 30, 85, o.imgPct);
     s.gap = clampNum(s.gap, 1, 24, o.gap);
+    s.textPos = TEXT_POS.test(s.textPos) ? s.textPos : o.textPos;
   }
   return o;
 }
@@ -1675,6 +1731,7 @@ wbIcons.put({
   '.bgRow:has(#optTextBg)': '13377,12857',
   '#optImg': '16172,24909',
   '#optGap': '25996',
+  '#posHead': '18285,16224',
   '#optSymbols': '12857',
   '#optLabels': '18272,17969',
   // Symbol size: the select becomes a row of buttons with a heading of its own (above)

@@ -186,6 +186,11 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   const gaps = bs.cleanShow({ gap: 10, slides: [{ gap: 3 }, { gap: 'x' + X }, {}] });
   check('Bildspel: each slide has its own spacing, a bad or missing one is the show\'s', gaps.slides.map(x => x.gap), [3, 10, 10]);
   check('Bildspel: a new slide starts with the spacing of the one before', look.newSlide({ gap: 4 }).gap, 4);
+  // the Bliss text under the picture or on it (2026-11-26): each slide's own, a bad or missing one is the show's
+  const pos = bs.cleanShow({ textPos: 'bottom', slides: [{ textPos: 'top' }, { textPos: 'side' + X }, {}] });
+  check('Bildspel: each slide keeps where its text goes', [pos.textPos, ...pos.slides.map(x => x.textPos), bs.cleanShow({ slides: [] }).textPos],
+    ['bottom', 'top', 'bottom', 'bottom', 'under']);
+  check('Bildspel: a new slide takes where the text went on the one before', [look.newSlide({ textPos: 'top' }).textPos, look.newSlide().textPos], ['top', 'under']);
   // the slides' format: one for the whole show, a portrait one included (2026-11-26)
   check('Bildspel: the format is kept, a bad or missing one is 16:9',
     [bs.cleanShow({ format: '9:16', slides: [] }).format, bs.cleanShow({ format: '3:4', slides: [] }).format,
@@ -714,7 +719,12 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('memory: on the start page, offline, with the shared everyday words',
     [/href="memory\.html"/.test(read('start.html')), /'memory\.html'/.test(read('sw.js')), /'js\/shared\/vardagsord\.js'/.test(read('sw.js')),
      /src="js\/shared\/vardagsord\.js"/.test(page), /const HAKAN = WB_VARDAGSORD/.test(read('gissa.html'))],
-    [true, true, true, true, true]);
+    [true, true, true, true, true]);  // pairs, players and the turning back as picture buttons (2026-11-26); the selects stay, hidden, and hold the value
+  check('memory: pairs, players and turning back are rows of buttons over the kept selects',
+    ['optPairs', 'optPlayers', 'optBack'].map(id => [new RegExp(`choiceRow\\('${id}'`).test(page), new RegExp(`<select id="${id}">`).test(page),
+      page.includes(`id="${id}Head"`)]),
+    [[true, true, true], [true, true, true], [true, true, true]]);
+  check('memory: the chosen button is marked for screen readers too', /setAttribute\('aria-pressed', String\(b\.dataset\.v === \$\(id\)\.value\)\)/.test(page), true);
 }
 
 /* ---------- 9. Skriv -> Bildspel (2026-11-19): an open Bildspel gets the text, else one opens ---------- */
