@@ -150,7 +150,7 @@
     // right after the part's name in the top bar ("Bildspel · Bliss" ▣ ◀ ▶)
     const head = document.querySelector('body > header');
     const title = head && head.querySelector('h1');
-    if (head && title && getComputedStyle(head).display.includes('flex')) title.after(bar);
+    if (head && title && getComputedStyle(head).display.includes('flex')) (title.closest('.wbTitle') || title).after(bar);
     else if (head) {
       // the start page: a centred title — the buttons sit in the top left corner
       if (getComputedStyle(head).position === 'static') head.style.position = 'relative';

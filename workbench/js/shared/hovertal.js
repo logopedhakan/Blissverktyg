@@ -69,11 +69,13 @@ const wbHover = (() => {
   }
 
   /* ---- the button in the top bar ---- */
-  const CSS = '.wbHoverBtn{font:inherit;font-size:13px;line-height:1.15;display:inline-flex;align-items:center;gap:6px;flex:none;' +
-    'min-height:32px;padding:4px 10px;border:1px solid var(--rule,#ccc);border-radius:8px;background:var(--panel,#fff);color:var(--ink,#111);cursor:pointer}' +
+  // 2026-11-26: in the top bar's right group, before ⚙ and Help; in a narrow window only the symbol shows
+  const CSS = '.wbHoverBtn{font:inherit;font-size:14px;line-height:1.15;display:inline-flex;align-items:center;gap:7px;flex:none;' +
+    'min-height:var(--target,44px);padding:6px 12px;border:1px solid var(--line,var(--rule,#ccc));border-radius:10px;background:var(--panel,#fff);color:var(--ink,#111);cursor:pointer}' +
+    '@media (max-width:1180px){.wbHoverBtn .lbl{display:none}.wbHoverBtn{padding:6px 10px}}' +
     '.wbHoverBtn:hover{border-color:var(--accent,#28558C)}' +
     '.wbHoverBtn[aria-pressed="true"]{background:var(--accent,#28558C);border-color:var(--accent,#28558C);color:var(--on-accent,#fff)}' +
-    '.wbHoverBtn .wbHoverSym svg{height:1.5em;width:auto;display:block}.wbHoverBtn .wbHoverSym .bfill{fill:currentColor}' +
+    '.wbHoverBtn .wbHoverSym{display:inline-flex;align-items:center;gap:2px}.wbHoverBtn .wbHoverSym svg{height:1.5em;width:auto;display:block}.wbHoverBtn .wbHoverSym .bfill{fill:currentColor}' +
     '.wbHoverBtn:focus-visible{outline:3px solid var(--sel,#B4436C);outline-offset:2px}' +
     '@media print{.wbHoverBtn{display:none}}';
   let btn = null;
@@ -99,13 +101,17 @@ const wbHover = (() => {
     btn.type = 'button'; btn.className = 'wbHoverBtn'; btn.id = 'wbHoverBtn';
     let sym = '';
     try { if (typeof wbIcons !== 'undefined') sym = wbIcons.svg('23593,16728'); } catch (_) {}
+    const name = tr('Read on mouse-over', 'Läs vid muspekare');
     btn.innerHTML = (sym ? `<span class="wbHoverSym" aria-hidden="true">${sym}</span>` : '<span aria-hidden="true">🔊</span>') +
-      `<span class="lbl">${tr('Read on mouse-over', 'Läs vid muspekare')}</span>`;
+      `<span class="lbl">${name}</span>`;
+    btn.setAttribute('aria-label', name);              // its name also when only the symbol shows
     btn.onclick = () => set(!on());
-    // beside the window buttons, right after the part's name — the same place in every part
-    const win = head.querySelector('#wbWin:not(.float)'), h1 = head.querySelector('h1');
-    if (win) win.after(btn);
-    else if (h1 && getComputedStyle(head).display.includes('flex')) h1.after(btn);
+    // the same place in every part: the top bar's right end, before ⚙ and Help
+    const end = head.querySelector('[data-wb-end]');
+    const before = [...head.children].find(el => /^(btnSettings|btnHelp|btnKeys)$/.test(el.id));
+    if (end) end.appendChild(btn);
+    else if (before) before.before(btn);
+    else if (getComputedStyle(head).display.includes('flex')) head.appendChild(btn);
     else { const row = document.createElement('div'); row.appendChild(btn); head.appendChild(row); }
     sync();
   }

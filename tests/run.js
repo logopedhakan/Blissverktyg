@@ -266,6 +266,17 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     .filter(f => /var\(--accent\)[^}]*?color:#fff/i.test(read(f)));
   check('Palett: no white text on the accent colour', whiteOnAccent, []);
   check('Palett: a visible focus ring for every part', /:focus-visible\{outline:3px solid var\(--accent\)/.test(css), true);
+  // the shared look (2026-11-26): control edges at 3:1 on every background, light and dark
+  check('Palett: the edge of a button or field shows (≥ 3 on panel, panel-2 and bg, light and dark)',
+    ['panel', 'panel-2', 'bg'].every(b => ratio(v(light, 'line'), v(light, b)) >= 3 && ratio(v(dark, 'line'), v(dark, b)) >= 3), true);
+  const pages = ['start.html', 'index.html', 'bildspel.html', 'gissa.html', 'memory.html', 'former.html', 'gravyr.html', 'almanacka.html', 'installningar.html'];
+  check('Formspråk: every part uses the shared look', pages.filter(f => !read(f).includes('<link rel="stylesheet" href="css/wb-base.css">')), []);
+  check('Formspråk: no part keeps its own copy of the base button rule', pages.filter(f => /^button\{font:inherit/m.test(read(f))), []);
+  check('Formspråk: a part\'s name and what it is for sit together in the top bar',
+    ['memory.html', 'gissa.html', 'former.html', 'gravyr.html', 'installningar.html'].filter(f => !/<div class="wbTitle"><h1/.test(read(f))), []);
+  check('Formspråk: the window buttons come after the name, Läs vid muspekare before ⚙ and Help',
+    [/\(title\.closest\('\.wbTitle'\) \|\| title\)\.after\(bar\)/.test(read('js/shared/window.js')),
+     /\/\^\(btnSettings\|btnHelp\|btnKeys\)\$\/\.test\(el\.id\)/.test(read('js/shared/hovertal.js'))], [true, true]);
 
   // Skriv: what a screen reader says for a word chip
   const app = read('js/editor/app.js');

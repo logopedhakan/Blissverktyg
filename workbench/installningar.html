@@ -15,22 +15,16 @@ body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,
 /* Bliss symbols, drawn by the engine in the text colour (data-bliss = BCI-AV ids) */
 .bi{display:inline-flex;align-items:center;gap:3px;line-height:0;flex:none;vertical-align:middle}
 .bi svg{height:22px;width:auto;display:block}
-header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap}
 header h1{font-size:22px;display:flex;align-items:center;gap:10px}
 header h1 .bi svg{height:34px}
-header .sub{color:var(--dim);font-size:14px}
 main{max-width:920px;margin:0 auto;padding:0 18px 40px;display:flex;flex-direction:column;gap:14px}
 section{background:var(--panel);border:1px solid var(--rule);border-radius:16px;padding:14px 18px}
 section h2{font-size:19px;margin:0 0 6px;display:flex;align-items:center;gap:10px}
 section h2 .bi svg{height:30px}
 section > p.intro{color:var(--dim);margin:0 0 10px}
 h3{font-size:16px;margin:16px 0 4px;display:flex;align-items:center;gap:8px}
-button{font:inherit;color:var(--ink);background:var(--panel-2);border:1px solid var(--rule);border-radius:10px;padding:6px 12px;cursor:pointer;
-  min-height:44px;display:inline-flex;align-items:center;gap:7px}
-button:hover{border-color:var(--accent)}
 button:disabled{opacity:.4;cursor:default}
 button .bi svg{height:22px}
-button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);font-weight:600}
 button.learning{background:var(--sel);border-color:var(--sel);color:#fff}
 select{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);min-height:42px}
 /* the ways to steer: big choices, the symbol first */
@@ -82,8 +76,9 @@ footer{padding:3px 12px 8px;font-size:11px;color:var(--dim);text-align:center}
 <body>
 <header>
   <a class="homeLink" href="start.html" id="homeLink">⌂ Start</a>
-  <h1><span class="bi" data-bliss="25987,23553"></span><span id="title"></span></h1>
-  <span class="sub" id="sub"></span>
+  <div class="wbTitle"><h1><span class="bi" data-bliss="25987,23553"></span><span id="title"></span></h1>
+    <span class="sub" id="sub"></span></div>
+  <span class="grow"></span>
 </header>
 <main>
   <section aria-labelledby="hMode">

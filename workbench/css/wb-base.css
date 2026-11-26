@@ -6,18 +6,18 @@
 :root{
   --ink:#1B1B1D; --dim:#5E5E63; --panel:#FFFFFF; --panel-2:#F4F3EF; --bg:#ECEBE6;
   --accent:#28558C; --accent-soft:#DCE6F2; --rule:#DAD7CE; --sel:#B4436C; --ok:#2E7D46;
-  --stage:#FFFFFF; --on-accent:#FFFFFF;
+  --stage:#FFFFFF; --on-accent:#FFFFFF; --line:#878379;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --ink:#ECECEE; --dim:#9A9AA2; --panel:#1F2023; --panel-2:#26282A; --bg:#17181B;
   --accent:#7FA8DB; --accent-soft:#223146; --rule:#33363B; --sel:#E0759E; --ok:#6FBF8A;
-  --stage:#17181B; --on-accent:#17181B;
+  --stage:#17181B; --on-accent:#17181B; --line:#73777F;
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
   --ink:#ECECEE; --dim:#9A9AA2; --panel:#1F2023; --panel-2:#26282A; --bg:#17181B;
   --accent:#7FA8DB; --accent-soft:#223146; --rule:#33363B; --sel:#E0759E; --ok:#6FBF8A;
-  --stage:#17181B; --on-accent:#17181B;
+  --stage:#17181B; --on-accent:#17181B; --line:#73777F;
   color-scheme:dark;
 }
 *{box-sizing:border-box;margin:0}
@@ -32,3 +32,68 @@
 body > header .homeLink,body > header #homeLink{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 16px;
   font-size:17px;font-weight:700;color:var(--ink);border-width:2px;border-radius:11px;flex:none;white-space:nowrap}
 .homeLink:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ===================== the shared look (2026-11-26) =====================
+   One calm, modern way to look and behave for every part: the same sizes, the
+   same buttons, the same top bar. Element rules sit in :where() (no weight), so
+   a part's own rules always win; the classes are the shared components.
+   Targets are at least 44 px where they matter (top bar, primary actions);
+   control edges are --line (3:1 on every background, light and dark). */
+:root{
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px;
+  --r1:8px; --r2:12px; --r3:16px;
+  --target:44px;
+  --font:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;
+  --shadow-1:0 1px 2px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.08);
+  --shadow-2:0 6px 20px rgba(0,0,0,.14);
+  --ease:.14s ease;
+}
+:where(body){font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.4;-webkit-font-smoothing:antialiased}
+
+/* ---- buttons: the same everywhere ---- */
+:where(button){font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line,var(--rule));border-radius:10px;
+  padding:6px 12px;cursor:pointer;transition:background-color var(--ease),border-color var(--ease),box-shadow var(--ease),color var(--ease)}
+:where(button):hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--panel))}
+:where(button):active{transform:translateY(1px)}
+:where(button):disabled{opacity:.45;cursor:default;transform:none}
+:where(button):disabled:hover{border-color:var(--line,var(--rule));background:var(--panel)}
+/* on/off and chosen: filled with the accent */
+:where(button[aria-pressed="true"]){background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+:where(button[aria-pressed="true"]):hover{background:color-mix(in srgb,var(--accent) 88%,var(--ink))}
+/* the one main action of a view */
+.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);font-weight:700}
+.primary:hover{background:color-mix(in srgb,var(--accent) 88%,var(--ink));border-color:color-mix(in srgb,var(--accent) 88%,var(--ink))}
+/* a quiet action: no frame until pointed at */
+.quiet{background:transparent;border-color:transparent}
+.quiet:hover{background:color-mix(in srgb,var(--accent) 8%,transparent);border-color:var(--line,var(--rule))}
+/* a row of choices that belong together: one is chosen (aria-pressed) */
+.seg{display:inline-flex;flex-wrap:wrap;gap:var(--s1);padding:3px;border-radius:var(--r2);background:var(--panel-2);border:1px solid var(--rule)}
+.seg > button{border-color:transparent;background:transparent;min-height:38px}
+.seg > button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent,#fff);box-shadow:var(--shadow-1)}
+@media (prefers-reduced-motion: reduce){:where(button){transition:none}:where(button):active{transform:none}}
+
+/* ---- fields ---- */
+:where(input[type=text],input[type=search],input[type=number],input:not([type]),select,textarea){font:inherit;color:var(--ink);
+  background:var(--panel);border:1px solid var(--line,var(--rule));border-radius:var(--r1);padding:6px 10px}
+:where(input[type=text],input[type=search],input[type=number],input:not([type]),select,textarea):hover{border-color:var(--accent)}
+:where(input[type=checkbox],input[type=radio],input[type=range]){accent-color:var(--accent)}
+:where(input[type=checkbox],input[type=radio]){width:20px;height:20px}
+::placeholder{color:var(--dim);opacity:1}
+
+/* ---- panels: a card with a heading, and a part that folds ---- */
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:var(--r3);box-shadow:var(--shadow-1)}
+
+/* ---- the top bar, the same in every part ----
+   [⌂ Start] [name · Bliss / what it is] [⅓ ⅔ ▣ ◀ ▶] ……… [the part's own] [Läs vid muspekare] [⚙] [? Hjälp] */
+body > header:not(.hero){display:flex;align-items:center;flex-wrap:wrap;gap:var(--s2) 10px;padding:10px 16px;min-height:64px}
+/* the right end stays at the right, also when a narrow window puts it on a row of its own */
+body > header .wbHoverBtn{margin-left:auto}
+body > header:not(.hero) h1{font-size:20px;line-height:1.15;font-weight:700;white-space:nowrap;margin:0}
+body > header:not(.hero)[hidden]{display:none}
+body > header .grow{flex:1 1 0;min-width:0}
+/* the name and, small under it, what the part is for — never a row of its own */
+.wbTitle{display:flex;flex-direction:column;justify-content:center;min-width:0;flex:0 1 auto}
+.wbTitle .sub{display:block;font-size:12.5px;line-height:1.3;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:44ch}
+/* the top bar's buttons are big enough for the eyes and a switch */
+body > header > button,body > header .tools > button{min-height:var(--target)}
+body > header #btnSettings{min-width:var(--target);font-size:18px;padding:6px 10px}

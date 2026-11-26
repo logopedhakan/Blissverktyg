@@ -22,9 +22,6 @@
 #dirRow[hidden],#dlgCancel[hidden]{display:none}
 body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;
   background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
-header{display:flex;align-items:center;gap:8px;padding:10px 16px;flex-wrap:wrap}
-header h1{font-size:20px;white-space:nowrap}
-header .grow{flex:1}
 #showTitle{font:inherit;font-size:14.5px;padding:8px 10px;border:1px solid var(--rule);border-radius:9px;
   background:var(--panel);color:var(--ink);width:140px;min-height:40px}
 #saveState{font-size:12.5px;color:var(--dim);white-space:nowrap}
@@ -52,10 +49,6 @@ main{flex:1;display:grid;grid-template-columns:200px 1fr 350px;gap:14px;padding:
 .col{display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
 /* the slide strip scrolls sideways in a narrow window — it must not widen the page (320 px: 470) */
 #slides,#stageWrap,#controls{min-width:0}
-button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--rule);
-  border-radius:10px;padding:6px 10px;cursor:pointer}
-button:hover{border-color:var(--accent)}
-button:disabled{opacity:.45;cursor:default}
 .primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);font-weight:600}
 /* slide list */
 #slides{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:8px;
