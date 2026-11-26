@@ -133,6 +133,32 @@ button:hover{border-color:var(--accent)}
 #ownRow{display:flex;flex-direction:column;gap:6px}
 #ownRow[hidden]{display:none}
 .hint{font-size:11.5px;color:var(--dim)}
+/* pairs, players and the turning back as big buttons with pictures (2026-11-26) */
+#side .optHead{font-size:13.5px;margin-top:2px}
+.choices{display:grid;gap:6px}
+.choices.pairs{grid-template-columns:repeat(5,minmax(0,1fr))}
+.choices.players{grid-template-columns:repeat(4,minmax(0,1fr))}
+.choices.back{grid-template-columns:repeat(3,minmax(0,1fr))}
+.choice{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:64px;padding:6px 2px;
+  border-width:2px;border-radius:12px;font-size:13px;font-weight:700;line-height:1.1;transition:transform .12s,box-shadow .12s}
+.choice:hover{transform:translateY(-1px)}
+.choice[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff);
+  box-shadow:0 3px 10px color-mix(in srgb,var(--accent) 40%,transparent)}
+.choice:focus-visible{outline:3px solid var(--sel);outline-offset:2px}
+/* a little board: as many cards as the game will have */
+.mini{display:grid;gap:1.5px;grid-template-columns:repeat(var(--c),4px)}
+.mini i{width:4px;height:6px;border-radius:1px;background:var(--accent);opacity:.85}
+.choice .n{font-size:17px;line-height:1}
+.choice .u{font-size:11px;font-weight:600;line-height:1}
+.choice[aria-pressed="true"] .mini i{background:var(--on-accent,#fff)}
+/* the players, one person each, in the colour they get on the board */
+.ppl{display:flex;justify-content:center;flex-wrap:nowrap;gap:0;max-width:100%;padding:2px 3px;border-radius:7px}
+.ppl .sym svg{height:20px;width:auto;display:block}
+.ppl .sym{color:var(--pc)}
+.choice[aria-pressed="true"] .ppl{background:#fff}
+.choice .big svg{height:26px;width:auto;display:block}
+.choice .big .bfill{fill:currentColor}
+@media (prefers-reduced-motion: reduce){.choice{transition:none}.choice:hover{transform:none}}
 footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 /* narrow: the board on top at a fixed height, the settings below it, the page scrolls */
 @media (max-width:760px){
@@ -172,7 +198,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
   </section>
   <aside id="side" aria-label="Inställningar" data-en-aria="Settings">
     <button id="btnNew" class="primary"><span data-en="New game">Nytt spel</span></button>
-    <label><span data-en="Pairs">Antal par</span>
+    <label><span id="optPairsHead" data-en="Pairs">Antal par</span>
       <select id="optPairs">
         <option value="4">4</option><option value="6" selected>6</option><option value="8">8</option>
         <option value="10">10</option><option value="12">12</option>
@@ -200,7 +226,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
       <span class="hint" data-en="Comma between the words. A word without a Bliss symbol is left out.">Komma mellan orden. Ett ord utan blissymbol tas inte med.</span>
     </div>
     <button id="btnList"><span data-en="Open your own word list (.wbs)…">Öppna egen ordlista (.wbs)…</span></button>
-    <label><span data-en="Players">Spelare</span>
+    <label><span id="optPlayersHead" data-en="Players">Spelare</span>
       <select id="optPlayers">
         <option value="1" data-en="One player">En spelare</option>
         <option value="2" data-en="Two players, taking turns">Två spelare, turas om</option>
@@ -208,7 +234,7 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
         <option value="4" data-en="Four players">Fyra spelare</option>
       </select>
     </label>
-    <label><span data-en="Two cards that are not a pair turn back">Två kort som inte är ett par vänds tillbaka</span>
+    <label><span id="optBackHead" data-en="Cards that are not a pair turn back">Kort som inte är ett par vänds tillbaka</span>
       <select id="optBack">
         <option value="2000" data-en="after 2 seconds">efter 2 sekunder</option>
         <option value="4000" data-en="after 4 seconds">efter 4 sekunder</option>
@@ -668,6 +694,46 @@ if (window.wbSwitch) wbSwitch.scope = () => document.querySelector('dialog[open]
 
 /* ---- settings ---- */
 for (const id of ['optPairs', 'optKind', 'optPlayers']) $(id).onchange = () => { saveOpts(); newGame(); };
+/* pairs, players and the turning back: a row of big buttons with a picture each
+   (2026-11-26) instead of a list to open. The select stays, hidden: it holds
+   the value, is saved and starts the game as before. */
+const CARDS_COLS = { 4: 4, 6: 4, 8: 4, 10: 5, 12: 6 };
+function choiceRow(id, cls, face) {
+  const sel = $(id), lab = sel.closest('label'), head = $(id + 'Head');
+  const box = document.createElement('div');
+  box.className = 'choices ' + cls; box.id = id + 'Btns';
+  box.setAttribute('role', 'group'); box.setAttribute('aria-labelledby', head.id);
+  for (const o of sel.options) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'choice'; b.dataset.v = o.value;
+    b.setAttribute('aria-label', o.textContent);
+    b.innerHTML = face(o.value);
+    b.onclick = () => {
+      if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change')); }
+      syncChoices();
+    };
+    box.appendChild(b);
+  }
+  head.classList.add('optHead');
+  lab.replaceWith(head, box);
+  sel.hidden = true; box.after(sel);
+}
+function syncChoices() {
+  for (const id of ['optPairs', 'optPlayers', 'optBack'])
+    for (const b of $(id + 'Btns').children) b.setAttribute('aria-pressed', String(b.dataset.v === $(id).value));
+}
+choiceRow('optPairs', 'pairs', (v) => {
+  const n = 2 * v, c = CARDS_COLS[v] || 4;
+  return `<span class="mini" style="--c:${c}" aria-hidden="true">${'<i></i>'.repeat(n)}</span><span class="n">${v}</span><span class="u">${tr('pairs', 'par')}</span>`;
+});
+choiceRow('optPlayers', 'players', (v) => {
+  const ppl = PCOL.slice(0, +v).map(col => `<span class="sym" style="--pc:${col}">${wbIcons.svg(GSYM.person)}</span>`).join('');
+  return `<span class="ppl" aria-hidden="true">${ppl}</span><span class="n">${v}</span>`;
+});
+choiceRow('optBack', 'back', (v) => v === 'tryck'
+  ? `<span class="big" aria-hidden="true">${wbIcons.svg('14180')}</span><span>${tr('Press', 'Tryck')}</span>`
+  : `<span class="big" aria-hidden="true">${wbIcons.svg('13363')}</span><span>${+v / 1000} s</span>`);
+syncChoices();
 $('optLevel').onchange = () => {
   saveOpts();
   $('ownRow').hidden = $('optLevel').value !== 'egna';
@@ -728,13 +794,13 @@ newGame();
 /* a Bliss symbol beside every setting and button (js/shared/ikoner.js, 2026-11-20) */
 wbIcons.put({
   '#btnNew': '15710,14418',
-  '#optPairs': '15742,15959',
+  '#optPairsHead': '15742,15959',
   '#optKind': '15959',
   '#optLevel': '18272',
   '#btnOwn': '14418,18272',
   '#btnList': '15220',
-  '#optPlayers': '16161',
-  '#optBack': '17957',
+  '#optPlayersHead': '16161',
+  '#optBackHead': '17957',
   '#optLabel': '18272,17969',
   '#optSpeak': '16728',
   '#btnKeys': '14704',
