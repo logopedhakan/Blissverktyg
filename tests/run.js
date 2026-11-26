@@ -792,6 +792,22 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Blisshuset: only that word', [parse('blisshus')[0].asText, !!parse('blisshus')[0].parts], [true, false]);
 }
 
+/* ---------- 10b. light to run (2026-11-26): the tools load what they use ---------- */
+{
+  const load = (f) => { const c = vm.createContext({}); vm.runInContext(read(f).replace(/^const (BLISS_GLOSSES|GLOSS_LANGS)\b/gm, 'var $1'), c); return c; };
+  const all = load('js/data/glosses.js'), sv = load('js/data/glosses-sv.js');
+  check('glosses-sv.js is the Swedish of glosses.js (node tools/glosor-sv.js)',
+    [JSON.stringify(sv.BLISS_GLOSSES.sv) === JSON.stringify(all.BLISS_GLOSSES.sv), Object.keys(sv.BLISS_GLOSSES), sv.GLOSS_LANGS], [true, ['sv'], [['sv', 'Svenska']]]);
+  const full = ['index.html', 'bildspel.html', 'gissa.html', 'memory.html', 'former.html', 'gravyr.html', 'almanacka.html']
+    .filter(f => read(f).includes('src="js/data/glosses.js"'));
+  check('only Skriv/Editera loads every language\'s glosses; the other tools only Swedish', full, ['index.html']);
+  check('the Swedish glosses are kept for offline use', /'js\/data\/glosses-sv\.js'/.test(read('sw.js')), true);
+  // drawing a symbol measures it once: no svg added to and removed from the page for each one
+  const eng = read('js/engine/bliss-engine.js');
+  check('the engine keeps what it measured', [/BBOX_CACHE\.get\(body\)/.test(eng), /document\.body\.removeChild\(tmp\)/.test(eng)], [true, false]);
+  check('Skriv reads the text once per moment while typing', /addEventListener\('input', wParseSoon\)/.test(read('js/editor/app.js')), true);
+}
+
 /* ---------- 11. a BlissOnline PDF into Skriv (2026-11-26): a page made here, its text read back ---------- */
 const asyncChecks = (async () => {
   const zlib = require('zlib');

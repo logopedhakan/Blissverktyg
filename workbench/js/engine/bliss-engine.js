@@ -171,18 +171,47 @@ function renderBliss(sym, opts = {}) {
   return { body, stroke, g: c.g };
 }
 
+// The extent of a drawn body, measured by the browser (getBBox). Measuring makes
+// the browser lay the page out, so (2026-11-26, "the program feels slow"):
+//  · one hidden measuring box, kept, whose layout is walled off from the page
+//    (contain:strict) — before, an svg was added to and removed from the page
+//    for every symbol, and each time the whole page was laid out again;
+//  · the same drawing is measured once: a symbol shown again (a list redrawn,
+//    a word typed) costs nothing. Letters (<text>) are measured each time, as
+//    their size changes when the typeface has loaded.
+const BBOX_CACHE = new Map();
+let bboxHost = null;
+function bodyBBox(body, g) {
+  const cached = BBOX_CACHE.get(body);
+  if (cached) return cached;
+  let bb = { x: 0, y: 0, width: 8 * g, height: 8 * g };
+  try {
+    if (!bboxHost || !bboxHost.isConnected) {
+      const wall = document.createElement('div');
+      wall.setAttribute('aria-hidden', 'true');
+      wall.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:10px;height:10px;overflow:hidden;contain:strict;visibility:hidden;pointer-events:none';
+      bboxHost = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      wall.appendChild(bboxHost);
+      (document.body || document.documentElement).appendChild(wall);
+    }
+    bboxHost.innerHTML = `<g>${body}</g>`;
+    const r = bboxHost.firstChild.getBBox();
+    bb = { x: r.x, y: r.y, width: r.width, height: r.height };
+    bboxHost.textContent = '';
+  } catch (_) { return bb; }
+  if (!body.includes('<text')) {
+    if (BBOX_CACHE.size > 20000) BBOX_CACHE.clear();
+    BBOX_CACHE.set(body, bb);
+  }
+  return bb;
+}
+
 // Wrap rendered body in an <svg> sized to the symbol's own extent (via DOM bbox).
 function blissSVG(sym, opts = {}) {
   const { body, stroke, g } = renderBliss(sym, opts);
   const color = opts.color ?? '#111';
   const pad = stroke;      // breathing room for stroke caps
-  const tmp = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
-  tmp.innerHTML = `<g>${body}</g>`;
-  document.body.appendChild(tmp);
-  let bb = { x: 0, y: 0, width: 8 * g, height: 8 * g };
-  try { bb = tmp.firstChild.getBBox(); } catch (_) {}
-  document.body.removeChild(tmp);
+  const bb = bodyBBox(body, g);
   const vx = bb.x - pad, vy = bb.y - pad;
   const vw = bb.width + 2 * pad, vh = bb.height + 2 * pad;
   // Fixed scale: px per half-unit. Size differences between symbols are

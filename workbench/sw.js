@@ -7,7 +7,7 @@
    When you add a file the app needs, add it to CORE and bump VERSION — the
    new version then replaces the old cache on the next visit. */
 'use strict';
-const VERSION = '2026-11-26.7';
+const VERSION = '2026-11-26.8';
 const CACHE = 'blissverktyget-' + VERSION;
 const CORE = [
   'start.html', 'index.html', 'skriv.html', 'bildspel.html', 'bildspel-ny.html', 'gissa.html', 'memory.html', 'installningar.html', 'former.html', 'gravyr.html', 'almanacka.html',
@@ -19,7 +19,7 @@ const CORE = [
   'js/shared/bliss-grammar.js', 'js/shared/bliss-skriv.js', 'js/shared/skriv-glosor.js',
   'js/data/bliss-skriv-data.js', 'js/data/bliss-synonymer.js', 'js/data/bliss-harledda.js',
   'js/engine/bliss-shapes.js', 'js/engine/bliss-engine.js',
-  'js/data/bliss-data.js', 'js/data/glosses.js',
+  'js/data/bliss-data.js', 'js/data/glosses.js', 'js/data/glosses-sv.js',
   'js/shared/pdf-vektor.js', 'js/shared/blissonline.js', 'js/data/blissonline-glyfer.js',
   'js/editor/app.js', 'js/editor/i18n.js', 'js/editor/ikoner.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
@@ -46,23 +46,42 @@ self.addEventListener('fetch', (ev) => {
   const sameOrigin = url.origin === self.location.origin;
   // only the app's own files (the typeface is one of them since 2026-11-08)
   if (!sameOrigin) return;
+  const cacheP = caches.open(CACHE);
+  const keptP = cacheP.then(c => c.match(req, { ignoreSearch: true })).catch(() => undefined);
+  // the app's own files: ask the server every time (cache: 'no-cache' = a quick
+  // "has it changed?" check, answered 304 when not). Without it the browser's
+  // HTTP cache served a published update for up to 10 minutes — GitHub Pages
+  // sends max-age=600 (Håkan, 2026-11-05). A navigation Request cannot be
+  // re-made with options, so the URL is fetched instead.
+  const netP = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' });
+  // the answer is kept only when the file has changed (2026-11-26): before, every
+  // visit wrote all the app's files (some 4 MB) into the cache again
+  ev.waitUntil(netP.then(async (res) => {
+    if (!res.ok) return;
+    const copy = res.clone(), kept = await keptP;
+    if (!(kept && sameFile(kept, copy))) await (await cacheP).put(req, copy);
+  }).catch(() => {}));
   ev.respondWith((async () => {
-    const cache = await caches.open(CACHE);
+    const kept = await keptP;
     try {
-      // the app's own files: ask the server every time (cache: 'no-cache' = a quick
-      // "has it changed?" check, answered 304 when not). Without it the browser's
-      // HTTP cache served a published update for up to 10 minutes — GitHub Pages
-      // sends max-age=600 (Håkan, 2026-11-05). A navigation Request cannot be
-      // re-made with options, so the URL is fetched instead.
-      const res = await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' });
-      if (res.ok) cache.put(req, res.clone());
-      return res;
+      if (!kept) return await netP;
+      // a slow network: after a few seconds the kept copy is shown; the newest
+      // version is still fetched and kept, for the next visit
+      const res = await Promise.race([netP, new Promise(r => setTimeout(r, SLOW_MS))]);
+      return res || kept;
     } catch (err) {
       // offline: the kept copy; "?vy=skriv" and other parameters share one copy of their page
-      const hit = await cache.match(req, { ignoreSearch: true });
-      if (hit) return hit;
-      if (req.mode === 'navigate') return (await cache.match('start.html')) || Response.error();
+      if (kept) return kept;
+      if (req.mode === 'navigate') return (await (await cacheP).match('start.html')) || Response.error();
       throw err;
     }
   })());
 });
+const SLOW_MS = 6000;
+// the same file as the kept one: the server's version tag, else its date and size
+function sameFile(a, b) {
+  const h = (r, k) => r.headers.get(k);
+  if (h(a, 'etag') && h(b, 'etag')) return h(a, 'etag') === h(b, 'etag');
+  return !!h(a, 'last-modified') && h(a, 'last-modified') === h(b, 'last-modified') &&
+    h(a, 'content-length') === h(b, 'content-length');
+}
