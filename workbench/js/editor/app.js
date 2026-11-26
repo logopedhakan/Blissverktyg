@@ -2296,6 +2296,36 @@ $('btnGravyr').onclick = () => {
   window.open('gravyr.html?from=editor', '_blank');
 };
 $('wInput').addEventListener('input', wParse);
+/* Pasting text copied from a PDF with symbol text (Håkan, 2026-11-26): the PDF
+   gives one word per line, with stray single characters from the symbols in
+   between ("Frågor / O / Var / 1 / 3 / till …"). When most pasted lines are a
+   single word, the words become one line; an empty line still starts a new
+   line, and lone letters and digits are dropped — except the Swedish one-letter
+   words i, å and ö, and punctuation. Ctrl+Z undoes the paste as usual. */
+function wTidyPaste(t) {
+  const lines = t.replace(/\r\n?/g, '\n').split('\n');
+  const filled = lines.filter(l => l.trim());
+  if (filled.length < 3) return t;
+  const single = filled.filter(l => !/\s/.test(l.trim())).length;
+  if (single / filled.length < 0.7) return t;            // ordinary text: as it is
+  const keep = (w) => w.length > 1 || /^[iåö.,!?:;]$/i.test(w);
+  const paras = t.replace(/\r\n?/g, '\n').split(/\n\s*\n/);
+  return paras.map(p => p.split(/\s+/).filter(Boolean).filter(keep).join(' '))
+    .filter(Boolean).join('\n');
+}
+$('wInput').addEventListener('paste', (ev) => {
+  const t = ev.clipboardData && ev.clipboardData.getData('text/plain');
+  if (!t) return;
+  const tidy = wTidyPaste(t);
+  if (tidy === t) return;                                // the browser pastes as usual
+  ev.preventDefault();
+  const el = $('wInput');
+  // insertText keeps Ctrl+Z working and fires 'input' (→ wParse)
+  if (!document.execCommand('insertText', false, tidy)) {
+    el.setRangeText(tidy, el.selectionStart, el.selectionEnd, 'end');
+    wParse();
+  }
+});
 
 /* ---- symbols sent from the other parts (Håkan, 2026-10-30: Formfamiljer →
    Skriv). index.html?vy=skriv&ord=12345[,678] adds them when Skriv opens; an
