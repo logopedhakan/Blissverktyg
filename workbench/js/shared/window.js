@@ -19,7 +19,9 @@
     localStorage.setItem('wb-senast', (location.pathname.split('/').pop() || 'start.html') + location.search);
   } catch (_) {}
   const KEY = 'wb-fonster';
-  const st = { w: 'full', side: 'left', chosen: false };
+  // manual: the window was sized by hand or docked by the system (Windows Snap, Win+arrow)
+  // since the last choice here — then it is left where it was put (2026-11-26)
+  const st = { w: 'full', side: 'left', chosen: false, manual: false };
   try { Object.assign(st, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (_) {}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (_) {} };
   const sv = (typeof wbLang === 'function' ? wbLang() : (document.documentElement.lang || 'sv')) !== 'en';
@@ -33,7 +35,9 @@
     const w = Math.round(W * ({ third: 1 / 3, twothirds: 2 / 3 }[st.w] || 1));
     return [st.side === 'right' ? L + W - w : L, T, w, H];
   }
+  let ours = 0;                                // when this page last sized the window itself
   function apply() {
+    ours = Date.now();
     const g = geometry();
     try { window.moveTo(g[0], g[1]); window.resizeTo(g[2], g[3]); } catch (_) {}
   }
@@ -44,7 +48,7 @@
     clearTimeout(noteT); noteT = setTimeout(() => { note.hidden = true; }, 4500);
   }
   function choose(patch) {
-    Object.assign(st, patch, { chosen: true }); save(); mark();
+    Object.assign(st, patch, { chosen: true, manual: false }); save(); mark();
     if (own()) { apply(); return; }
     const g = geometry();
     const w = window.open(location.href, NAME, `popup=yes,left=${g[0]},top=${g[1]},width=${g[2]},height=${g[3]}`);
@@ -128,8 +132,9 @@
   let bar = null;
   function mark() {
     if (!bar) return;
-    for (const b of bar.querySelectorAll('[data-w]')) b.setAttribute('aria-pressed', String(st.chosen && b.dataset.w === st.w));
-    for (const b of bar.querySelectorAll('[data-side]')) b.setAttribute('aria-pressed', String(st.chosen && st.w !== 'full' && b.dataset.side === st.side));
+    const on = st.chosen && !st.manual;          // docked or sized by hand: none of the buttons is it
+    for (const b of bar.querySelectorAll('[data-w]')) b.setAttribute('aria-pressed', String(on && b.dataset.w === st.w));
+    for (const b of bar.querySelectorAll('[data-side]')) b.setAttribute('aria-pressed', String(on && st.w !== 'full' && b.dataset.side === st.side));
   }
   function build() {
     const style = document.createElement('style'); style.textContent = CSS; document.head.appendChild(style);
@@ -249,8 +254,28 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(refit);
   let rT = null;
   window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(refit, 60); });
-  // the app starts in the size last chosen
-  if (own() && st.chosen) { if (document.readyState === 'complete') apply(); else window.addEventListener('load', apply); }
+  /* The size last chosen is set when the app STARTS — not each time it goes to another
+     part (Håkan, 2026-11-26: "the window jumps when I change tool"). Every part is a
+     page of its own, and each page used to put the window back to ⅓ / ⅔ / ▣, over a
+     window the user had docked with Windows (Snap, Win+arrow) or sized by hand.
+     A run is one window: sessionStorage stays while the window goes from part to part. */
+  let first = true;
+  try { first = !sessionStorage.getItem('wb-fonster-satt'); sessionStorage.setItem('wb-fonster-satt', '1'); } catch (_) {}
+  if (first && own() && st.chosen && !st.manual) {
+    if (document.readyState === 'complete') apply(); else window.addEventListener('load', apply);
+  }
+  /* docked or sized by hand: the window's outer size changes without this page asking
+     (zooming the page changes only the inside). From then on the window is left where
+     it is put, also at the next start — the system remembers an app window's place —
+     until ⅓, ⅔ or ▣ is chosen again. */
+  let outer = [window.outerWidth, window.outerHeight];
+  window.addEventListener('resize', () => {
+    const now = [window.outerWidth, window.outerHeight];
+    if (now[0] === outer[0] && now[1] === outer[1]) return;
+    outer = now;
+    if (!own() || !st.chosen || st.manual || Date.now() - ours < 1500) return;
+    st.manual = true; save(); mark();
+  });
 })();
 
 /* Names for screen readers, the same in every part (2026-11-12). A field that
