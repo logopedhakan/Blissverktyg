@@ -837,6 +837,12 @@ const asyncChecks = (async () => {
     [/if \(wIsPdf\(f\)\) \{ await wImportPdf\(f\); return; \}/.test(app), /wbBlissMatch|bliss-match/.test(app + idx + sw),
      ['js/shared/pdf-vektor.js', 'js/shared/blissonline.js', 'js/data/blissonline-glyfer.js'].filter(f => !idx.includes(`src="${f}"`) || !sw.includes(`'${f}'`))],
     [true, false, []]);
+  // dragged in (2026-11-26): files only, while writing, PDF or .wbd — before the browser can open them itself
+  check('BlissOnline: a PDF or .wbd dragged into Skriv opens there',
+    [/const wFileDrop = \(ev\) => wHasFiles\(ev\) && document\.body\.classList\.contains\('writing'\)/.test(app),
+     /document\.addEventListener\('drop', \(ev\) => \{\s*if \(!wFileDrop\(ev\)\) return;\s*ev\.preventDefault\(\); ev\.stopPropagation\(\);/.test(app),
+     /if \(wIsPdf\(f\)\) wImportPdf\(f\); else f\.text\(\)\.then\(wApplyDoc\);/.test(app), /#writeView\.fileOver::after\{content:attr\(data-drop\)/.test(idx)],
+    [true, true, true, true]);
 })().catch(e => { fail++; console.log('✗ BlissOnline: ' + (e && e.stack || e)); });
 
 asyncChecks.then(() => {

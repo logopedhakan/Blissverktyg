@@ -235,6 +235,7 @@ function applyLang() {
   $('wtChips').title = sv ? 'Visa eller dölj ordalternativen' : 'Show or hide the word alternatives';
   $('wtChooser').title = sv ? 'Visa eller dölj böjningsraden' : 'Show or hide the form row';
   $('homeLink').title = sv ? 'Till startsidan' : 'To the start page';
+  $('writeView').dataset.drop = sv ? 'Släpp PDF:en från BlissOnline, eller ett WinBliss-dokument, här' : 'Drop the PDF from BlissOnline, or a WinBliss document, here';
   // names for screen readers (2026-11-12): fields that only had a placeholder,
   // and the regions, which were named in English in the Swedish view too
   for (const [id, en, svL] of [
