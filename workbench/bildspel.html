@@ -579,14 +579,15 @@ function slideSVG(s, placeholder) {
       font-family="Atkinson Hyperlegible Next, Atkinson Hyperlegible, sans-serif">${escXml(placeholder)}</text>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SW} ${SH}" preserveAspectRatio="xMidYMid meet"><style>.bsl{fill:${ink}}</style>${inner}</svg>`;
 }
-/* the coloured tile behind the Bliss text (Håkan, 2026-11-05): the text area's
-   full width, and as high as the symbols and words actually are, with a margin
-   — never reaching up into the picture */
+/* the coloured tile behind the Bliss text (Håkan, 2026-11-05): as wide and as high
+   as the symbols and words actually are, with a margin — never reaching up into
+   the picture or out over the slide's edge (2026-11-26: no longer the full width) */
 function textBand(L) {
   const k = L.txt.w / L.vb.w;                       // slide units per block unit (meet: same both ways)
   const top = L.txt.y + (0 - L.vb.y) * k, h = L.blk.H * k, pad = 18;
-  const y = Math.max(L.txt.y - 10, top - pad);
-  return { x: L.txt.x - 10, y, w: L.txt.w + 20, h: Math.min(SH - 6 - y, top + h + pad - y) };
+  const left = L.txt.x + (0 - L.vb.x) * k, w = L.blk.W * k, side = 28;
+  const y = Math.max(L.txt.y - 10, top - pad), x = Math.max(L.txt.x - 10, left - side);
+  return { x, y, w: Math.min(L.txt.x + L.txt.w + 10 - x, left + w + side - x), h: Math.min(SH - 6 - y, top + h + pad - y) };
 }
 /* the slide's ink follows its background (Håkan, 2026-11-05): black symbols on
    a light colour, white on a dark one — whichever reads best (WCAG luminance).
