@@ -1871,6 +1871,7 @@ function wRenderChips() {
 function wRender() {
   const spot = wFocusSpot();
   wMarksOf();
+  wNoSymBar();
   wRenderChips();
   wRenderChooser();
   wRenderPreview();
@@ -2457,6 +2458,34 @@ function wMarksOf() {
   }
   wMarksDraw();
 }
+/* going through them (2026-11-26): "3 words without a symbol" with Previous and
+   Next (F4, Shift+F4). Each step opens that word's choices — a guess, another
+   symbol, keep it as text, or make a symbol of your own — and selects it in the
+   text field, so it can be retyped at once. */
+const wNoSymList = () => W.reduce((a, w, i) => (wNoSym(w) ? a.concat(i) : a), []);
+function wNoSymBar() {
+  const bar = $('wNoSymBar');
+  if (!bar) return;
+  const list = wNoSymList(), k = list.indexOf(wOpen), n = list.length;
+  bar.hidden = !n;
+  $('wNoSymCount').textContent = k >= 0
+    ? tr(`Word ${k + 1} of ${n} without a symbol`, `Ord ${k + 1} av ${n} utan symbol`)
+    : n === 1 ? tr('1 word without a symbol', '1 ord utan symbol') : tr(`${n} words without a symbol`, `${n} ord utan symbol`);
+}
+function wNoSymGo(step) {
+  const list = wNoSymList();
+  if (!list.length) return;
+  const i = step > 0 ? (list.find(x => x > wOpen) ?? list[0])
+    : ([...list].reverse().find(x => x < wOpen) ?? list[list.length - 1]);
+  wOpen = i; wFocusNext = 'chooser';
+  wRender();
+  const chip = $('wChips').children[i];
+  if (chip) chip.scrollIntoView({ block: 'nearest' });
+  const w = W[i], ta = $('wInput'), m = w && wMarks.find(x => x.off === w.off);
+  if (m) try { ta.setSelectionRange(m.off, m.off + m.word.length); } catch (_) {}
+}
+$('wNoSymNext').onclick = () => wNoSymGo(1);
+$('wNoSymPrev').onclick = () => wNoSymGo(-1);
 const W_MARK_CSS = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontStretch', 'lineHeight', 'letterSpacing', 'wordSpacing',
   'textIndent', 'textTransform', 'tabSize', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'];
 function wMarksFit() {
@@ -3021,7 +3050,7 @@ if (typeof wbShortcuts === 'function') {
   // the keys and their names live in js/shared/styrning.js (WB_KEYMAP), where they can be changed
   const KEYS = typeof wbButtonKeys === 'function' ? wbButtonKeys([
     { id: 'wSpeak', of: 'alla:speak', name: () => tr('read the text aloud / stop reading', 'läs upp texten / stoppa uppläsningen') },
-    { id: 'wMic' }, { id: 'wFam' }, { id: 'wOpenDoc' }, { id: 'wSaveDoc' }, { id: 'wPrint' }, { id: 'wClip' }, { id: 'wToShow' }, { id: 'wToTag' },
+    { id: 'wMic' }, { id: 'wFam' }, { id: 'wOpenDoc' }, { id: 'wSaveDoc' }, { id: 'wPrint' }, { id: 'wClip' }, { id: 'wToShow' }, { id: 'wToTag' }, { id: 'wNoSymNext' }, { id: 'wNoSymPrev' },
     { id: 'btnHelp', key: '?', shown: true, name: () => tr('all keyboard shortcuts (this list)', 'alla kortkommandon (den här listan)') },
     { id: 'wHelp', key: '?', shown: true, inList: false, name: () => '' },
   ], { tool: 'skriv', paused: () => !inWriting() }) : null;

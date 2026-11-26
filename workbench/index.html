@@ -272,6 +272,12 @@ body.writing #editor{display:none}
 #wInBox.marked #wInput{color:transparent;caret-color:var(--ink);background:transparent}
 #wInBox.marked #wInput::selection{color:transparent;background:color-mix(in srgb,var(--accent) 30%,transparent)}
 #wInput::placeholder{color:var(--dim);opacity:1}
+#wNoSymBar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 14px 6px;padding:5px 8px 5px 12px;border-radius:10px;flex-shrink:0;
+  background:color-mix(in srgb,var(--sel) 9%,var(--panel));border:1px solid color-mix(in srgb,var(--sel) 45%,transparent)}
+#wNoSymBar[hidden]{display:none}
+#wNoSymCount{flex:1;min-width:10em;color:var(--sel);font-weight:700}
+#wNoSymBar button{min-height:36px;font-weight:600}
+.wChip.on.unmatched,.wChip.on.fuzzy{outline:3px solid var(--sel);outline-offset:2px}
 #wInMarks .noSym{color:var(--sel);text-decoration:underline 2px;text-underline-offset:3px;text-decoration-skip-ink:none}
 #wChips{flex:0 1 auto;max-height:40%;overflow-y:auto}
 @media (max-width: 900px){
@@ -406,6 +412,12 @@ kbd{font-family:'Atkinson Hyperlegible Mono',ui-monospace,monospace;font-size:11
       <button id="wSettings" title="Settings" aria-label="Settings">⚙</button>
       <!-- the header (and its ? Help) is hidden when embedded: help in the tools row instead -->
       <button id="wHelp" title="Help: all keyboard shortcuts">? Help</button>
+    </div>
+    <!-- the words that got no symbol, one at a time (2026-11-26): each opens its choices -->
+    <div id="wNoSymBar" role="group" aria-labelledby="wNoSymCount" hidden>
+      <span id="wNoSymCount" aria-live="polite"></span>
+      <button id="wNoSymPrev">◀ Previous</button>
+      <button id="wNoSymNext">Next ▶</button>
     </div>
     <div id="wChips" role="group" aria-label="Sentence words"></div>
     <div id="wChooser" hidden></div>

@@ -40,6 +40,8 @@ const WB_KEYMAP = [
     { id: 'wClip', b: '16487', key: 'Alt+C', sv: 'kopiera texten till urklipp', en: 'copy the text to the clipboard' },
     { id: 'wToShow', b: '16172', key: 'Alt+B', sv: 'texten som en ny sida i Bildspel', en: 'the text as a new slide in Slideshow' },
     { id: 'wToTag', b: '29092', key: 'Alt+G', sv: 'symbolerna på ett gravyrkort', en: 'the symbols onto an engraving tag' },
+    { id: 'wNoSymNext', b: '15714,18272', key: 'F4', sv: 'nästa ord utan symbol', en: 'the next word without a symbol' },
+    { id: 'wNoSymPrev', b: '12656,18272', key: 'Shift+F4', sv: 'förra ordet utan symbol', en: 'the previous word without a symbol' },
   ] },
   { tool: 'bildspel', sv: 'Bildspel', en: 'Slideshow', keys: [
     { id: 'btnPlay', b: '16967', key: 'F5', fixed: true, sv: 'visa bildspelet (Skift+F5: från den här sidan)', en: 'show the slideshow (Shift+F5: from this slide)' },

@@ -18,6 +18,8 @@ const SV = [
   ['#wtChips', 'Ordval'],
   ['#wtChooser', 'Böjning'],
   ['#wClear', 'Rensa'],
+  ['#wNoSymPrev', '◀ Förra'],
+  ['#wNoSymNext', 'Nästa ▶'],
   ['#wFam', '⬡ Formfamiljer…'],
   ['#wSpeak', '🔊 Läs upp'],
   ['#btnSaveAsNew', 'Spara som ny symbol…'],

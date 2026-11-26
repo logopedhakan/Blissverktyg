@@ -828,6 +828,10 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     [/<div id="wInBox"><div id="wInMarks" aria-hidden="true"><\/div><textarea id="wInput"/.test(html),
      /#wInBox\.marked #wInput\{color:transparent;caret-color:var\(--ink\)/.test(html), /\$\('wInBox'\)\.classList\.add\('marked'\)/.test(app)],
     [true, true, true]);
+  check('Skriv: the words without a symbol can be gone through, with buttons and F4 / Shift+F4',
+    [/<div id="wNoSymBar"[^>]*hidden>/.test(html), /\{ id: 'wNoSymNext', b: '[\d,]+', key: 'F4'/.test(read('js/shared/styrning.js')),
+     /\{ id: 'wNoSymPrev', b: '[\d,]+', key: 'Shift\+F4'/.test(read('js/shared/styrning.js')), /\{ id: 'wNoSymNext' \}, \{ id: 'wNoSymPrev' \}/.test(app)],
+    [true, true, true, true]);
   const f = vm.createContext({});
   vm.runInContext(app.slice(app.indexOf('const wNoSym'), app.indexOf('\n', app.indexOf('const wNoSym'))) + ';this.f = wNoSym;', f);
   check('Skriv: a word with no symbol, or only a guess, is marked; a chosen text form, a symbol, a left-out word or a full stop is not',
