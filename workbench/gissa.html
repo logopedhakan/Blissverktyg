@@ -13,8 +13,11 @@
 <style>
 body{font-family:"Atkinson Hyperlegible Next","Atkinson Hyperlegible",system-ui,sans-serif;
   background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
-header .score{margin-left:auto;font-size:14px;color:var(--dim)}
-header .score b{color:var(--ink)}
+/* the score: two clear counters in the top bar (2026-11-26) */
+header .score{display:inline-flex;gap:var(--s2);flex:none}
+header .score .stat{display:inline-flex;align-items:baseline;gap:6px;min-height:var(--target);padding:4px 14px;
+  background:var(--panel);border:1px solid var(--rule);border-radius:var(--r2);font-size:14px;color:var(--dim);white-space:nowrap}
+header .score .stat b{font-size:24px;line-height:1.5;color:var(--ink);font-variant-numeric:tabular-nums}
 main{flex:1;display:grid;grid-template-columns:auto 1fr 300px;gap:14px;padding:0 18px 14px;min-height:0}
 /* teacher's word list: text only — no symbols, nothing given away */
 #picker{display:none;width:220px;flex-direction:column;gap:8px;min-height:0;
@@ -46,13 +49,13 @@ body.picker #picker{display:flex}
   display:block;flex:1 1 0;min-height:140px;max-height:400px;width:100%;
   touch-action:manipulation}
 #wrongRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#wrongRow[hidden]{display:none}   /* no wrong guesses yet: no empty label either */
 #wrongRow .lbl{font-size:13px;color:var(--dim)}
 .wrongG{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:30px;
   padding:3px 7px;border:1.5px dashed var(--sel);border-radius:8px;opacity:.55;position:relative}
 .wrongG svg{max-height:22px;max-width:26px;width:auto;height:auto}
 .wrongG::after{content:"";position:absolute;left:4px;right:4px;top:50%;height:2px;
   background:var(--sel);transform:rotate(-12deg)}
-#famModeRow{display:flex;gap:7px;align-items:center;font-size:13.5px}
 #tray{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:44px}
 #tray .lbl{font-size:13px;color:var(--dim)}
 /* board + tray centred in the free space — shortens the travel between
@@ -69,7 +72,7 @@ body.picker #picker{display:flex}
 .varBtn.found{border-color:var(--ok)}
 .tok{display:flex;align-items:center;padding:6px 9px;border-style:dashed;border-color:var(--sel)}
 .tok.on{background:var(--accent-soft)}
-#right{display:flex;flex-direction:column;gap:10px;min-height:0}
+#right{display:flex;flex-direction:column;gap:10px;min-height:0;overflow-y:auto}
 /* the man COMPLAINS (John's ask 2026-09-09): a speech bubble ABOVE the
    gallows, in flow — never covering it (PeO's detail pass) */
 #quip{background:var(--panel-2);border:1.5px solid var(--ink);border-radius:12px;
@@ -83,10 +86,41 @@ body.picker #picker{display:flex}
 @media (prefers-reduced-motion: reduce){#quip.on{animation:none}}
 /* tall stage: the gallows fills the column's full height */
 #gallows{background:var(--panel);border:1px solid var(--rule);border-radius:14px;width:100%;
-  flex:1;min-height:150px}
-#controls{display:flex;flex-direction:column;gap:8px}
-select{font:inherit;padding:6px;border-radius:8px;border:1px solid var(--rule);
-  background:var(--panel);color:var(--ink)}
+  flex:1 1 auto;min-height:150px}
+/* the right column (2026-11-26): the game first — New word, Hint, Sound, Give up —
+   then two parts that fold: Words (an own list, choosing a word) and Settings */
+#controls{display:flex;flex-direction:column;gap:var(--s2);flex:none}
+#controls > *{flex-shrink:0}
+#gameBtns{display:flex;flex-direction:column;gap:var(--s2)}
+#gameBtns > button,#controls .secBody > button{min-height:var(--target);text-align:left;display:flex;align-items:center}
+#btnNext{min-height:52px;font-size:17px;justify-content:center}
+#controls details.sec{border:1px solid var(--rule);border-radius:12px;background:var(--panel)}
+#controls details.sec > summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 12px;cursor:pointer;
+  font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;list-style:none;border-radius:12px}
+#controls details.sec > summary::-webkit-details-marker{display:none}
+/* the fold mark, drawn: pointing right when shut, down when open (as in Bildspel) */
+#controls details.sec > summary::after{content:"";margin-left:auto;margin-right:4px;width:9px;height:9px;flex:none;
+  border-right:2.5px solid var(--dim);border-bottom:2.5px solid var(--dim);transform:rotate(-45deg);transition:transform .15s}
+#controls details.sec[open] > summary::after{transform:rotate(45deg)}
+#controls details.sec > summary:hover{background:var(--panel-2)}
+#controls .secBody{display:flex;flex-direction:column;gap:10px;padding:4px 12px 12px}
+@media (prefers-reduced-motion: reduce){#controls details.sec > summary::after{transition:none}}
+#controls .field{display:flex;flex-direction:column;gap:4px;font-size:13.5px}
+#controls select{width:100%;min-height:40px}
+#keyHint{font-size:12px;color:var(--dim)}
+/* an on/off setting is a switch: words on the left, the switch on the right */
+.tgl{display:flex;align-items:center;gap:10px;min-height:var(--target);font-size:13.5px;cursor:pointer}
+.tgl[hidden]{display:none}
+.tgl > input[role=switch]{order:2;margin-left:auto}
+input[type=checkbox][role=switch]{appearance:none;-webkit-appearance:none;flex:none;position:relative;width:46px;height:28px;margin:0;
+  border-radius:14px;background:var(--panel-2);border:2px solid var(--line);cursor:pointer;transition:background-color var(--ease),border-color var(--ease)}
+input[type=checkbox][role=switch]::before{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:var(--dim);transition:transform var(--ease)}
+input[type=checkbox][role=switch]:checked{background:var(--accent);border-color:var(--accent)}
+input[type=checkbox][role=switch]:checked::before{transform:translateX(18px);background:var(--on-accent,#fff)}
+@media (prefers-reduced-motion: reduce){input[type=checkbox][role=switch],input[type=checkbox][role=switch]::before{transition:none}}
+@media (forced-colors: active){input[type=checkbox][role=switch]{appearance:auto;-webkit-appearance:auto;width:20px;height:20px}
+  input[type=checkbox][role=switch]::before{display:none}}
 footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 #board .ph{opacity:.9}
 @keyframes pulseIn{0%{opacity:.2}100%{opacity:1}}
@@ -101,7 +135,16 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
 @media (prefers-reduced-motion: reduce){#confetti{display:none}}
 #board g.new{animation:pulseIn .5s ease}
 @media (prefers-reduced-motion: reduce){#board g.new{animation:none}}
-@media (max-width:760px){main{grid-template-columns:1fr}}
+/* narrow: one column, the page scrolls — every panel loses its fixed track */
+@media (max-width:760px){
+  body{height:auto;min-height:100vh}
+  main{grid-template-columns:1fr}
+  #picker,#left,#right{grid-column:auto}
+  #picker{width:auto;max-height:50vh;position:static}
+  #board{flex:none;height:260px}
+  #right{overflow:visible}
+  #gallows{flex:none;height:240px}
+}
 </style>
 </head>
 <body>
@@ -109,7 +152,8 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
   <a class="homeLink" href="start.html" title="Till startsidan">⌂ Start</a>
   <div class="wbTitle"><h1>Hänga gubbe <span style="color:var(--sel)">·</span> Bliss</h1>
     <span class="sub">gissa vilka element som bygger symbolen — och sätt dem på rätt plats</span></div>
-  <span class="score">klarade <b id="nWon">0</b> · svit <b id="nStreak">0</b></span>
+  <span class="grow"></span>
+  <span class="score" id="score"><span class="stat"><b id="nWon">0</b> <span>klarade</span></span><span class="stat"><b id="nStreak">0</b> <span>i rad</span></span></span>
 </header>
 <main>
   <aside id="picker" aria-label="Välj ord">
@@ -133,32 +177,45 @@ footer{padding:3px 12px 5px;font-size:11px;line-height:1.3;color:var(--dim)}
       <div id="varRow"></div>
     </div>
   </section>
-  <aside id="right">
+  <aside id="right" aria-label="Spelet och inställningar">
     <div id="quip" role="status"></div>
     <svg id="gallows" viewBox="0 0 220 420" aria-label="Hänga gubbe-figuren"></svg>
     <div id="controls">
-      <label>Tema
-        <select id="theme">
-          <option value="auto">Auto (följ systemet)</option>
-          <option value="light">Ljust</option>
-          <option value="dark">Mörkt</option>
-        </select>
-      </label>
-      <label>Svårighetsgrad
-        <select id="diff">
-          <option value="latt" selected>Lätt · vardagsord (substantiv)</option>
-          <option value="gula">Medel · alla gula ord</option>
-          <option value="alla">Svår · hela blisslistan</option>
-        </select>
-      </label>
-      <label id="famModeRow"><input type="checkbox" id="famMode" checked> Rätt familj räcker — formen sätts på plats</label>
-      <div class="lbl" style="font-size:11.5px;color:var(--dim)">Kortkommando: <b>#</b> + bokstav väljer familj (t.ex. #B för hjärtat)</div>
-      <button id="btnHint">Ledtråd — visa en form (kostar en miss)</button>
-      <button id="btnList">Öppna egen ordlista (.wbs)…</button>
-      <button id="btnPick">Välj ord ur listan…</button>
-      <button id="btnSound" title="Gubbens röst och ljudeffekter">🔊 Ljud på</button>
-      <button id="btnNext" class="primary">Nytt ord</button>
-      <button id="btnReveal">Ge upp — visa symbolen</button>
+      <!-- 2026-11-26: the game first, then the parts that fold (remembered in 'gissa-ui') -->
+      <div id="gameBtns">
+        <button id="btnNext" class="primary">Nytt ord</button>
+        <button id="btnHint">Ledtråd — visa en form (kostar en miss)</button>
+        <button id="btnSound" title="Gubbens röst och ljudeffekter">🔊 Ljud på</button>
+        <button id="btnReveal">Ge upp — visa symbolen</button>
+      </div>
+      <details id="secWords" class="sec">
+        <summary><span class="secName">Ord</span></summary>
+        <div class="secBody">
+          <button id="btnList">Öppna egen ordlista (.wbs)…</button>
+          <button id="btnPick" aria-pressed="false">Välj ord ur listan…</button>
+        </div>
+      </details>
+      <details id="secSettings" class="sec">
+        <summary><span class="secName">Inställningar</span></summary>
+        <div class="secBody">
+          <label class="field">Tema
+            <select id="theme">
+              <option value="auto">Auto (följ systemet)</option>
+              <option value="light">Ljust</option>
+              <option value="dark">Mörkt</option>
+            </select>
+          </label>
+          <label class="field">Svårighetsgrad
+            <select id="diff">
+              <option value="latt" selected>Lätt · vardagsord (substantiv)</option>
+              <option value="gula">Medel · alla gula ord</option>
+              <option value="alla">Svår · hela blisslistan</option>
+            </select>
+          </label>
+          <label id="famModeRow" class="tgl"><input type="checkbox" id="famMode" role="switch" checked> Rätt familj räcker — formen sätts på plats</label>
+          <div id="keyHint">Kortkommando: <b>#</b> + bokstav väljer familj (t.ex. #B för hjärtat)</div>
+        </div>
+      </details>
     </div>
   </aside>
 </main>
@@ -195,7 +252,10 @@ if (LNG === 'en') {
   document.querySelector('.homeLink').title = 'To the start page';
   document.querySelector('header h1').innerHTML = 'Hangman <span style="color:var(--sel)">·</span> Bliss';
   document.querySelector('header .sub').textContent = 'guess which elements build the symbol — and put them in place';
-  document.querySelector('header .score').innerHTML = 'solved <b id="nWon">0</b> · streak <b id="nStreak">0</b>';
+  $('score').innerHTML = '<span class="stat"><b id="nWon">0</b> <span>solved</span></span><span class="stat"><b id="nStreak">0</b> <span>in a row</span></span>';
+  $('right').setAttribute('aria-label', 'The game and settings');
+  document.querySelector('#secWords .secName').textContent = 'Words';
+  document.querySelector('#secSettings .secName').textContent = 'Settings';
   $('picker').setAttribute('aria-label', 'Choose a word');
   $('pickSearch').placeholder = 'Search words…';
   $('left').setAttribute('aria-label', 'Game board');
@@ -209,7 +269,7 @@ if (LNG === 'en') {
                  diff: ['Easy · everyday words (nouns)', 'Medium · all yellow words', 'Hard · the whole Bliss list'] };
   for (const id in opts) [...$(id).options].forEach((o, i) => { o.textContent = opts[id][i]; });
   $('famModeRow').lastChild.nodeValue = ' Family is enough — the shape is placed for you';
-  $('famModeRow').nextElementSibling.innerHTML = 'Shortcut: <b>#</b> + a letter picks a family (e.g. #B for the heart)';
+  $('keyHint').innerHTML = 'Shortcut: <b>#</b> + a letter picks a family (e.g. #B for the heart)';
   $('btnHint').textContent = 'Hint — reveal a shape (costs a miss)';
   $('btnList').textContent = 'Open your own word list (.wbs)…';
   $('btnPick').textContent = 'Choose a word from the list…';
@@ -375,7 +435,7 @@ function renderBoard() {
       out += `<line vector-effect="non-scaling-stroke" x1="${zx * G}" y1="${f.y}" x2="${zx * G}" y2="${f.y + f.h}"
         stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="7 6" opacity=".5"/>`;
   }
-  for (const [y, dash, lbl] of [[4, '14 10', ''], [8, '', 'himmel'], [16, '', 'jord']]) {
+  for (const [y, dash, lbl] of [[4, '14 10', ''], [8, '', tr('sky', 'himmel')], [16, '', tr('earth', 'jord')]]) {
     out += `<line vector-effect="non-scaling-stroke" x1="${f.x}" y1="${y * G}" x2="${f.x + f.w}" y2="${y * G}" stroke="var(--dim)"
       stroke-width="1.5" opacity=".75" ${dash ? `stroke-dasharray="6 5"` : ''}/>` +
       (lbl ? `<text x="${f.x + 20}" y="${y * G - 25}" font-size="70" fill="var(--dim)">${lbl}</text>` : '');
@@ -760,7 +820,9 @@ function clearList() {
 }
 $('btnPick').onclick = () => {
   document.body.classList.toggle('picker');
-  if (document.body.classList.contains('picker')) { renderPicker(); $('pickSearch').focus(); }
+  const open = document.body.classList.contains('picker');
+  $('btnPick').setAttribute('aria-pressed', String(open));   // the word list beside the board is open
+  if (open) { renderPicker(); $('pickSearch').focus(); }
   renderBoard();   // the board's box width changed
 };
 function pickerPool() {
@@ -801,16 +863,35 @@ for (const rowId of ['famRow', 'varRow', 'tray']) {
   });
 }
 /* focus loop: Tab from the last control wraps straight to the board, and
-   Shift+Tab from the board wraps back — no trip through the browser chrome */
+   Shift+Tab from the board wraps back — no trip through the browser chrome.
+   The last control is the last one that shows: a folded part hides its own. */
+function lastControl() {
+  const all = [...$('controls').querySelectorAll('button,select,input,summary')]
+    .filter(el => !el.disabled && el.getClientRects().length > 0 && (!el.checkVisibility || el.checkVisibility()));
+  return all[all.length - 1] || $('btnReveal');
+}
 document.addEventListener('keydown', (ev) => {
   if (ev.key !== 'Tab') return;
   const first = document.body.classList.contains('picker') ? $('pickSearch') : $('board');
-  if (!ev.shiftKey && document.activeElement === $('btnReveal')) {
+  const last = lastControl();
+  if (!ev.shiftKey && document.activeElement === last) {
     ev.preventDefault(); first.focus();
   } else if (ev.shiftKey && document.activeElement === first) {
-    ev.preventDefault(); $('btnReveal').focus();
+    ev.preventDefault(); last.focus();
   }
 });
+/* the two folding parts remember whether they are open (2026-11-26) */
+{
+  const KEY = 'gissa-ui';
+  try {
+    const u = JSON.parse(localStorage.getItem(KEY) || '{}');
+    for (const id of ['secWords', 'secSettings']) if (typeof u[id] === 'boolean') $(id).open = u[id];
+  } catch (_) {}
+  const keep = () => {
+    try { localStorage.setItem(KEY, JSON.stringify({ secWords: $('secWords').open, secSettings: $('secSettings').open })); } catch (_) {}
+  };
+  for (const id of ['secWords', 'secSettings']) $(id).addEventListener('toggle', keep);
+}
 /* Kortkommando (Håkans blissanvändare, 2026-09-24): # följt av en bokstav
    väljer familjen — för fjärrstyrning, styrplatta och externa tangentbord.
    I "familj räcker"-läget är det samtidigt gissningen. */
@@ -877,6 +958,8 @@ wbIcons.put({
   '#btnNext': '15710,18272',
   '#btnReveal': '16967,12857',
   '#btnHide': '14710',
+  '#secWords > summary': '18272',
+  '#secSettings > summary': '17755',
 });
 </script>
 </body>
