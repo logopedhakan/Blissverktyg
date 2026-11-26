@@ -22,6 +22,15 @@ const SV = [
   ['#wNoSymNext', 'Nästa ▶'],
   ['#wFam', '⬡ Formfamiljer…'],
   ['#wSpeak', '🔊 Läs upp'],
+  // the top bar's line under the name, and the named groups of buttons (2026-11-26)
+  ['#subWrite', 'Skriv i Bliss'],
+  ['#subEdit', 'Rita och redigera symboler'],
+  ['#wgDocL', 'Dokument'],
+  ['#wgShareL', 'Dela'],
+  ['#wgSendL', 'Skicka till'],
+  ['#edgSymL', 'Symbol'],
+  ['#edgEditL', 'Redigera'],
+  ['#edgExportL', 'Export'],
   ['#btnSaveAsNew', 'Spara som ny symbol…'],
   ['#famTitle', 'Formfamiljer'],
   ['#famSub', 'välj ett ord och tryck ”Skicka till Skriv” — det hamnar sist i texten'],
@@ -253,6 +262,12 @@ function applyLang() {
     ['famRow', 'Shape families', 'Formfamiljer'],
   ]) { const el = $(id); if (el) el.setAttribute('aria-label', sv ? svL : en); }
   if ($('wMic')) $('wMic').title = sv ? 'Diktera' : 'Dictate';
+  // the mic shows its name (2026-11-26); while it listens it says so instead
+  if ($('wMic') && !$('wMic').classList.contains('recording')) setBtnText($('wMic'), sv ? '🎤 Diktera' : '🎤 Dictate');
+  // the groups' names for a screen reader: the same words as their small visible names
+  for (const [id, en, svL] of [['wtSeg', 'Show', 'Visa'], ['wgDoc', 'Document', 'Dokument'], ['wgShare', 'Share', 'Dela'],
+    ['wgSend', 'Send to', 'Skicka till'], ['edgSym', 'Symbol', 'Symbol'], ['edgEdit', 'Edit', 'Redigera'], ['edgExport', 'Export', 'Export']])
+    if ($(id)) $(id).setAttribute('aria-label', sv ? svL : en);
   const helpL = sv ? 'Hjälp & tangentbordsgenvägar (?)' : 'Help & keyboard shortcuts (?)';
   $('btnHelp').title = helpL;
   $('btnHelp').setAttribute('aria-label', sv ? 'Hjälp och tangentbordsgenvägar' : 'Help and keyboard shortcuts');
