@@ -7,12 +7,12 @@
 wbIcons.put({
   // the header
   '#wtList': '15220', '#wtChips': '18272', '#wtChooser': '16940', '#btnWrite': '18285',
-  '#btnSettings': '25987', '#btnHelp': '14704',
+  '#btnHelp': '14704',
   // the lists
   '#btnOpen': '15922,15220', '#btnSaveList': '15143,15220', '#btnNewList': '15710,15220',
   '#wAddA': '16760', '#wAddB': '16760', '#btnOpenB': '15922,15220', '#btnSaveB': '15143,15220', '#btnNewB': '15710,15220',
   // Write
-  '#wMic': '23902', '#wSpeak': '16728', '#wFam': '16940,20572', '#wClear': '23864', '#wNoSymPrev': '12656,18272', '#wNoSymNext': '15714,18272', '#wSettings': '25987', '#wHelp': '14704',
+  '#wMic': '23902', '#wSpeak': '16728', '#wFam': '16940,20572', '#wClear': '23864', '#wNoSymPrev': '12656,18272', '#wNoSymNext': '15714,18272', '#wHelp': '14704',
   '#wOpenDoc': '15922,23479', '#wSaveDoc': '23648,23479', '#wSVG': '23490,16172', '#wPNG': '23490,16172',
   '#wDoc': '23490,23479', '#wPrint': '23624', '#wClip': '16487,29255', '#wToShow': '16172', '#wToTag': '29092',
   // the symbol editor

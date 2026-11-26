@@ -886,6 +886,16 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
     [false, true, true, true]);
 }
 
+/* ---------- 10f. the window keeps the size Windows docked it to (2026-11-26) ---------- */
+{
+  const w = read('js/shared/window.js');
+  check('window: the chosen size is set once when the app starts, not on every change of part, and never over a docked window',
+    [/sessionStorage\.getItem\('wb-fonster-satt'\)/.test(w), /if \(first && own\(\) && st\.chosen && !st\.manual\)/.test(w),
+     /st\.manual = true; save\(\); mark\(\);/.test(w), /Object\.assign\(st, patch, \{ chosen: true, manual: false \}\)/.test(w),
+     /if \(own\(\) && st\.chosen\) \{ if \(document\.readyState/.test(w)],
+    [true, true, true, true, false]);
+}
+
 /* ---------- 11. a BlissOnline PDF into Skriv (2026-11-26): a page made here, its text read back ---------- */
 const asyncChecks = (async () => {
   const zlib = require('zlib');
