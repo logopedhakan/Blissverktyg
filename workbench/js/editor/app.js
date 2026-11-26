@@ -3006,7 +3006,7 @@ $('wAI').onclick = async () => {
   const setMicUI = (on) => {
     const b = $('wMic');
     b.classList.toggle('recording', on);
-    b.innerHTML = on ? `🎤 ${escXml(tr('Listening… click to stop', 'Lyssnar… klicka för att stoppa'))}` : '🎤';
+    b.innerHTML = `🎤 ${escXml(on ? tr('Listening… click to stop', 'Lyssnar… klicka för att stoppa') : tr('Dictate', 'Diktera'))}`;   // a main action: its name shows (2026-11-26)
     const label = on ? tr('Stop dictation', 'Stoppa dikteringen')
                      : tr('Dictate — tap to start/stop, or press and hold', 'Diktera — klicka för start/stopp, eller håll inne');
     b.title = label; b.setAttribute('aria-label', on ? label : tr('Dictate', 'Diktera'));

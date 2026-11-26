@@ -273,7 +273,7 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Formspråk: every part uses the shared look', pages.filter(f => !read(f).includes('<link rel="stylesheet" href="css/wb-base.css">')), []);
   check('Formspråk: no part keeps its own copy of the base button rule', pages.filter(f => /^button\{font:inherit/m.test(read(f))), []);
   check('Formspråk: a part\'s name and what it is for sit together in the top bar',
-    ['memory.html', 'gissa.html', 'former.html', 'gravyr.html', 'installningar.html'].filter(f => !/<div class="wbTitle"><h1/.test(read(f))), []);
+    ['index.html', 'memory.html', 'gissa.html', 'former.html', 'gravyr.html', 'installningar.html'].filter(f => !/<div class="wbTitle"><h1/.test(read(f))), []);
   check('Formspråk: the window buttons come after the name, Läs vid muspekare before ⚙ and Help',
     [/\(title\.closest\('\.wbTitle'\) \|\| title\)\.after\(bar\)/.test(read('js/shared/window.js')),
      /\/\^\(btnSettings\|btnHelp\|btnKeys\)\$\/\.test\(el\.id\)/.test(read('js/shared/hovertal.js'))], [true, true]);
@@ -905,6 +905,49 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
      /st\.manual = true; save\(\); mark\(\);/.test(w), /Object\.assign\(st, patch, \{ chosen: true, manual: false \}\)/.test(w),
      /if \(own\(\) && st\.chosen\) \{ if \(document\.readyState/.test(w)],
     [true, true, true, true, false]);
+}
+
+/* ---------- 10g. Skriv and Editera in the shared look (design step 2a, 2026-11-26) ---------- */
+{
+  const html = read('index.html'), i18n = read('js/editor/i18n.js'), app = read('js/editor/app.js');
+  // the buttons of a named group, in order: from the group's id to the next group or the end of its row
+  const groupOf = (id) => {
+    const a = html.indexOf(`id="${id}"`);
+    if (a < 0) return null;
+    const ends = ['class="tGroup"', 'id="wHint"', 'id="hint"', 'id="edStdBadge"'].map(t => html.indexOf(t, a + 1)).filter(i => i > 0);
+    const part = html.slice(a, Math.min(...ends));
+    return { head: html.slice(html.lastIndexOf('<', a), html.indexOf('>', a) + 1), btns: [...part.matchAll(/<button id="([^"]+)"/g)].map(m => m[1]) };
+  };
+  const groups = { wgDoc: ['wOpenDoc', 'wSaveDoc'], wgShare: ['wPrint', 'wDoc', 'wPNG', 'wSVG', 'wClip'], wgSend: ['wToShow', 'wToTag'],
+    edgSym: ['btnNewSym', 'btnAddToList', 'btnAddToListB', 'btnSaveAsNew'], edgEdit: ['btnRotate', 'btnDelete', 'btnDup', 'btnUndo'],
+    edgExport: ['btnExportSVG', 'btnExportPNG', 'btnCopyClip', 'btnGravyr'] };
+  check('design 2a: the tools are in named groups — Dokument · Dela · Skicka till, Symbol / Redigera / Export',
+    Object.fromEntries(Object.keys(groups).map(g => [g, groupOf(g) && groupOf(g).btns])), groups);
+  check('design 2a: every group is a group with a name for a screen reader, and a small name that shows',
+    Object.keys(groups).filter(g => { const h = groupOf(g).head; return !/role="group"/.test(h) || !/aria-label="[^"]+"/.test(h) || !html.includes(`<span class="tLbl" id="${g}L" aria-hidden="true">`); }), []);
+  check('design 2a: the groups\' names are in Swedish too, shown and read',
+    [['wgDocL', 'Dokument'], ['wgShareL', 'Dela'], ['wgSendL', 'Skicka till'], ['edgSymL', 'Symbol'], ['edgEditL', 'Redigera'], ['edgExportL', 'Export']]
+      .filter(([id, sv]) => !i18n.includes(`['#${id}', '${sv}']`) || !new RegExp(`\\['${id.slice(0, -1)}', '[^']+', '${sv}'\\]`).test(i18n)), []);
+  // Skriv: the header toggles are one row of choices; Diktera and Läs upp are the main actions, the rest quiet
+  const seg = html.slice(html.indexOf('<span id="wtSeg"'), html.indexOf('</span>', html.indexOf('<span id="wtSeg"')));
+  check('design 2a: Lista, Ordval and Böjning are one .seg group, pressed = shown',
+    [/class="seg" role="group" aria-label="Show"/.test(seg), [...seg.matchAll(/<button id="(\w+)"[^>]*aria-pressed="true"/g)].map(m => m[1]),
+     /\.wToggle:not\(\.on\)\{opacity/.test(html)],
+    [true, ['wtList', 'wtChips', 'wtChooser'], false]);
+  const cls = (id) => ((html.match(new RegExp(`<button id="${id}"[^>]*?class="([^"]*)"`)) || [])[1] || '');
+  check('design 2a: beside the text, Diktera and Läs upp stand out and Formfamiljer, Rensa and ⚙ are quiet',
+    [['wMic', 'wSpeak'].map(cls), ['wFam', 'wClear', 'wSettings', 'wHelp'].map(cls),
+     /<div id="wInActs">/.test(html), /tr\('Dictate', 'Diktera'\)/.test(app)],
+    [['wMain', 'wMain'], ['quiet', 'quiet', 'quiet', 'quiet'], true, true]);
+  // Editera: the save is the one primary action above the canvas
+  const ed = html.slice(html.indexOf('<section id="editor"'), html.indexOf('</section>', html.indexOf('<section id="editor"')));
+  check('design 2a: in Editera the save is the one primary button (its twin for list B shows only instead of it)',
+    [...ed.matchAll(/<button id="(\w+)" class="primary"/g)].map(m => m[1]), ['btnAddToList', 'btnAddToListB']);
+  // nothing lost: every id, once
+  const ids = ['wtList', 'wtChips', 'wtChooser', 'btnWrite', 'btnSettings', 'btnHelp', 'wMic', 'wAI', 'wSpeak', 'wFam', 'wClear', 'wSettings', 'wHelp',
+    'wNoSymBar', 'wNoSymPrev', 'wNoSymNext', 'wChips', 'gloss', 'symId', 'wclass', 'edBackWrite', 'edStdBadge', 'hint', 'wHint']
+    .concat(...Object.values(groups));
+  check('design 2a: every button and field keeps its id, once', ids.filter(id => html.split(`id="${id}"`).length !== 2), []);
 }
 
 /* ---------- 11. a BlissOnline PDF into Skriv (2026-11-26): a page made here, its text read back ---------- */
