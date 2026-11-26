@@ -2506,14 +2506,9 @@ function wApplyDoc(txt) {
   return true;
 }
 /* ---- a BlissOnline PDF into Write (2026-11-26) ----
-   BlissOnline (SPSM) draws its words and symbols; js/shared/blissonline.js reads
-   them back (the words by their letter shapes, the symbols in Bliss units) and
-   js/shared/bliss-match.js finds each symbol in BCI-AV, with its indicators.
-   The text goes into Write as if typed, then each word gets the symbol and the
-   indicators the PDF has: the same symbol as in the original, not Write's guess.
-   A word BlissOnline wrote without a symbol stays text; a symbol not found for
-   sure keeps Write's own choice and is marked (dashed) to be looked at. */
-const wNorm = (t) => String(t || '').toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+   BlissOnline (SPSM) draws its words as letter outlines; js/shared/blissonline.js
+   reads the TEXT back (with its rows: a short row ends a paragraph). The symbols
+   are Write's own, from BCI-AV by Write's rules — BlissOnline's are not copied. */
 async function wImportPdf(file) {
   if (typeof wbPdf === 'undefined' || typeof wbBlissOnline === 'undefined') return false;
   toast(tr('Reading the PDF…', 'Läser PDF:en…'));
@@ -2523,41 +2518,12 @@ async function wImportPdf(file) {
   catch (_) { toast(tr('The PDF could not be read', 'PDF:en gick inte att läsa')); return false; }
   const units = lay.rows.flatMap(r => r.words);
   if (!units.length) { toast(tr('No BlissOnline text found in the PDF', 'Ingen BlissOnline-text hittades i PDF:en')); return false; }
-  // the text: the rows run on; a short row ends a paragraph
   $('wInput').value = lay.rows.map(r => r.words.map(w => w.text).join(' ') + (r.end ? '\n' : ' ')).join('').trim();
   wOpen = -1;
   wDocHandle = null;                                     // Save makes a new .wbd
   wParse();
-  // Write's words, side by side with BlissOnline's (a box may hold two words: "för att")
-  const toks = [];
-  units.forEach(u => u.text.split(' ').filter(Boolean).forEach((t, k, all) => toks.push({ u, n: wNorm(t), k, whole: wNorm(u.text), last: k === all.length - 1 })));
-  const ws = W.filter(w => !w.br && !w.punct);
-  let j = 0, symbols = 0, unsure = 0;
   const unknown = units.reduce((n, u) => n + u.unknown, 0);
-  for (const w of ws) {
-    const n = wNorm(w.token);
-    let at = -1;
-    for (let k = j; k < Math.min(toks.length, j + 4); k++) if (toks[k].n === n || (toks[k].k === 0 && toks[k].whole === n)) { at = k; break; }
-    if (at < 0) continue;                                 // not found nearby: Write's own choice stays
-    const t = toks[at];
-    // a phrase Write reads as one word takes the whole box; else the box's later words go along
-    j = t.whole === n && t.k === 0 ? at + t.u.text.split(' ').filter(Boolean).length : at + 1;
-    if (t.k > 0) { if (w.opts && w.opts.some(o => o.skip)) wTakeOption(w, w.opts.find(o => o.skip)); continue; }
-    // no symbol in the original: text, as BlissOnline wrote it (not Write's "no match" guess)
-    if (!t.u.strokes.length) { w.asText = true; w.fuzzy = false; w.guess = false; w.skip = false; w.manual = true; continue; }
-    const m = wbBlissMatch.match(t.u.strokes, { prefer: w.ids || [] });
-    // a compound Write made itself ("blisshuset": house + Bliss) stays as it is
-    if ((!m || !m.sure) && w.parts) continue;
-    if (!m || !m.sure) { w.fuzzy = true; unsure++; continue; }
-    if (!w.ids.includes(m.id)) w.ids.unshift(m.id);
-    w.pick = w.ids.indexOf(m.id);
-    w.asText = false; w.fuzzy = false; w.skip = false; w.manual = true;
-    w.ind = m.ind.filter(k => W_INDICATORS.map.has(k)).join('+');
-    symbols++;
-  }
-  wRender();
-  toast(tr(`From BlissOnline: ${ws.length} words, ${symbols} symbols`, `Från BlissOnline: ${ws.length} ord, ${symbols} symboler`) +
-    (unsure ? tr(` — ${unsure} to check (dashed)`, ` — ${unsure} att titta på (streckade)`) : '') +
+  toast(tr(`From BlissOnline: ${W.filter(w => !w.br && !w.punct).length} words`, `Från BlissOnline: ${W.filter(w => !w.br && !w.punct).length} ord`) +
     (unknown ? tr(` — ${unknown} letters could not be read (�)`, ` — ${unknown} bokstäver gick inte att läsa (�)`) : ''));
   return true;
 }

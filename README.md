@@ -18,9 +18,9 @@ winbliss-web-beta/
 │  ├─ start.html            startsidan (appen öppnar här)
 │  ├─ index.html            Editera och Skriv (index.html?vy=skriv)
 │  ├─ skriv.html            Skriv utan menyer, för MindExpress m.fl. (skickar vidare till index.html?skriv=1)
-│  │                        Skriv öppnar också PDF:er från BlissOnline (Öppna…): orden läses ur bokstavsformerna
-│  │                        (js/data/blissonline-glyfer.js, byggd med tools/blissonline-glyfer.js), symbolerna
-│  │                        och indikatorerna känns igen i BCI-AV (js/shared/bliss-match.js)
+│  │                        Skriv öppnar också PDF:er från BlissOnline (Öppna…): texten läses ur bokstavsformerna
+│  │                        (Arial; js/data/blissonline-glyfer.js, byggd med tools/blissonline-glyfer.js och
+│  │                        tools/typsnitt-konturer.swift) — symbolerna väljer Skriv själv ur BCI-AV
 │  ├─ bildspel.html         Bildspel — bild överst, blisstext under, PowerPoint-export (symboler på
 │  │                        knapparna, dra in bilder, ångra)
 │  ├─ bildspel-ny.html      skickar vidare till bildspel.html (gamla adressen för Nya bildspelet)

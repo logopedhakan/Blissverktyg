@@ -1,18 +1,17 @@
 /* WinBliss² — reading a BlissOnline PDF (2026-11-26).
    BlissOnline (SPSM) draws everything: the words are letter outlines, the
-   symbols lines. But it draws them in a steady way, and this reads it back:
+   symbols lines. Only the TEXT is read back — Write gives it its own symbols
+   from BCI-AV, by its own rules. BlissOnline draws in a steady way:
      · a row is a white band across the page;
-     · each word's letters are ONE filled shape, and the symbol's lines are
-       drawn right after its word;
-     · each symbol has a white box that is exactly the Bliss grid: 20 units
-       high (the top to 4 units below the earth line), its left edge the
-       symbol's left. So a line in the PDF becomes a line in the engine's own
-       units (x right, y down, sky = 8, earth = 16).
-     · the letters are always the same font, so each one is known by its
-       shape: WB_BO_GLYPHS (js/data/blissonline-glyfer.js), built from sample
-       PDFs with tools/blissonline-glyfer.js.
-   wbBlissOnline.layout(pages) -> { rows: [{ end, words: [{ text, unknown,
-     strokes: [[[x, y], …]] (engine units), box }] }] }  */
+     · each word's letters are ONE filled shape; the symbol's lines (and a
+       dot's small filled shape) come right after its word, above it;
+     · each symbol has a white box that is exactly the Bliss grid, 20 units
+       high: the letters are measured in those units, so they are known
+       whatever size the page was made in;
+     · the letters are Arial, each known by its shape: WB_BO_GLYPHS
+       (js/data/blissonline-glyfer.js), from sample PDFs and the font itself
+       (tools/blissonline-glyfer.js).
+   wbBlissOnline.layout(pages) -> { rows: [{ end, words: [{ text, unknown }] }] }  */
 'use strict';
 const wbBlissOnline = (() => {
   const ink = (c) => c[0] + c[1] + c[2] < 1.5;
@@ -78,13 +77,34 @@ const wbBlissOnline = (() => {
     }
     return sum / n;
   }
+  // the nearest letter; 'l' and 'I' are all but the same bar in Arial: when both are about as
+  // near, it says so (and the word around it decides)
   function readLetter(desc, table) {
-    let best = null, bd = Infinity;
+    const near = new Map();
     for (const [ch, shapes] of Object.entries(table || {})) for (const s of shapes) {
       const d = distance(desc, s);
-      if (d < bd) { bd = d; best = ch; }
+      if (d < (near.get(ch) ?? Infinity)) near.set(ch, d);
     }
-    return bd < 0.12 ? best : null;
+    const [best, second] = [...near.entries()].sort((a, b) => a[1] - b[1]);
+    if (!best || best[1] >= 0.12) return null;
+    if (second && /^(lI|Il)$/.test(best[0] + second[0]) && second[1] - best[1] < 0.006) return 'lI';
+    return best[0];
+  }
+  /* l or I by the word around it: a capital at the start of a sentence, in a word of capitals,
+     or before a consonant at the start of a word (Ingrid, IKEA); else the small l */
+  function settleLI(word, sentenceStart) {
+    const chars = [...word];
+    return chars.map((c, i) => {
+      if (c !== '\u0001') return c;
+      const rest = chars.filter((x, j) => j !== i && /\p{L}/u.test(x));
+      if (rest.length && rest.every(x => x === x.toUpperCase() && x !== x.toLowerCase())) return 'I';
+      if (i === 0 || chars[i - 1] === ' ') {
+        if (sentenceStart && i === 0) return 'I';
+        const next = chars[i + 1] || '';
+        if (next && /\p{L}/u.test(next) && !/[aeiouyåäöéèü]/i.test(next)) return 'I';
+      }
+      return 'l';
+    }).join('');
   }
 
   /* ---- the page: rows, words, symbols ---- */
@@ -106,9 +126,8 @@ const wbBlissOnline = (() => {
         for (const it of inBand) {
           if (!ink(it.color)) continue;
           const b = itemBox(it);
-          // a word: a filled shape down in the text; anything else belongs to the word before
-          if (it.paint === 'fill' && b.y0 < symBottom - 0.2) { words.push({ fill: it, box: b, parts: [] }); continue; }
-          if (words.length) words[words.length - 1].parts.push(it);
+          // a word: a filled shape down in the text; the rest (its symbol) is not read
+          if (it.paint === 'fill' && b.y0 < symBottom - 0.2) words.push({ fill: it, box: b });
         }
         if (!words.length) continue;
         // the baseline: where most letters stand
@@ -129,22 +148,9 @@ const wbBlissOnline = (() => {
             // a space inside the word's box ("för att"): 0.9 units, where letters stand at most 0.7 apart ("1" in "100")
             if (i && g.b.x0 - gs[i - 1].b.x1 > unit * 0.8) text += ' ';
             const ch = readLetter(describe(g, baseline, unit), table);
-            if (ch == null) { unknown++; text += '�'; } else text += ch;
+            if (ch == null) { unknown++; text += '\uFFFD'; } else text += ch === 'lI' ? '\u0001' : ch;
           });
-          // the symbol: its box (white, from the left of the word's own drawing) and its lines in engine units
-          const strokes = [];
-          let cell = null;
-          if (w.parts.length && u) {
-            const pb = bbox(w.parts.flatMap(p => p.subpaths.flat()));
-            cell = cells.filter(c => c.x0 <= pb.x0 + 0.6 && c.x1 >= pb.x1 - 0.6).sort((a, b) => a.w - b.w)[0] ||
-                   cells.sort((a, b) => Math.abs(a.x0 - pb.x0) - Math.abs(b.x0 - pb.x0))[0];
-            for (const p of w.parts) for (const sp of p.subpaths) {
-              const pts = sp.map(([x, y]) => [(x - cell.x0) / u, (cell.y1 - y) / u]);
-              // a filled dot is drawn as a tiny closed shape: it stays a short line
-              strokes.push(p.paint === 'fill' && bbox(pts).w < 0.8 && bbox(pts).h < 0.8 ? [bboxCenter(pts)] : pts);
-            }
-          }
-          return { text, unknown, strokes, box: w.box, cell };
+          return { text, unknown, box: w.box };
         });
         const right = Math.max(...words.map(w => w.box.x1));
         rows.push({ words: outWords, right, textW, groups: words.map(w => groupsOf.get(w)), baseline, unit, wordsRaw: words });
@@ -152,9 +158,14 @@ const wbBlissOnline = (() => {
     }
     // a row much shorter than the page ends a paragraph (a title, the last line of one)
     rows.forEach((r, i) => { r.end = i === rows.length - 1 || r.right < r.textW * 0.72; });
+    // l or I, now that it is known where the sentences start
+    let start = true;
+    for (const r of rows) {
+      for (const w of r.words) { w.text = settleLI(w.text, start); start = /[.!?:]$/.test(w.text); }
+      if (r.end) start = true;
+    }
     return { rows: rows.map(r => ({ end: r.end, words: r.words })), _rows: rows };
   }
-  function bboxCenter(pts) { const b = bbox(pts); return [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2]; }
 
   /* ---- teaching it the letters (tools/blissonline-glyfer.js): rows of known words ---- */
   function learn(pages, transcript, table = {}) {
@@ -177,7 +188,13 @@ const wbBlissOnline = (() => {
     return { table, problems };
   }
 
-  return { layout, learn, letters, describe, distance };
+  /** A letter from a font's outlines (tools/blissonline-glyfer.js --typsnitt): k = Bliss units per font unit. */
+  function describeOutlines(outlines, k) {
+    const subs = outlines.filter(p => p.length > 2).map(p => ({ p }));
+    const x0 = Math.min(...subs.flatMap(s => s.p.map(q => q[0])));
+    return describe({ subs, b: { x0 } }, 0, 1 / k);
+  }
+  return { layout, learn, letters, describe, describeOutlines, distance, settleLI };
 })();
 if (typeof window !== 'undefined') window.wbBlissOnline = wbBlissOnline;
 if (typeof module !== 'undefined') module.exports = wbBlissOnline;
