@@ -431,6 +431,44 @@ const words = (W) => W.filter(w => !w.br && !w.punct).map(w => [w.token, w.asTex
   check('Bildspel: the button symbols are BCI-AV symbols', missing, []);
 }
 
+/* ---------- 8a2. Bildspel in the shared look (design step 2b, 2026-11-26) ---------- */
+{
+  const page = read('bildspel.html');
+  const css = page.slice(page.indexOf('<style>'), page.indexOf('</style>'));
+  const head = page.slice(page.indexOf('<header>'), page.indexOf('</header>'));
+  check('Bildspel design: the name and what it is for sit together, the show\'s name heads the slide list',
+    [/<div class="wbTitle"><h1/.test(head), /class="sub" data-en="pictures with Bliss text"/.test(head), head.includes('id="showTitle"'),
+     /<div id="docRow">\s*<input id="showTitle"[\s\S]*?<span id="saveState"[\s\S]*?<h2 id="slidesHead"/.test(page)],
+    [true, true, false, true]);
+  check('Bildspel design: the file buttons are one Arkiv group and never lose their words',
+    [/<div class="tools" role="toolbar" aria-label="Arkiv" data-en-aria="File">/.test(head),
+     ['btnOpen', 'btnSave', 'btnSaveAs', 'btnPptx'].every(id => new RegExp(`id="${id}" class="tb"><span class="bi" data-bliss="[\\d,]+"></span><span class="lbl"`).test(head)),
+     /header \.tools \.lbl\{position:absolute/.test(css), /clip:rect\(0 0 0 0\)/.test(css),
+     /@media \(max-width:1360px\)\{\s*header \.tools > \.tb\{flex-direction:column/.test(css)],
+    [true, true, false, false, true]);
+  check('Bildspel design: Visa is the one primary, the window buttons are the shared ones',
+    [(page.match(/class="[^"]*\bprimary\b[^"]*"/g) || []).length, /id="btnPlay" class="tb primary big"/.test(page), /header #wbWin button\{/.test(css),
+     /^\.primary\{/m.test(css)],
+    [2, true, false, false]);                            // Visa and the dialog's OK
+  check('Bildspel design: main buttons are 44 px targets',
+    [/body > header > \.tb\{min-height:var\(--target\)\}/.test(css), /#slideBtns \.tb\{min-height:var\(--target\)/.test(css),
+     /\.stepper \.tb\{min-width:var\(--target\);min-height:var\(--target\)/.test(css), /#imgRow \.tb,#dirRow \.tb,#controls \.secBody > \.tb\{min-height:var\(--target\)\}/.test(css)],
+    [true, true, true, true]);
+  check('Bildspel design: where the text goes, the format and the symbol size are Memory\'s picture choices',
+    [/<div id="posBtns" class="choices"/.test(page), /<div id="formatBtns" class="choices"/.test(page), /box\.id = 'sizeBtns'; box\.className = 'choices'/.test(page),
+     (page.match(/b\.className = 'choice';/g) || []).length, /\.choice\[aria-pressed="true"\]\{background:var\(--accent\)/.test(css)],
+    [true, true, true, 3, true]);
+  check('Bildspel design: the colours in an even grid, the chosen one marked for the eye and for a screen reader',
+    [/\.bgRow\{display:grid;grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/.test(css), /#bgSwatches,#tbgSwatches\{display:contents\}/.test(css),
+     /button\.on::after\{content:"✓"/.test(css), /b\.setAttribute\('aria-pressed', String\(on\)\)/.test(page)],
+    [true, true, true, true]);
+  // the ids the keys, the switch and the tests rely on are all still there
+  const ids = ['btnOpen', 'btnSave', 'btnSaveAs', 'btnPptx', 'btnPlay', 'btnKeys', 'showTitle', 'saveState', 'slides', 'slideBtns', 'btnAdd', 'btnUp', 'btnDown',
+    'btnDup', 'btnDel', 'stageCta', 'ctaImg', 'ctaTxt', 'btnSpeak', 'controls', 'secLook', 'secShow', 'bgSwatches', 'tbgSwatches', 'optBg', 'optTextBg',
+    'posBtns', 'formatBtns', 'optSize', 'optImg', 'optGap', 'optPen', 'show', 'showCtl', 'showPrev', 'showNext', 'showExit', 'showSpeak'];
+  check('Bildspel design: every id kept', ids.filter(id => !page.includes(`id="${id}"`)), []);
+}
+
 /* ---------- 8b. the word under a symbol is broken to fit its room (blisstext.js, 2026-11-19) ---------- */
 {
   const { BT } = bt('sv');
